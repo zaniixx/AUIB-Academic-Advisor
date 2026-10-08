@@ -1,0 +1,87 @@
+# The whole system: PostgreSQL, the API, the web app and a Caddy reverse proxy.
+#
+#   cp .env.example .env      # then set the passwords and tokens
+#   docker compose up -d --build
+#
+# Only the proxy publishes ports. The database sits on an internal network with no
+# route in or out. Moving to another server needs only this folder, .env and a
+# database backup; see docs/operations.md.
+
+name: auib-advisor
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: advisor
+      POSTGRES_USER: advisor
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U advisor -d advisor"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    networks: [backend]
+
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    image: auib-advisor-api:${APP_VERSION:-latest}
+    restart: unless-stopped
+    environment:
+      ADVISOR_ENVIRONMENT: ${ADVISOR_ENVIRONMENT:-production}
+      ADVISOR_DATABASE_URL: postgresql+psycopg://advisor:${POSTGRES_PASSWORD}@db:5432/advisor
+      ADVISOR_ADMIN_TOKEN: ${ADVISOR_ADMIN_TOKEN:-}
+      ADVISOR_AUTO_IMPORT: ${ADVISOR_AUTO_IMPORT:-true}
+      ADVISOR_AUTO_IMPORT_ACCEPT_WARNINGS: ${ADVISOR_AUTO_IMPORT_ACCEPT_WARNINGS:-false}
+      ADVISOR_API_DOCS: ${ADVISOR_API_DOCS:-false}
+      ADVISOR_RATE_LIMIT_PER_MINUTE: ${ADVISOR_RATE_LIMIT_PER_MINUTE:-60}
+      ADVISOR_WORKERS: ${ADVISOR_WORKERS:-2}
+      ADVISOR_LOG_LEVEL: ${ADVISOR_LOG_LEVEL:-INFO}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [backend, frontend]
+
+  web:
+    build:
+      context: ./web
+      args:
+        API_ORIGIN: http://api:8000
+    image: auib-advisor-web:${APP_VERSION:-latest}
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    networks: [frontend]
+
+  proxy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      web:
+        condition: service_healthy
+    networks: [frontend]
+
+networks:
+  backend:
+    internal: true
+  frontend: {}
+
+volumes:
+  pgdata: {}
+  caddy_data: {}
+  caddy_config: {}

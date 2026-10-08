@@ -1,0 +1,11 @@
+[
+  { "code": "CSC 101", "term": "Fall 2025", "grade": "B+", "status": "completed" },
+  { "code": "MAT 111", "term": "Fall 2025", "grade": "C", "status": "completed" },
+  { "code": "ENL 101", "term": "Fall 2025", "grade": "A-", "status": "completed" },
+  { "code": "UNI 101", "term": "Fall 2025", "grade": "A", "status": "completed" },
+  { "code": "CSC 140", "term": "Spring 2026", "grade": "B", "status": "completed" },
+  { "code": "MAT 112", "term": "Spring 2026", "grade": "F", "status": "failed" },
+  { "code": "ENL 201", "term": "Spring 2026", "grade": "B-", "status": "completed" },
+  { "code": "CSC 230", "term": "Fall 2026", "grade": null, "status": "in_progress" },
+  { "code": "MAT 112", "term": "Fall 2026", "grade": null, "status": "in_progress" }
+]

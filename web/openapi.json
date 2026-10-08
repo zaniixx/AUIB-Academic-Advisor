@@ -1,0 +1,3528 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "AUIB Academic Advisor API",
+    "description": "Degree planning for AUIB students. Planning endpoints are stateless and store nothing.",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/health": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "The process is up",
+        "operationId": "health_api_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ready": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "The database answers and the catalog is loaded",
+        "operationId": "ready_api_ready_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadyOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/meta": {
+      "get": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Choices and assumptions the web app shows",
+        "operationId": "meta_api_v1_meta_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetaOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/programs": {
+      "get": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Published programs (F11.2)",
+        "operationId": "programs_api_v1_programs_get",
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^(major|minor)$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProgramSummaryOut"
+                  },
+                  "title": "Response Programs Api V1 Programs Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/programs/{program_id}": {
+      "get": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "A program's requirement tree",
+        "operationId": "program_detail_api_v1_programs__program_id__get",
+        "parameters": [
+          {
+            "name": "program_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Program Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgramDetailOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/programs/{program_id}/insights": {
+      "get": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Gateway courses and the longest prerequisite chain (F3.2)",
+        "operationId": "insights_api_v1_programs__program_id__insights_get",
+        "parameters": [
+          {
+            "name": "program_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Program Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "default": 10,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InsightsOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/courses": {
+      "get": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "Search the catalog",
+        "operationId": "courses_api_v1_courses_get",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 60
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "name": "subject",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[A-Za-z]{2,4}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Subject"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 25,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 5000,
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseListOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/courses/{code}": {
+      "get": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "A course with its rules shown beside their source text (F0.2)",
+        "operationId": "course_detail_api_v1_courses__code__get",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Code"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/history/parse": {
+      "post": {
+        "tags": [
+          "planner"
+        ],
+        "summary": "Read a pasted SIS Course History page (F11.3)",
+        "operationId": "parse_history_api_v1_history_parse_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HistoryParseIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoryParseOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/planner/progress": {
+      "post": {
+        "tags": [
+          "planner"
+        ],
+        "summary": "Progress per requirement and what is left (F1.2, F4)",
+        "operationId": "progress_api_v1_planner_progress_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StudentIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgressOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/planner/plan": {
+      "post": {
+        "tags": [
+          "planner"
+        ],
+        "summary": "A term-by-term plan to graduation (F1.3, F1.4, F1.6)",
+        "operationId": "plan_api_v1_planner_plan_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StudentIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/planner/what-if": {
+      "post": {
+        "tags": [
+          "planner"
+        ],
+        "summary": "What dropping or delaying a course does to graduation (F1.5)",
+        "operationId": "plan_what_if_api_v1_planner_what_if_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WhatIfIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WhatIfOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/planner/recommendations": {
+      "post": {
+        "tags": [
+          "planner"
+        ],
+        "summary": "Ranked electives for each open requirement (F2.2)",
+        "operationId": "recommendations_api_v1_planner_recommendations_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StudentIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecommendationsOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/rules": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Rules to review, each beside its source sentence",
+        "operationId": "list_rules_api_v1_admin_rules_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "show",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "all",
+                "needs_review",
+                "partial",
+                "unparsed",
+                "overridden",
+                "source_changed",
+                "reviewed"
+              ],
+              "type": "string",
+              "default": "needs_review",
+              "title": "Show"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 60
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminRuleListOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/rules/check": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Check a rule written in the rule language without saving it",
+        "operationId": "check_rule_api_v1_admin_rules_check_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RuleCheckIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleCheckOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/rules/{rule_id}": {
+      "put": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Correct a rule by hand (F0.3); the correction survives re-imports",
+        "operationId": "correct_rule_api_v1_admin_rules__rule_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "rule_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Rule Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RuleUpdateIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminRuleOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/rules/{rule_id}/approve": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Mark the rule in force as checked",
+        "operationId": "approve_rule_api_v1_admin_rules__rule_id__approve_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "rule_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Rule Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminRuleOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/rules/{rule_id}/override": {
+      "delete": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Drop a correction and go back to the parsed rule",
+        "operationId": "remove_override_api_v1_admin_rules__rule_id__override_delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "rule_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Rule Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminRuleOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/imports": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Program imports, newest first",
+        "operationId": "imports_api_v1_admin_imports_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ImportRunOut"
+                  },
+                  "title": "Response Imports Api V1 Admin Imports Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/audit": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Admin actions, newest first (F9.3)",
+        "operationId": "audit_api_v1_admin_audit_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AuditOut"
+                  },
+                  "title": "Response Audit Api V1 Admin Audit Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AdminRuleListOut": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Counts"
+          },
+          "rules": {
+            "items": {
+              "$ref": "#/components/schemas/AdminRuleOut"
+            },
+            "type": "array",
+            "title": "Rules"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "counts",
+          "rules"
+        ],
+        "title": "AdminRuleListOut"
+      },
+      "AdminRuleOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "course_code": {
+            "type": "string",
+            "title": "Course Code"
+          },
+          "course_title": {
+            "type": "string",
+            "title": "Course Title"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "source_text": {
+            "type": "string",
+            "title": "Source Text"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "unparsed_text": {
+            "type": "string",
+            "title": "Unparsed Text"
+          },
+          "parsed_rule": {
+            "type": "string",
+            "title": "Parsed Rule"
+          },
+          "parsed_english": {
+            "type": "string",
+            "title": "Parsed English"
+          },
+          "override_rule": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Override Rule"
+          },
+          "override_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Override Note"
+          },
+          "effective_rule": {
+            "type": "string",
+            "title": "Effective Rule"
+          },
+          "effective_english": {
+            "type": "string",
+            "title": "Effective English"
+          },
+          "reviewed": {
+            "type": "boolean",
+            "title": "Reviewed"
+          },
+          "reviewed_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewed By"
+          },
+          "reviewed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewed At"
+          },
+          "source_changed": {
+            "type": "boolean",
+            "title": "Source Changed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "course_code",
+          "course_title",
+          "kind",
+          "source_text",
+          "status",
+          "unparsed_text",
+          "parsed_rule",
+          "parsed_english",
+          "override_rule",
+          "override_note",
+          "effective_rule",
+          "effective_english",
+          "reviewed",
+          "reviewed_by",
+          "reviewed_at",
+          "source_changed"
+        ],
+        "title": "AdminRuleOut"
+      },
+      "AttemptIn": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 16,
+            "minLength": 5,
+            "title": "Code",
+            "examples": [
+              "CSC 231"
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/AttemptStatus"
+          },
+          "term": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40,
+                "minLength": 6,
+                "examples": [
+                  "Fall 2027",
+                  "2027/2028 Fall"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Term"
+          },
+          "grade": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 4
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grade"
+          },
+          "units": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 30.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Units"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code",
+          "status"
+        ],
+        "title": "AttemptIn"
+      },
+      "AttemptStatus": {
+        "type": "string",
+        "enum": [
+          "completed",
+          "in_progress",
+          "failed",
+          "withdrawn",
+          "incomplete",
+          "not_counted"
+        ],
+        "title": "AttemptStatus"
+      },
+      "AuditOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "At"
+          },
+          "actor": {
+            "type": "string",
+            "title": "Actor"
+          },
+          "action": {
+            "type": "string",
+            "title": "Action"
+          },
+          "target": {
+            "type": "string",
+            "title": "Target"
+          },
+          "detail": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "at",
+          "actor",
+          "action",
+          "target",
+          "detail"
+        ],
+        "title": "AuditOut"
+      },
+      "CatalogInfoOut": {
+        "properties": {
+          "program_id": {
+            "type": "string",
+            "title": "Program Id"
+          },
+          "program_name": {
+            "type": "string",
+            "title": "Program Name"
+          },
+          "catalog_year": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Catalog Year"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "source_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Date"
+          },
+          "revision": {
+            "type": "integer",
+            "title": "Revision"
+          }
+        },
+        "type": "object",
+        "required": [
+          "program_id",
+          "program_name",
+          "catalog_year",
+          "source",
+          "source_date",
+          "revision"
+        ],
+        "title": "CatalogInfoOut"
+      },
+      "ChangeAction": {
+        "type": "string",
+        "enum": [
+          "drop",
+          "delay"
+        ],
+        "title": "ChangeAction"
+      },
+      "ChangeIn": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 16,
+            "minLength": 5,
+            "title": "Code",
+            "examples": [
+              "CSC 231"
+            ]
+          },
+          "action": {
+            "$ref": "#/components/schemas/ChangeAction"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code",
+          "action"
+        ],
+        "title": "ChangeIn"
+      },
+      "CountedCourseOut": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "units": {
+            "type": "number",
+            "title": "Units"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "completed",
+              "in_progress",
+              "planned"
+            ],
+            "title": "State"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "title",
+          "units",
+          "state"
+        ],
+        "title": "CountedCourseOut"
+      },
+      "CourseListOut": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "courses": {
+            "items": {
+              "$ref": "#/components/schemas/CourseRef"
+            },
+            "type": "array",
+            "title": "Courses"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "courses"
+        ],
+        "title": "CourseListOut"
+      },
+      "CourseOut": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "units": {
+            "type": "number",
+            "title": "Units"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "component": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Component"
+          },
+          "notices": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Notices"
+          },
+          "offered_terms": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Offered Terms",
+            "description": "Seasons it runs in; null means every Fall and Spring"
+          },
+          "rules": {
+            "items": {
+              "$ref": "#/components/schemas/RuleOut"
+            },
+            "type": "array",
+            "title": "Rules"
+          },
+          "unlocks": {
+            "items": {
+              "$ref": "#/components/schemas/CourseRef"
+            },
+            "type": "array",
+            "title": "Unlocks"
+          },
+          "groups": {
+            "items": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Groups"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "title",
+          "units",
+          "description",
+          "component",
+          "notices",
+          "offered_terms",
+          "rules",
+          "unlocks",
+          "groups"
+        ],
+        "title": "CourseOut"
+      },
+      "CourseRef": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "units": {
+            "type": "number",
+            "title": "Units"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "title",
+          "units"
+        ],
+        "title": "CourseRef"
+      },
+      "DegreeMapOut": {
+        "properties": {
+          "columns": {
+            "items": {
+              "$ref": "#/components/schemas/MapColumnOut"
+            },
+            "type": "array",
+            "title": "Columns"
+          },
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/MapNodeOut"
+            },
+            "type": "array",
+            "title": "Nodes"
+          },
+          "edges": {
+            "items": {
+              "$ref": "#/components/schemas/MapEdgeOut"
+            },
+            "type": "array",
+            "title": "Edges"
+          }
+        },
+        "type": "object",
+        "required": [
+          "columns",
+          "nodes",
+          "edges"
+        ],
+        "title": "DegreeMapOut",
+        "description": "Every course on the student's path by term, with prerequisite links (F5.1)."
+      },
+      "EligibleOut": {
+        "properties": {
+          "course": {
+            "$ref": "#/components/schemas/CourseRef"
+          },
+          "group_key": {
+            "type": "string",
+            "title": "Group Key"
+          },
+          "group_label": {
+            "type": "string",
+            "title": "Group Label"
+          },
+          "unlocks": {
+            "type": "integer",
+            "title": "Unlocks"
+          },
+          "advisories": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Advisories"
+          },
+          "take_with": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Take With"
+          }
+        },
+        "type": "object",
+        "required": [
+          "course",
+          "group_key",
+          "group_label",
+          "unlocks",
+          "advisories",
+          "take_with"
+        ],
+        "title": "EligibleOut"
+      },
+      "GatewayOut": {
+        "properties": {
+          "course": {
+            "$ref": "#/components/schemas/CourseRef"
+          },
+          "dependents": {
+            "type": "integer",
+            "title": "Dependents"
+          },
+          "direct_dependents": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Direct Dependents"
+          }
+        },
+        "type": "object",
+        "required": [
+          "course",
+          "dependents",
+          "direct_dependents"
+        ],
+        "title": "GatewayOut"
+      },
+      "GpaOut": {
+        "properties": {
+          "cumulative": {
+            "type": "number",
+            "title": "Cumulative"
+          },
+          "units": {
+            "type": "number",
+            "title": "Units"
+          },
+          "last_term": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TermGpaOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "retakes": {
+            "items": {
+              "$ref": "#/components/schemas/RetakeOut"
+            },
+            "type": "array",
+            "title": "Retakes"
+          },
+          "assumptions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Assumptions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cumulative",
+          "units",
+          "last_term",
+          "retakes",
+          "assumptions"
+        ],
+        "title": "GpaOut",
+        "description": "Cumulative GPA, the last graded term's GPA and the retakes that would raise the CGPA most (F7)."
+      },
+      "GroupOut": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "units_required": {
+            "type": "number",
+            "title": "Units Required"
+          },
+          "requires_all": {
+            "type": "boolean",
+            "title": "Requires All"
+          },
+          "courses": {
+            "items": {
+              "$ref": "#/components/schemas/CourseRef"
+            },
+            "type": "array",
+            "title": "Courses"
+          },
+          "children": {
+            "items": {
+              "$ref": "#/components/schemas/GroupOut"
+            },
+            "type": "array",
+            "title": "Children"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "title",
+          "label",
+          "role",
+          "units_required",
+          "requires_all",
+          "courses",
+          "children"
+        ],
+        "title": "GroupOut"
+      },
+      "GroupProgressOut": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "role": {
+            "type": "string",
+            "title": "Role"
+          },
+          "units_required": {
+            "type": "number",
+            "title": "Units Required"
+          },
+          "completed": {
+            "type": "number",
+            "title": "Completed"
+          },
+          "in_progress": {
+            "type": "number",
+            "title": "In Progress"
+          },
+          "planned": {
+            "type": "number",
+            "title": "Planned"
+          },
+          "remaining": {
+            "type": "number",
+            "title": "Remaining"
+          },
+          "courses": {
+            "items": {
+              "$ref": "#/components/schemas/CountedCourseOut"
+            },
+            "type": "array",
+            "title": "Courses"
+          },
+          "children": {
+            "items": {
+              "$ref": "#/components/schemas/GroupProgressOut"
+            },
+            "type": "array",
+            "title": "Children"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "label",
+          "role",
+          "units_required",
+          "completed",
+          "in_progress",
+          "planned",
+          "remaining",
+          "courses",
+          "children"
+        ],
+        "title": "GroupProgressOut"
+      },
+      "GroupSuggestionsOut": {
+        "properties": {
+          "group_key": {
+            "type": "string",
+            "title": "Group Key"
+          },
+          "group_label": {
+            "type": "string",
+            "title": "Group Label"
+          },
+          "units_needed": {
+            "type": "number",
+            "title": "Units Needed"
+          },
+          "suggestions": {
+            "items": {
+              "$ref": "#/components/schemas/SuggestionOut"
+            },
+            "type": "array",
+            "title": "Suggestions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "group_key",
+          "group_label",
+          "units_needed",
+          "suggestions"
+        ],
+        "title": "GroupSuggestionsOut"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthOut": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "ok",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "HealthOut"
+      },
+      "HistoryParseIn": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 300000,
+            "title": "Text"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "HistoryParseIn"
+      },
+      "HistoryParseOut": {
+        "properties": {
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/HistoryRowOut"
+            },
+            "type": "array",
+            "title": "Rows"
+          },
+          "unread": {
+            "items": {
+              "$ref": "#/components/schemas/UnreadLineOut"
+            },
+            "type": "array",
+            "title": "Unread"
+          },
+          "ignored_line_count": {
+            "type": "integer",
+            "title": "Ignored Line Count"
+          },
+          "duplicates_removed": {
+            "type": "integer",
+            "title": "Duplicates Removed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rows",
+          "unread",
+          "ignored_line_count",
+          "duplicates_removed"
+        ],
+        "title": "HistoryParseOut"
+      },
+      "HistoryRowOut": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "term": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Term"
+          },
+          "grade": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grade"
+          },
+          "units": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Units"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AttemptStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sis_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sis Status"
+          },
+          "line": {
+            "type": "integer",
+            "title": "Line"
+          },
+          "issues": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Issues"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "title",
+          "term",
+          "grade",
+          "units",
+          "status",
+          "sis_status",
+          "line",
+          "issues"
+        ],
+        "title": "HistoryRowOut"
+      },
+      "ImportRunOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "program_id": {
+            "type": "string",
+            "title": "Program Id"
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Started At"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "published": {
+            "type": "boolean",
+            "title": "Published"
+          },
+          "actor": {
+            "type": "string",
+            "title": "Actor"
+          },
+          "report": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Report"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "program_id",
+          "started_at",
+          "status",
+          "published",
+          "actor",
+          "report"
+        ],
+        "title": "ImportRunOut"
+      },
+      "InsightsOut": {
+        "properties": {
+          "gateways": {
+            "items": {
+              "$ref": "#/components/schemas/GatewayOut"
+            },
+            "type": "array",
+            "title": "Gateways"
+          },
+          "longest_chain": {
+            "items": {
+              "$ref": "#/components/schemas/CourseRef"
+            },
+            "type": "array",
+            "title": "Longest Chain"
+          }
+        },
+        "type": "object",
+        "required": [
+          "gateways",
+          "longest_chain"
+        ],
+        "title": "InsightsOut"
+      },
+      "IssueOut": {
+        "properties": {
+          "severity": {
+            "type": "string",
+            "enum": [
+              "warning",
+              "info"
+            ],
+            "title": "Severity"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "severity",
+          "message",
+          "code"
+        ],
+        "title": "IssueOut"
+      },
+      "LeftItemOut": {
+        "properties": {
+          "group_key": {
+            "type": "string",
+            "title": "Group Key"
+          },
+          "group_label": {
+            "type": "string",
+            "title": "Group Label"
+          },
+          "units_needed": {
+            "type": "number",
+            "title": "Units Needed"
+          },
+          "required_courses": {
+            "items": {
+              "$ref": "#/components/schemas/CourseRef"
+            },
+            "type": "array",
+            "title": "Required Courses"
+          },
+          "options": {
+            "items": {
+              "$ref": "#/components/schemas/CourseRef"
+            },
+            "type": "array",
+            "title": "Options"
+          },
+          "open_pool": {
+            "type": "boolean",
+            "title": "Open Pool"
+          }
+        },
+        "type": "object",
+        "required": [
+          "group_key",
+          "group_label",
+          "units_needed",
+          "required_courses",
+          "options",
+          "open_pool"
+        ],
+        "title": "LeftItemOut"
+      },
+      "LockIn": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 16,
+            "minLength": 5,
+            "title": "Code",
+            "examples": [
+              "CSC 231"
+            ]
+          },
+          "term": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 6,
+            "title": "Term",
+            "examples": [
+              "Fall 2027",
+              "2027/2028 Fall"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code",
+          "term"
+        ],
+        "title": "LockIn"
+      },
+      "MapColumnOut": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "completed",
+              "current",
+              "planned",
+              "unscheduled"
+            ],
+            "title": "Kind"
+          }
+        },
+        "type": "object",
+        "required": [
+          "label",
+          "kind"
+        ],
+        "title": "MapColumnOut"
+      },
+      "MapEdgeOut": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "target": {
+            "type": "string",
+            "title": "Target"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source",
+          "target"
+        ],
+        "title": "MapEdgeOut"
+      },
+      "MapNodeOut": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "units": {
+            "type": "number",
+            "title": "Units"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "in_progress",
+              "planned",
+              "choice",
+              "blocked"
+            ],
+            "title": "Status"
+          },
+          "column": {
+            "type": "integer",
+            "title": "Column"
+          },
+          "group_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group Label"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "code",
+          "title",
+          "units",
+          "status",
+          "column",
+          "group_label"
+        ],
+        "title": "MapNodeOut"
+      },
+      "MetaOut": {
+        "properties": {
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "catalog_revision": {
+            "type": "integer",
+            "title": "Catalog Revision"
+          },
+          "interests": {
+            "items": {
+              "$ref": "#/components/schemas/OptionOut"
+            },
+            "type": "array",
+            "title": "Interests"
+          },
+          "goals": {
+            "items": {
+              "$ref": "#/components/schemas/OptionOut"
+            },
+            "type": "array",
+            "title": "Goals"
+          },
+          "workloads": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Workloads"
+          },
+          "paces": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Paces"
+          },
+          "standing_credits": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Standing Credits"
+          },
+          "defaults": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Defaults"
+          },
+          "assumptions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Assumptions"
+          },
+          "disclaimer": {
+            "type": "string",
+            "title": "Disclaimer"
+          }
+        },
+        "type": "object",
+        "required": [
+          "version",
+          "catalog_revision",
+          "interests",
+          "goals",
+          "workloads",
+          "paces",
+          "standing_credits",
+          "defaults",
+          "assumptions",
+          "disclaimer"
+        ],
+        "title": "MetaOut"
+      },
+      "MinorPlanOut": {
+        "properties": {
+          "program_id": {
+            "type": "string",
+            "title": "Program Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "total_units": {
+            "type": "number",
+            "title": "Total Units"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "source_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Date"
+          },
+          "progress": {
+            "$ref": "#/components/schemas/ProgressOut"
+          },
+          "progress_with_plan": {
+            "$ref": "#/components/schemas/GroupProgressOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "program_id",
+          "name",
+          "total_units",
+          "source",
+          "source_date",
+          "progress",
+          "progress_with_plan"
+        ],
+        "title": "MinorPlanOut",
+        "description": "The minor the student chose: its requirements now and once the plan is done.\n\nA course can count toward the major and the minor at the same time."
+      },
+      "OptionOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "label"
+        ],
+        "title": "OptionOut"
+      },
+      "Pace": {
+        "type": "string",
+        "enum": [
+          "on_time",
+          "fastest"
+        ],
+        "title": "Pace"
+      },
+      "PlanItemOut": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "course",
+              "slot"
+            ],
+            "title": "Kind"
+          },
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "units": {
+            "type": "number",
+            "title": "Units"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "group_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group Key"
+          },
+          "group_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group Label"
+          },
+          "locked": {
+            "type": "boolean",
+            "title": "Locked"
+          },
+          "unlocks": {
+            "type": "integer",
+            "title": "Unlocks"
+          },
+          "advisories": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Advisories"
+          },
+          "suggestions": {
+            "items": {
+              "$ref": "#/components/schemas/CourseRef"
+            },
+            "type": "array",
+            "title": "Suggestions"
+          },
+          "alternatives": {
+            "items": {
+              "$ref": "#/components/schemas/CourseRef"
+            },
+            "type": "array",
+            "title": "Alternatives",
+            "description": "Courses that could replace this one in the same term: same requirement, offered then, prerequisites done in earlier terms, corequisites in the same term"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "key",
+          "code",
+          "title",
+          "units",
+          "reason",
+          "group_key",
+          "group_label",
+          "locked",
+          "unlocks",
+          "advisories",
+          "suggestions",
+          "alternatives"
+        ],
+        "title": "PlanItemOut"
+      },
+      "PlanOut": {
+        "properties": {
+          "start_term": {
+            "$ref": "#/components/schemas/TermOut"
+          },
+          "graduation_term": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TermOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "on_time_term": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TermOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "terms": {
+            "items": {
+              "$ref": "#/components/schemas/PlannedTermOut"
+            },
+            "type": "array",
+            "title": "Terms"
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/IssueOut"
+            },
+            "type": "array",
+            "title": "Issues"
+          },
+          "unscheduled": {
+            "items": {
+              "$ref": "#/components/schemas/PlanItemOut"
+            },
+            "type": "array",
+            "title": "Unscheduled"
+          },
+          "critical_chain": {
+            "items": {
+              "$ref": "#/components/schemas/CourseRef"
+            },
+            "type": "array",
+            "title": "Critical Chain"
+          },
+          "progress": {
+            "$ref": "#/components/schemas/ProgressOut"
+          },
+          "progress_with_plan": {
+            "$ref": "#/components/schemas/GroupProgressOut"
+          },
+          "eligible_next_term": {
+            "items": {
+              "$ref": "#/components/schemas/EligibleOut"
+            },
+            "type": "array",
+            "title": "Eligible Next Term"
+          },
+          "degree_map": {
+            "$ref": "#/components/schemas/DegreeMapOut"
+          },
+          "gpa": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GpaOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null until the student has a graded course"
+          },
+          "minor": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MinorPlanOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null when no minor was chosen"
+          },
+          "catalog": {
+            "$ref": "#/components/schemas/CatalogInfoOut"
+          },
+          "assumptions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Assumptions"
+          },
+          "disclaimer": {
+            "type": "string",
+            "title": "Disclaimer"
+          }
+        },
+        "type": "object",
+        "required": [
+          "start_term",
+          "graduation_term",
+          "on_time_term",
+          "terms",
+          "issues",
+          "unscheduled",
+          "critical_chain",
+          "progress",
+          "progress_with_plan",
+          "eligible_next_term",
+          "degree_map",
+          "gpa",
+          "catalog",
+          "assumptions",
+          "disclaimer"
+        ],
+        "title": "PlanOut"
+      },
+      "PlannedTermOut": {
+        "properties": {
+          "term": {
+            "$ref": "#/components/schemas/TermOut"
+          },
+          "units": {
+            "type": "number",
+            "title": "Units"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PlanItemOut"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "term",
+          "units",
+          "items"
+        ],
+        "title": "PlannedTermOut"
+      },
+      "PreferencesIn": {
+        "properties": {
+          "preferred_units": {
+            "type": "number",
+            "maximum": 21.0,
+            "minimum": 3.0,
+            "title": "Preferred Units",
+            "default": 15
+          },
+          "max_units": {
+            "type": "number",
+            "maximum": 21.0,
+            "minimum": 3.0,
+            "title": "Max Units",
+            "default": 18
+          },
+          "pace": {
+            "$ref": "#/components/schemas/Pace",
+            "default": "on_time"
+          },
+          "include_summer": {
+            "type": "boolean",
+            "title": "Include Summer",
+            "default": false
+          },
+          "summer_max_units": {
+            "type": "number",
+            "maximum": 12.0,
+            "minimum": 0.0,
+            "title": "Summer Max Units",
+            "default": 6
+          },
+          "start_term": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40,
+                "minLength": 6,
+                "examples": [
+                  "Fall 2027",
+                  "2027/2028 Fall"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Term"
+          },
+          "locks": {
+            "items": {
+              "$ref": "#/components/schemas/LockIn"
+            },
+            "type": "array",
+            "maxItems": 60,
+            "title": "Locks"
+          },
+          "exclude": {
+            "items": {
+              "type": "string",
+              "maxLength": 16,
+              "minLength": 5,
+              "examples": [
+                "CSC 231"
+              ]
+            },
+            "type": "array",
+            "maxItems": 100,
+            "title": "Exclude"
+          },
+          "include": {
+            "items": {
+              "type": "string",
+              "maxLength": 16,
+              "minLength": 5,
+              "examples": [
+                "CSC 231"
+              ]
+            },
+            "type": "array",
+            "maxItems": 60,
+            "title": "Include"
+          },
+          "interests": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 14,
+            "title": "Interests"
+          },
+          "goal": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Goal"
+          },
+          "workload": {
+            "$ref": "#/components/schemas/Workload",
+            "default": "balanced"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "PreferencesIn"
+      },
+      "ProgramDetailOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "catalog_year": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Catalog Year"
+          },
+          "total_units": {
+            "type": "number",
+            "title": "Total Units"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "source_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Date"
+          },
+          "root": {
+            "$ref": "#/components/schemas/GroupOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "catalog_year",
+          "total_units",
+          "source",
+          "source_date",
+          "root"
+        ],
+        "title": "ProgramDetailOut"
+      },
+      "ProgramSummaryOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "catalog_year": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Catalog Year"
+          },
+          "total_units": {
+            "type": "number",
+            "title": "Total Units"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "source_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Date"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "catalog_year",
+          "total_units",
+          "source",
+          "source_date"
+        ],
+        "title": "ProgramSummaryOut"
+      },
+      "ProgressOut": {
+        "properties": {
+          "percent_complete": {
+            "type": "number",
+            "title": "Percent Complete"
+          },
+          "completed_units": {
+            "type": "number",
+            "title": "Completed Units"
+          },
+          "in_progress_units": {
+            "type": "number",
+            "title": "In Progress Units"
+          },
+          "root": {
+            "$ref": "#/components/schemas/GroupProgressOut"
+          },
+          "not_counted": {
+            "items": {
+              "$ref": "#/components/schemas/CourseRef"
+            },
+            "type": "array",
+            "title": "Not Counted"
+          },
+          "whats_left": {
+            "items": {
+              "$ref": "#/components/schemas/LeftItemOut"
+            },
+            "type": "array",
+            "title": "Whats Left"
+          }
+        },
+        "type": "object",
+        "required": [
+          "percent_complete",
+          "completed_units",
+          "in_progress_units",
+          "root",
+          "not_counted",
+          "whats_left"
+        ],
+        "title": "ProgressOut"
+      },
+      "ReadyOut": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "ready",
+            "title": "Status"
+          },
+          "database": {
+            "type": "string",
+            "const": "ok",
+            "title": "Database"
+          },
+          "catalog_revision": {
+            "type": "integer",
+            "title": "Catalog Revision"
+          },
+          "programs": {
+            "type": "integer",
+            "title": "Programs"
+          },
+          "today": {
+            "type": "string",
+            "format": "date",
+            "title": "Today"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "database",
+          "catalog_revision",
+          "programs",
+          "today"
+        ],
+        "title": "ReadyOut"
+      },
+      "RecommendationsOut": {
+        "properties": {
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/GroupSuggestionsOut"
+            },
+            "type": "array",
+            "title": "Groups"
+          }
+        },
+        "type": "object",
+        "required": [
+          "groups"
+        ],
+        "title": "RecommendationsOut"
+      },
+      "RetakeOut": {
+        "properties": {
+          "course": {
+            "$ref": "#/components/schemas/CourseRef"
+          },
+          "grade": {
+            "type": "string",
+            "title": "Grade"
+          },
+          "with_a": {
+            "type": "number",
+            "title": "With A",
+            "description": "CGPA if the retake earns an A"
+          },
+          "with_b": {
+            "type": "number",
+            "title": "With B",
+            "description": "CGPA if the retake earns a B"
+          },
+          "in_plan": {
+            "type": "boolean",
+            "title": "In Plan",
+            "description": "Already in the plan (a failed course that must be retaken anyway)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "course",
+          "grade",
+          "with_a",
+          "with_b",
+          "in_plan"
+        ],
+        "title": "RetakeOut"
+      },
+      "RuleCheckIn": {
+        "properties": {
+          "rule": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Rule"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "rule"
+        ],
+        "title": "RuleCheckIn"
+      },
+      "RuleCheckOut": {
+        "properties": {
+          "valid": {
+            "type": "boolean",
+            "title": "Valid"
+          },
+          "rule": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rule"
+          },
+          "english": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "English"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "position": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position"
+          },
+          "unknown_courses": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Unknown Courses"
+          }
+        },
+        "type": "object",
+        "required": [
+          "valid"
+        ],
+        "title": "RuleCheckOut"
+      },
+      "RuleOut": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "english": {
+            "type": "string",
+            "title": "English"
+          },
+          "rule": {
+            "type": "string",
+            "title": "Rule"
+          },
+          "source_text": {
+            "type": "string",
+            "title": "Source Text"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "reviewed": {
+            "type": "boolean",
+            "title": "Reviewed"
+          },
+          "overridden": {
+            "type": "boolean",
+            "title": "Overridden"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "english",
+          "rule",
+          "source_text",
+          "status",
+          "reviewed",
+          "overridden"
+        ],
+        "title": "RuleOut"
+      },
+      "RuleUpdateIn": {
+        "properties": {
+          "rule": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Rule",
+            "description": "Rule in the admin rule language, or NONE"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "rule"
+        ],
+        "title": "RuleUpdateIn"
+      },
+      "ShiftOut": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "before": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TermOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "after": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TermOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "title",
+          "before",
+          "after"
+        ],
+        "title": "ShiftOut"
+      },
+      "StudentIn": {
+        "properties": {
+          "program_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 2,
+            "title": "Program Id"
+          },
+          "minor_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minor Id"
+          },
+          "attempts": {
+            "items": {
+              "$ref": "#/components/schemas/AttemptIn"
+            },
+            "type": "array",
+            "maxItems": 300,
+            "title": "Attempts"
+          },
+          "preferences": {
+            "$ref": "#/components/schemas/PreferencesIn"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "program_id"
+        ],
+        "title": "StudentIn",
+        "description": "Everything the planner needs. Nothing here is stored (F11.5)."
+      },
+      "SuggestionOut": {
+        "properties": {
+          "course": {
+            "$ref": "#/components/schemas/CourseRef"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score"
+          },
+          "reasons": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Reasons"
+          },
+          "eligible_now": {
+            "type": "boolean",
+            "title": "Eligible Now"
+          },
+          "missing": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Missing"
+          }
+        },
+        "type": "object",
+        "required": [
+          "course",
+          "score",
+          "reasons",
+          "eligible_now",
+          "missing"
+        ],
+        "title": "SuggestionOut"
+      },
+      "TermGpaOut": {
+        "properties": {
+          "term": {
+            "$ref": "#/components/schemas/TermOut"
+          },
+          "gpa": {
+            "type": "number",
+            "title": "Gpa"
+          },
+          "units": {
+            "type": "number",
+            "title": "Units"
+          }
+        },
+        "type": "object",
+        "required": [
+          "term",
+          "gpa",
+          "units"
+        ],
+        "title": "TermGpaOut"
+      },
+      "TermOut": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "year": {
+            "type": "integer",
+            "title": "Year"
+          },
+          "season": {
+            "type": "string",
+            "enum": [
+              "Spring",
+              "Summer",
+              "Fall"
+            ],
+            "title": "Season"
+          }
+        },
+        "type": "object",
+        "required": [
+          "label",
+          "year",
+          "season"
+        ],
+        "title": "TermOut"
+      },
+      "UnreadLineOut": {
+        "properties": {
+          "line": {
+            "type": "integer",
+            "title": "Line"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "line",
+          "text",
+          "reason"
+        ],
+        "title": "UnreadLineOut"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      },
+      "WhatIfIn": {
+        "properties": {
+          "program_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 2,
+            "title": "Program Id"
+          },
+          "minor_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minor Id"
+          },
+          "attempts": {
+            "items": {
+              "$ref": "#/components/schemas/AttemptIn"
+            },
+            "type": "array",
+            "maxItems": 300,
+            "title": "Attempts"
+          },
+          "preferences": {
+            "$ref": "#/components/schemas/PreferencesIn"
+          },
+          "change": {
+            "$ref": "#/components/schemas/ChangeIn"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "program_id",
+          "change"
+        ],
+        "title": "WhatIfIn"
+      },
+      "WhatIfOut": {
+        "properties": {
+          "change": {
+            "$ref": "#/components/schemas/ChangeIn"
+          },
+          "terms_later": {
+            "type": "integer",
+            "title": "Terms Later"
+          },
+          "before_graduation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TermOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "after_graduation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TermOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "shifts": {
+            "items": {
+              "$ref": "#/components/schemas/ShiftOut"
+            },
+            "type": "array",
+            "title": "Shifts"
+          },
+          "plan": {
+            "$ref": "#/components/schemas/PlanOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "change",
+          "terms_later",
+          "before_graduation",
+          "after_graduation",
+          "shifts",
+          "plan"
+        ],
+        "title": "WhatIfOut"
+      },
+      "Workload": {
+        "type": "string",
+        "enum": [
+          "light",
+          "balanced",
+          "challenging"
+        ],
+        "title": "Workload"
+      }
+    },
+    "securitySchemes": {
+      "HTTPBearer": {
+        "type": "http",
+        "description": "Admin token (ADVISOR_ADMIN_TOKEN)",
+        "scheme": "bearer"
+      }
+    }
+  }
+}

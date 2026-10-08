@@ -1,0 +1,23 @@
+{
+  "id": "minor-psychology",
+  "name": "Psychology",
+  "kind": "minor",
+  "sis_title": null,
+  "catalog_year": null,
+  "total_units": 18.0,
+  "source": "Registrar's announcement \"Minor in Psychology\" (College of Arts and Sciences): PSY 101, then 15 credit hours from the listed courses",
+  "source_date": "2024-01-14",
+  "published": true,
+  "groups": {
+    "Minor in Psychology": {
+      "label": "Minor in Psychology"
+    },
+    "Minor in Psychology - Foundation course": {
+      "label": "Psychology minor: PSY 101 first",
+      "role": "core"
+    },
+    "Minor in Psychology - Courses": {
+      "label": "Psychology minor: 5 of 8 courses"
+    }
+  }
+}

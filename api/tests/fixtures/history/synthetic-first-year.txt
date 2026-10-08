@@ -1,0 +1,15 @@
+Student Center
+Academic Record
+Course History
+My Course History
+Course	Description	Term	Grade	Units	Status
+CSC 101	Introduction to Computer Science	2025/2026 Fall	B+	3.00	Taken
+MAT 111	Calculus and Analytic Geometry I	2025/2026 Fall	C	3.00	Taken
+ENL 101	Expository Writing	2025/2026 Fall	A-	3.00	Taken
+UNI 101	First-Year University Experience	2025/2026 Fall	A	3.00	Taken
+CSC 140	Introduction to C Programming	2025/2026 Spring	B	3.00	Taken
+MAT 112	Calculus  II	2025/2026 Spring	F	3.00	Taken
+ENL 201	Academic Writing	2025/2026 Spring	B-	3.00	Taken
+CSC 230	Object-Oriented Computing	2026/2027 Fall		3.00	In Progress
+MAT 112	Calculus  II	2026/2027 Fall		3.00	In Progress
+Return to Top

@@ -1,0 +1,39 @@
+# Raw SIS scraper output. It holds a logged-in browser profile (session cookies)
+# and pages showing one student's personal progress, so it must never be
+# committed or copied into an image. Sanitised data lives in data/programs/.
+sis_data/
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+*.egg-info/
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+
+# Local databases and backups
+*.sqlite3
+*.db
+backups/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/

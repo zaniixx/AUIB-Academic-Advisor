@@ -1,0 +1,11 @@
+# The API image is built from the repository root; only send what it needs.
+*
+!api/requirements.txt
+!api/alembic.ini
+!api/migrations/
+!api/app/
+!api/docker-entrypoint.sh
+!data/catalog/
+!data/programs/
+**/__pycache__/
+**/*.pyc

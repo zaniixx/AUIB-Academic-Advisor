@@ -1,0 +1,37 @@
+[
+  {
+    "index": 0,
+    "title": "Minor in Psychology",
+    "level": 0,
+    "parent": null,
+    "units_required": 18.0,
+    "courses": []
+  },
+  {
+    "index": 1,
+    "title": "Minor in Psychology - Foundation course",
+    "level": 1,
+    "parent": "Minor in Psychology",
+    "units_required": 3.0,
+    "courses": [
+      "PSY 101"
+    ]
+  },
+  {
+    "index": 2,
+    "title": "Minor in Psychology - Courses",
+    "level": 1,
+    "parent": "Minor in Psychology",
+    "units_required": 15.0,
+    "courses": [
+      "PSY 210",
+      "PSY 226",
+      "PSY 230",
+      "PSY 240",
+      "PSY 330",
+      "PSY 332",
+      "PSY 340",
+      "PSY 350"
+    ]
+  }
+]

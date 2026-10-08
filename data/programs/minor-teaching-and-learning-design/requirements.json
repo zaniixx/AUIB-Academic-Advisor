@@ -1,0 +1,87 @@
+[
+  {
+    "index": 0,
+    "title": "Minor in Teaching and Learning Design",
+    "level": 0,
+    "parent": null,
+    "units_required": 18.0,
+    "courses": []
+  },
+  {
+    "index": 1,
+    "title": "Minor in TLD - Foundation course",
+    "level": 1,
+    "parent": "Minor in Teaching and Learning Design",
+    "units_required": 3.0,
+    "courses": [
+      "TLD 100",
+      "TLD 101",
+      "TLD 102",
+      "TLD 103"
+    ]
+  },
+  {
+    "index": 2,
+    "title": "Minor in TLD - Ecology of Schooling",
+    "level": 1,
+    "parent": "Minor in Teaching and Learning Design",
+    "units_required": 3.0,
+    "courses": [
+      "TLD 202"
+    ]
+  },
+  {
+    "index": 3,
+    "title": "Minor in TLD - 200-level courses",
+    "level": 1,
+    "parent": "Minor in Teaching and Learning Design",
+    "units_required": 6.0,
+    "courses": [
+      "TLD 200",
+      "TLD 201",
+      "TLD 203",
+      "TLD 204",
+      "TLD 205",
+      "TLD 207",
+      "TLD 208"
+    ]
+  },
+  {
+    "index": 4,
+    "title": "Minor in TLD - 300-level or higher course",
+    "level": 1,
+    "parent": "Minor in Teaching and Learning Design",
+    "units_required": 3.0,
+    "courses": [
+      "TLD 301",
+      "TLD 303",
+      "TLD 304",
+      "TLD 306",
+      "TLD 307",
+      "TLD 308",
+      "TLD 309",
+      "TLD 310",
+      "TLD 400",
+      "TLD 402",
+      "TLD 404",
+      "TLD 406",
+      "TLD 408",
+      "TLD 410"
+    ]
+  },
+  {
+    "index": 5,
+    "title": "Minor in TLD - 400-level course",
+    "level": 1,
+    "parent": "Minor in Teaching and Learning Design",
+    "units_required": 3.0,
+    "courses": [
+      "TLD 400",
+      "TLD 402",
+      "TLD 404",
+      "TLD 406",
+      "TLD 408",
+      "TLD 410"
+    ]
+  }
+]

@@ -1,0 +1,28 @@
+{
+  "id": "casc-computer-science",
+  "name": "Computer Science",
+  "kind": "major",
+  "sis_title": "CASC-Computer Science",
+  "catalog_year": null,
+  "total_units": 126.0,
+  "source": "SIS Enroll by My Requirements, scraped under a student login",
+  "source_date": "2026-10-08",
+  "published": true,
+  "groups": {
+    "CASC-Computer Science": { "label": "Computer Science" },
+    "Computer Science- CORE -Requirements": { "label": "Major core" },
+    "Computer Science- CORE- Courses": { "label": "Major core courses", "role": "core" },
+    "CLA-Core Liberal Arts Requirements-Computer Science Program": { "label": "Core liberal arts (CLA)" },
+    "CLA-General - Courses": { "label": "First-year experience", "role": "general_education" },
+    "CLA-Communications skills - Courses": { "label": "Communication skills", "role": "general_education" },
+    "CLA-Quantitative Reasoning-CSC - Courses": { "label": "Quantitative reasoning: computing", "role": "general_education" },
+    "CLA-Quantitative Reasoning-MAT- Courses": { "label": "Quantitative reasoning: mathematics", "role": "general_education" },
+    "CLA-Humanities Electives - Courses": { "label": "Humanities electives", "role": "general_education" },
+    "CLA-Social Science Electives - Courses": { "label": "Social science electives", "role": "general_education" },
+    "CLA-Natural Sciences - Courses": { "label": "Natural sciences", "role": "general_education" },
+    "Computer Science- Major Elective -Requirements": { "label": "Major electives" },
+    "Computer Science- Major Elective - Courses": { "label": "Major elective courses", "role": "major_elective" },
+    "Free Elective-Computer Science": { "label": "Free electives" },
+    "Free Elective-Computer Science-Courses": { "label": "Free elective courses", "role": "free_elective" }
+  }
+}

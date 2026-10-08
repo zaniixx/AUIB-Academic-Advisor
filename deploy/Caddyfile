@@ -1,0 +1,33 @@
+# Reverse proxy: the only container that is reachable from outside.
+#
+# SITE_ADDRESS=":80" (the default) serves plain HTTP, for local use.
+# SITE_ADDRESS="advisor.example.edu" makes Caddy obtain and renew a TLS certificate
+# automatically and redirect HTTP to HTTPS (ports 80 and 443 must reach this server).
+
+{$SITE_ADDRESS::80} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		-Server
+	}
+
+	# The API, under /api. Bodies over 1 MB are refused before they reach it.
+	handle /api/* {
+		request_body {
+			max_size 1MB
+		}
+		reverse_proxy api:8000
+	}
+
+	# Everything else is the web app.
+	handle {
+		reverse_proxy web:3000
+	}
+
+	log {
+		output stdout
+		format json
+	}
+}

@@ -1,0 +1,32 @@
+{
+  "id": "minor-teaching-and-learning-design",
+  "name": "Teaching and Learning Design",
+  "kind": "minor",
+  "sis_title": null,
+  "catalog_year": null,
+  "total_units": 18.0,
+  "source": "CEHD flier \"Minor in Teaching and Learning Design\" (Fall 2025): one foundation course, then 15 credit hours",
+  "source_date": null,
+  "published": true,
+  "groups": {
+    "Minor in Teaching and Learning Design": {
+      "label": "Minor in Teaching and Learning Design"
+    },
+    "Minor in TLD - Foundation course": {
+      "label": "TLD minor: one foundation course"
+    },
+    "Minor in TLD - Ecology of Schooling": {
+      "label": "TLD minor: TLD 202 Ecology of Schooling",
+      "role": "core"
+    },
+    "Minor in TLD - 200-level courses": {
+      "label": "TLD minor: two more 200-level courses"
+    },
+    "Minor in TLD - 300-level or higher course": {
+      "label": "TLD minor: one 300- or 400-level course"
+    },
+    "Minor in TLD - 400-level course": {
+      "label": "TLD minor: one 400-level course"
+    }
+  }
+}

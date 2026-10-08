@@ -1,0 +1,137 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens (requirements document, "Visual design"), taken from AUIB's public site
+ * auib.edu.iq on 2026-10-08:
+ *   maroon  #9C213F  links, highlights, primary buttons, selection
+ *   slate   #273237  body text, header bar, outlined buttons
+ *   warm    #79726E  link hover, footer bar
+ *   font    Ubuntu (the site also ships an Ubuntu Arabic cut)
+ * Status colours stay clearly apart from the maroon brand colour and are always shown
+ * with an icon and a word. The AUIB logo is not used until AUIB communications approves it.
+ */
+:root {
+  --brand-primary: #9c213f;
+  --brand-primary-contrast: #ffffff;
+  --brand-ink: #273237;
+  --brand-ink-contrast: #ffffff;
+  --brand-accent: #79726e;
+  --brand-footer: #79726e;
+  --surface: #ffffff;
+  --background: #f4f4f4;
+  --text: #273237;
+  --text-muted: #5b6468;
+  --border: #d9d9d9;
+  --status-done: #1d7044;
+  --status-in-progress: #1d5fc7;
+  --status-planned: #5b4bb7;
+  --status-blocked: #c2410c;
+  --status-warning: #8a5a00;
+  /* The advisor document looks like paper in both themes and in print, so these stay light. */
+  --paper: #ffffff;
+  --paper-ink: #1f2a2e;
+  --paper-muted: #4f595d;
+  --paper-rule: #c3c9cc;
+  --paper-accent: #9c213f;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --brand-primary: #e8798f;
+    --brand-primary-contrast: #14191c;
+    --brand-ink: #0f1416;
+    --brand-ink-contrast: #e9ecee;
+    --brand-accent: #b5aeaa;
+    --brand-footer: #3a3532;
+    --surface: #1c2327;
+    --background: #14191c;
+    --text: #e9ecee;
+    --text-muted: #a7afb3;
+    --border: #2f383d;
+    --status-done: #5bc28a;
+    --status-in-progress: #7aa9f2;
+    --status-planned: #a99cf0;
+    --status-blocked: #f2945c;
+    --status-warning: #e8b34f;
+  }
+}
+
+@theme inline {
+  --color-primary: var(--brand-primary);
+  --color-primary-contrast: var(--brand-primary-contrast);
+  --color-ink: var(--brand-ink);
+  --color-ink-contrast: var(--brand-ink-contrast);
+  --color-accent: var(--brand-accent);
+  --color-footer: var(--brand-footer);
+  --color-surface: var(--surface);
+  --color-background: var(--background);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-border: var(--border);
+  --color-status-done: var(--status-done);
+  --color-status-in-progress: var(--status-in-progress);
+  --color-status-planned: var(--status-planned);
+  --color-status-blocked: var(--status-blocked);
+  --color-status-warning: var(--status-warning);
+  --color-paper: var(--paper);
+  --color-paper-ink: var(--paper-ink);
+  --color-paper-muted: var(--paper-muted);
+  --color-paper-rule: var(--paper-rule);
+  --color-paper-accent: var(--paper-accent);
+  --radius-card: 0.75rem;
+  --radius-button: 2rem;
+  --font-body: var(--font-ubuntu), "Ubuntu", "Segoe UI", system-ui, sans-serif;
+  --font-heading: var(--font-ubuntu), "Ubuntu", "Segoe UI", system-ui, sans-serif;
+  --font-arabic: "Ubuntu Arabic", "Noto Sans Arabic", "Segoe UI", Tahoma, sans-serif;
+}
+
+html {
+  background: var(--background);
+  color: var(--text);
+  font-family: var(--font-body);
+}
+
+html[lang="ar"] {
+  font-family: var(--font-arabic);
+}
+
+a {
+  text-underline-offset: 3px;
+}
+
+::selection {
+  background: var(--brand-primary);
+  color: var(--brand-primary-contrast);
+}
+
+:focus-visible {
+  outline: 3px solid var(--brand-primary);
+  outline-offset: 2px;
+}
+
+/* Printing: page margins for every page, and only the document when printing the advisor document. */
+@page {
+  margin: 14mm 14mm 16mm;
+}
+
+@media print {
+  html {
+    background: var(--paper);
+  }
+
+  body:has([data-print-document]) > :is(header, footer, a[href="#main"]) {
+    display: none;
+  }
+
+  body:has([data-print-document]) > main {
+    max-width: none;
+    padding: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
