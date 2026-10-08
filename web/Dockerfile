@@ -2,12 +2,12 @@
 # Web image (Next.js standalone server). Build from the web folder:
 #   docker build -t auib-advisor-web web
 
-FROM node:24-alpine AS deps
+FROM node:26-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --no-audit --no-fund
 
-FROM node:24-alpine AS build
+FROM node:26-alpine AS build
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 # Where the web server forwards /api requests it receives itself. In Docker Compose the
@@ -18,7 +18,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
 
-FROM node:24-alpine AS runtime
+FROM node:26-alpine AS runtime
 LABEL org.opencontainers.image.title="AUIB Academic Advisor web"
 WORKDIR /app
 ENV NODE_ENV=production \
