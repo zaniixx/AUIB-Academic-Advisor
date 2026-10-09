@@ -119,7 +119,7 @@ jobs:
         env:
           E2E_BASE_URL: http://localhost:8080
           E2E_ADMIN_TOKEN: ${{ env.ADVISOR_ADMIN_TOKEN }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: failure()
         with:
           name: playwright-report
