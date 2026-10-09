@@ -107,6 +107,7 @@ Each requirement has an ID for tracking; "Must" items are needed for the release
 | F1.6 | Lock courses or terms the student has already decided | Should | Regenerated plans keep locked items |
 | F1.7 | Flag courses that satisfy more than one requirement and how SIS counts them | Could | Matches SIS's allocation for test students |
 | F1.8 | Mark each planned term whose courses are not checked against a published schedule for that term: a quiet colour or a small warning icon, with a short note that the app does not know yet whether those courses will be offered | Must | Terms with a published schedule (F0.5) show no mark; every other planned term does, on screen and in the printed document; the mark never hides or blocks a course |
+| F1.9 | The student builds the plan one term at a time. For the next term to build, the app recommends courses and lists the other courses the student can take then; the student adds courses one by one, or presses Auto-fill to add every recommendation, and then finishes the term. Later terms are the app's suggestion and stay folded away until the student asks to see them | Must | A new student first sees one term to build, not a full plan; a finished term keeps exactly the student's courses and the app adds nothing to it; the student can change a finished term or leave a term empty; the printed document says which terms the student chose and which the app suggested |
 
 ### F2 — Course and elective recommendations
 
@@ -276,7 +277,7 @@ SIS has no export or public API, so catalog data comes from the author's own log
 1. **Clear it with IT and the registrar.** Explain the project, ask whether automated reading of one's own SIS view is acceptable, and ask whether they would export the catalog directly instead.
 2. **Primary route: SIS scraper.** A Playwright script (built) walks Enroll by My Requirements → Requirement Details → Course Detail under the student's own login and saves courses.json, requirements.json and courses.csv. Personal grades are kept in a separate optional file. Done for CS: everything SIS shows for the CS program is scraped.
 3. **Fallback: capture helper.** If SIS blocks automated browsers, the student clicks through pages normally while a small in-browser script records each page. No bot-detection workarounds will be attempted.
-4. **Other programs.** One volunteer student per program runs the scraper or capture helper, or the registrar supplies program sheets. Each program then loads through the same import as CS (F0.6).
+4. **Other programs.** One volunteer student per program runs the scraper or capture helper, or the registrar supplies program sheets. Each program then loads through the same import as CS (F0.6). Status: 18 majors were generated from the curricula AUIB's colleges publish (15 published, 3 drafts waiting for a college to resolve a duplicated course code or a mismatch with SIS); each still needs its catalog year confirmed.
 5. **Term offerings.** Ask the registrar for one spreadsheet per semester (course code, term, sections) plus 3–4 years of history.
 6. **Review and correct.** Every parsed prerequisite rule is checked on the admin screen (F0.3) before it is used for planning.
 

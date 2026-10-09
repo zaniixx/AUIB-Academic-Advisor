@@ -1,0 +1,241 @@
+[
+  {
+    "index": 0,
+    "title": "Bachelor of Dental Surgery",
+    "level": 0,
+    "parent": null,
+    "units_required": 189.0,
+    "courses": []
+  },
+  {
+    "index": 1,
+    "title": "BDS CLA - Core Liberal Arts",
+    "level": 1,
+    "parent": "Bachelor of Dental Surgery",
+    "units_required": 42.0,
+    "courses": []
+  },
+  {
+    "index": 2,
+    "title": "BDS CLA - First-year experience",
+    "level": 2,
+    "parent": "BDS CLA - Core Liberal Arts",
+    "units_required": 3.0,
+    "courses": [
+      "UNI 101"
+    ]
+  },
+  {
+    "index": 3,
+    "title": "BDS CLA - Communication skills",
+    "level": 2,
+    "parent": "BDS CLA - Core Liberal Arts",
+    "units_required": 9.0,
+    "courses": [
+      "ENL 101",
+      "ENL 201",
+      "ENL 210"
+    ]
+  },
+  {
+    "index": 4,
+    "title": "BDS CLA - Computer science",
+    "level": 2,
+    "parent": "BDS CLA - Core Liberal Arts",
+    "units_required": 3.0,
+    "courses": [
+      "CSC 101"
+    ]
+  },
+  {
+    "index": 5,
+    "title": "BDS CLA - Mathematics",
+    "level": 2,
+    "parent": "BDS CLA - Core Liberal Arts",
+    "units_required": 3.0,
+    "courses": [
+      "MAT 101"
+    ]
+  },
+  {
+    "index": 6,
+    "title": "BDS CLA - Humanities electives",
+    "level": 2,
+    "parent": "BDS CLA - Core Liberal Arts",
+    "units_required": 12.0,
+    "courses": [
+      "ARC 101",
+      "CIN 101",
+      "ENL 212",
+      "HIS 101",
+      "HIS 102",
+      "HIS 105",
+      "HUM 101",
+      "LIT 101",
+      "PHA 210",
+      "PHI 101",
+      "POL 125",
+      "THE 101",
+      "TLD 100",
+      "TLD 101",
+      "TLD 102",
+      "TLD 103",
+      "HIS 201",
+      "HIS 341",
+      "HIS 350"
+    ]
+  },
+  {
+    "index": 7,
+    "title": "BDS CLA - Social science electives",
+    "level": 2,
+    "parent": "BDS CLA - Core Liberal Arts",
+    "units_required": 6.0,
+    "courses": [
+      "ARC 100",
+      "ARC 102",
+      "COM 101",
+      "ECO 101",
+      "FIN 101",
+      "HCT 108",
+      "MIS 101",
+      "POL 101",
+      "POL 112",
+      "POL 191",
+      "PSY 101",
+      "PSY 334",
+      "SOC 101",
+      "TLD 203",
+      "TLD 208",
+      "HUM 210"
+    ]
+  },
+  {
+    "index": 8,
+    "title": "BDS CLA - Natural sciences (required)",
+    "level": 2,
+    "parent": "BDS CLA - Core Liberal Arts",
+    "units_required": 3.0,
+    "courses": [
+      "BIO 101"
+    ]
+  },
+  {
+    "index": 9,
+    "title": "BDS CLA - Natural sciences",
+    "level": 2,
+    "parent": "BDS CLA - Core Liberal Arts",
+    "units_required": 3.0,
+    "courses": [
+      "CHE 100",
+      "CSC 100",
+      "ENV 201",
+      "GEO 101",
+      "PHY 100",
+      "PHY 105"
+    ]
+  },
+  {
+    "index": 10,
+    "title": "BDS - General and medical sciences",
+    "level": 1,
+    "parent": "Bachelor of Dental Surgery",
+    "units_required": 30.0,
+    "courses": [
+      "BIO 211",
+      "BIO 211L",
+      "BDS 105",
+      "BIO 217",
+      "HCT 101",
+      "CHE 105",
+      "CHE 105L",
+      "CHE 210",
+      "CHE 210L",
+      "BIO 220",
+      "BIO 220L",
+      "BIO 219",
+      "BIO 218"
+    ]
+  },
+  {
+    "index": 11,
+    "title": "BDS - Dentistry courses",
+    "level": 1,
+    "parent": "Bachelor of Dental Surgery",
+    "units_required": 117.0,
+    "courses": [
+      "BDS 200",
+      "BDS 200L",
+      "BDS 217",
+      "BDS 217L",
+      "BDS 220",
+      "BDS 230",
+      "BDS 230L",
+      "BDS 240",
+      "BDS 250",
+      "BDS 260",
+      "BDS 270",
+      "BDS 302",
+      "BDS 304",
+      "BDS 306",
+      "BDS 307",
+      "BDS 310",
+      "BDS 310L",
+      "BDS 311",
+      "BDS 311L",
+      "BDS 320",
+      "BDS 330",
+      "BDS 330L",
+      "BDS 340",
+      "BDS 340L",
+      "BDS 341",
+      "BDS 341L",
+      "BDS 360",
+      "BDS 360L",
+      "BDS 361",
+      "BDS 361L",
+      "BDS 370",
+      "BDS 372",
+      "BDS 380",
+      "BDS 380L",
+      "BDS 402",
+      "BDS 404",
+      "BDS 406",
+      "BDS 410",
+      "BDS 410C",
+      "BDS 410L",
+      "BDS 412L",
+      "BDS 420",
+      "BDS 420C",
+      "BDS 430",
+      "BDS 430L",
+      "BDS 440",
+      "BDS 440C",
+      "BDS 440L",
+      "BDS 450C",
+      "BDS 470",
+      "BDS 470C",
+      "BDS 472",
+      "BDS 480",
+      "BDS 480C",
+      "BDS 490",
+      "BDS 490L",
+      "BDS 495",
+      "BDS 502",
+      "BDS 504",
+      "BDS 520",
+      "BDS 540C",
+      "BDS 542C",
+      "BDS 550C",
+      "BDS 552C",
+      "BDS 554C",
+      "BDS 556C",
+      "BDS 570",
+      "BDS 570C",
+      "BDS 590C",
+      "BDS 592C",
+      "BDS 595C",
+      "BDS 597C"
+    ]
+  }
+]

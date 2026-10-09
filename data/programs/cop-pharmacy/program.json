@@ -1,0 +1,68 @@
+{
+  "id": "cop-pharmacy",
+  "name": "Pharmacy (BPharm)",
+  "kind": "major",
+  "sis_title": null,
+  "catalog_year": null,
+  "total_units": 174.0,
+  "standard_terms": 10,
+  "source": "Year-by-year curriculum in the College of Pharmacy academic curriculum (BPharm). Draft: PHA 410 Physical Assessment is not in SIS and is left out, and the year-5 courses have other titles and credits in SIS, so the total differs from the 180 credits the curriculum states",
+  "source_date": null,
+  "published": false,
+  "groups": {
+    "Bachelor of Pharmacy": {
+      "label": "Pharmacy"
+    },
+    "BPharm CLA - Core Liberal Arts": {
+      "label": "Core liberal arts (CLA)"
+    },
+    "BPharm CLA - First-year experience": {
+      "label": "First-year experience",
+      "role": "core"
+    },
+    "BPharm CLA - Communication skills": {
+      "label": "Communication skills",
+      "role": "core"
+    },
+    "BPharm CLA - Computer science": {
+      "label": "Quantitative reasoning: computing",
+      "role": "core"
+    },
+    "BPharm CLA - Mathematics": {
+      "label": "Quantitative reasoning: mathematics",
+      "role": "core"
+    },
+    "BPharm CLA - Humanities electives": {
+      "label": "Humanities electives",
+      "role": "general_education"
+    },
+    "BPharm CLA - Social science electives": {
+      "label": "Social science electives",
+      "role": "general_education"
+    },
+    "BPharm CLA - Natural sciences (required)": {
+      "label": "Natural sciences: required",
+      "role": "core"
+    },
+    "BPharm CLA - Natural sciences": {
+      "label": "Natural sciences",
+      "role": "general_education"
+    },
+    "BPharm - Science requirements": {
+      "label": "Science requirements",
+      "role": "core"
+    },
+    "BPharm - Pharmacy courses": {
+      "label": "Pharmacy courses",
+      "role": "core"
+    },
+    "BPharm - Pharmacy electives": {
+      "label": "Pharmacy electives",
+      "role": "major_elective"
+    },
+    "BPharm - Healthcare elective": {
+      "label": "Healthcare elective",
+      "role": "major_elective"
+    }
+  }
+}

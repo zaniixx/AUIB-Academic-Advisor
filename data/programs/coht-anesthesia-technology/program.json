@@ -1,0 +1,36 @@
+{
+  "id": "coht-anesthesia-technology",
+  "name": "Anesthesia Technology",
+  "kind": "major",
+  "sis_title": null,
+  "catalog_year": null,
+  "total_units": 123.0,
+  "standard_terms": 8,
+  "source": "Program description and course descriptions in the College of Healthcare Technology curriculum (Anesthesia Technology, Appendices VII and VIII)",
+  "source_date": null,
+  "published": true,
+  "groups": {
+    "BS Anesthesia Technology": {
+      "label": "Anesthesia Technology"
+    },
+    "Anesthesia Technology - Core liberal arts": {
+      "label": "Core liberal arts (CLA)",
+      "role": "core"
+    },
+    "Anesthesia Technology - College requirements": {
+      "label": "College requirements"
+    },
+    "Anesthesia Technology - Health sciences": {
+      "label": "Health sciences",
+      "role": "core"
+    },
+    "Anesthesia Technology - Technical electives": {
+      "label": "Technical electives",
+      "role": "major_elective"
+    },
+    "Anesthesia Technology - Core requirements": {
+      "label": "Anesthesia technology core",
+      "role": "core"
+    }
+  }
+}

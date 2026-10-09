@@ -16,9 +16,11 @@ term-by-term plan. Their courses stay in their browser and are never stored on t
 | Prerequisite parsing from course descriptions, 343 of 351 CS-catalog rules fully understood (F0.2) | Done |
 | Admin review and correction of rules, kept across re-imports, audit log (F0.3, F9.3) | Done |
 | Admin editing: edit, add, bulk-upload (CSV, spreadsheet paste, .xlsx) and hide courses; build, edit and hide majors and minors; edits kept across imports | Done |
+| 16 majors: Computer Science from SIS, and Biology, Chemistry, Physics, English Literature, Psychology, International Relations, six Business tracks, Optometry, Anesthesia Technology and Dental Surgery from AUIB's released curricula; Radiologic Sciences, Dental Technology and Pharmacy wait as drafts (F0.6) | Done, to confirm with the colleges |
 | Encrypted backup and restore in the admin page (AES-256-GCM, passphrase or generated key); the command line restores too, for moving servers | Done |
 | Remaining requirements, eligibility, term-by-term plan, locks (F1.1–F1.6) | Done |
 | Drop/delay what-if with graduation impact (F1.5) | Done |
+| Build the plan one term at a time: add recommended courses or Auto-fill the term, then finish it; later terms stay a folded-away suggestion (F1.9) | Done |
 | Interest questionnaire and explained elective recommendations (F2.1, F2.2) | Done |
 | Gateway courses and longest prerequisite chain (F3.2) | Done |
 | Degree map: every course by term with prerequisite arrows (F5.1, F5.2) | Done |
@@ -69,7 +71,7 @@ pip install -r requirements-dev.txt
 alembic upgrade head                                  # SQLite file by default
 python -m app.cli import-all --accept-warnings        # load data/catalog and data/programs
 uvicorn app.main:create_app --factory --reload        # http://localhost:8000/api/docs
-pytest                                                # 247 tests
+pytest                                                # 272 tests
 ruff check app tests && mypy app
 ```
 

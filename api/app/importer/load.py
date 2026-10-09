@@ -281,6 +281,7 @@ def write_program(
         admin_edited=admin_edited,
         family=program.family or None,
         valid_from=program.valid_from.label if program.valid_from else None,
+        standard_terms=program.standard_terms,
     )
     session.add(row)
     session.flush()

@@ -13,7 +13,7 @@ from enum import StrEnum
 from typing import Literal
 
 from app.domain import codes
-from app.domain.requisites import Expr, ParseStatus, RuleKind
+from app.domain.requisites import Advisory, AdvisoryReq, AllOf, AnyOf, CourseReq, Expr, ParseStatus, RuleKind
 from app.domain.terms import Season, Term
 
 DEFAULT_COURSE_UNITS = 3.0
@@ -117,6 +117,9 @@ class Program:
     # ``valid_from`` until the next version's ``valid_from``; None means "from the start".
     family: str = ""
     valid_from: Term | None = None
+    # Regular semesters (Fall and Spring) of the standard degree: 8 for most majors, 10 for the
+    # five-year Dentistry and Pharmacy degrees. A plan that runs longer says so.
+    standard_terms: int = 8
 
     @property
     def family_id(self) -> str:
@@ -173,16 +176,32 @@ class Catalog:
 
     def prerequisite(self, code: str) -> Expr | None:
         rule = self.rules.get(code, {}).get(RuleKind.PRE)
-        return rule.expr if rule else None
+        return self._plannable(rule.expr) if rule and rule.expr is not None else None
 
     def corequisites(self, code: str) -> list[Expr]:
         """Rules satisfied by a course taken in the same term or earlier."""
         rules = self.rules.get(code, {})
         return [
-            rule.expr
+            self._plannable(rule.expr)
             for kind in (RuleKind.CO, RuleKind.PRE_OR_CO)
             if (rule := rules.get(kind)) is not None and rule.expr is not None
         ]
+
+    def _plannable(self, expr: Expr) -> Expr:
+        """``expr`` with every course missing from the catalog turned into a note for the advisor.
+
+        A rule can name a course that does not exist (a misprint in a description, or a course
+        AUIB no longer lists). Planning it would add a course nobody can take, and requiring it
+        would hold up the course for good, so the student is told to check it instead.
+        """
+        match expr:
+            case CourseReq(code) if code not in self.courses:
+                return AdvisoryReq(Advisory.NOTE, f"{code}, which is not in the course catalog")
+            case AllOf(items):
+                return AllOf(tuple(self._plannable(item) for item in items))
+            case AnyOf(items):
+                return AnyOf(tuple(self._plannable(item) for item in items))
+        return expr
 
     def subjects(self) -> frozenset[str]:
         return frozenset(course.subject for course in self.courses.values())

@@ -1,0 +1,105 @@
+[
+  {
+    "index": 0,
+    "title": "BS Radiologic Sciences",
+    "level": 0,
+    "parent": null,
+    "units_required": 117.0,
+    "courses": []
+  },
+  {
+    "index": 1,
+    "title": "Radiologic Sciences - Core liberal arts",
+    "level": 1,
+    "parent": "BS Radiologic Sciences",
+    "units_required": 42.0,
+    "courses": [
+      "UNI 101",
+      "ENL 101",
+      "ENL 201",
+      "ENL 210",
+      "BIO 101",
+      "PHI 101",
+      "CSC 101",
+      "MAT 102",
+      "PHY 100",
+      "HIS 101",
+      "HIS 201",
+      "MIS 101",
+      "SOC 101",
+      "PSY 101"
+    ]
+  },
+  {
+    "index": 2,
+    "title": "Radiologic Sciences - College requirements",
+    "level": 1,
+    "parent": "BS Radiologic Sciences",
+    "units_required": 24.0,
+    "courses": []
+  },
+  {
+    "index": 3,
+    "title": "Radiologic Sciences - Health sciences",
+    "level": 2,
+    "parent": "Radiologic Sciences - College requirements",
+    "units_required": 18.0,
+    "courses": [
+      "HCT 101",
+      "PHY 107",
+      "BIO 217",
+      "BIO 217L",
+      "BIO 218",
+      "BIO 210",
+      "HCT 209",
+      "HCT 331"
+    ]
+  },
+  {
+    "index": 4,
+    "title": "Radiologic Sciences - Technical electives",
+    "level": 2,
+    "parent": "Radiologic Sciences - College requirements",
+    "units_required": 6.0,
+    "courses": [
+      "HCT 480",
+      "HCT 481",
+      "HCT 482",
+      "HCT 483",
+      "HCT 485"
+    ]
+  },
+  {
+    "index": 5,
+    "title": "Radiologic Sciences - Core requirements",
+    "level": 1,
+    "parent": "BS Radiologic Sciences",
+    "units_required": 51.0,
+    "courses": [
+      "RAD 101",
+      "HCT 207",
+      "RAD 201",
+      "RAD 210",
+      "RAD 301",
+      "RAD 305",
+      "RAD 305L",
+      "RAD 310",
+      "RAD 315",
+      "RAD 355",
+      "RAD 355L",
+      "RAD 362",
+      "RAD 365",
+      "RAD 370",
+      "RAD 370L",
+      "RAD 405",
+      "RAD 405L",
+      "RAD 410",
+      "RAD 420",
+      "RAD 390",
+      "RAD 450",
+      "RAD 480",
+      "RAD 490",
+      "RAD 460"
+    ]
+  }
+]

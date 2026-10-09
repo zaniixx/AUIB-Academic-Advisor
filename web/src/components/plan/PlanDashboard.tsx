@@ -21,7 +21,7 @@ import {
 import { Alert, Button, ButtonLink, EmptyState, Skeleton, TabPanel, Tabs, type TabItem } from "@/components/ui";
 import { SummaryCards } from "./SummaryCards";
 import { SettingsBar } from "./SettingsBar";
-import { TermPlan } from "./TermPlan";
+import { TermPlan, type PlanActions } from "./TermPlan";
 import { ProgressPanel } from "./ProgressPanel";
 import { EligibleList } from "./EligibleList";
 import { RecommendationsPanel } from "./RecommendationsPanel";
@@ -107,14 +107,34 @@ function Dashboard({ profile }: { profile: Profile }) {
   const updatePreferences = (changes: Partial<PreferencesIn>) => withPreferences(profile, changes);
   const preferences = profile.preferences;
   const inProgress = profile.attempts.filter((attempt) => attempt.status === "in_progress");
+  const built = preferences.built_terms ?? [];
 
-  const actions = {
+  const actions: PlanActions = {
     lock: (code: string, term: string) =>
       updatePreferences({
         locks: [...(preferences.locks ?? []).filter((lock) => lock.code !== code), { code, term }],
       }),
-    unlock: (code: string) =>
-      updatePreferences({ locks: (preferences.locks ?? []).filter((lock) => lock.code !== code) }),
+    unlock: (code: string) => {
+      const lock = (preferences.locks ?? []).find((each) => each.code === code);
+      const locks = (preferences.locks ?? []).filter((each) => each.code !== code);
+      // Taking the last course out of a built term opens it again rather than leaving it empty.
+      const emptied = lock !== undefined && built.includes(lock.term) && !locks.some((each) => each.term === lock.term);
+      updatePreferences({ locks, ...(emptied ? { built_terms: built.filter((term) => term !== lock.term) } : {}) });
+    },
+    addAll: (codes: string[], term: string) =>
+      updatePreferences({
+        locks: [
+          ...(preferences.locks ?? []).filter((lock) => !codes.includes(lock.code)),
+          ...codes.map((code) => ({ code, term })),
+        ],
+        exclude: (preferences.exclude ?? []).filter((code) => !codes.includes(code)),
+      }),
+    finish: (term: string, empty = false) =>
+      updatePreferences({
+        built_terms: [...new Set([...built, term])],
+        ...(empty ? { locks: (preferences.locks ?? []).filter((lock) => lock.term !== term) } : {}),
+      }),
+    reopen: (term: string) => updatePreferences({ built_terms: built.filter((each) => each !== term) }),
     include: (code: string) =>
       updatePreferences({
         include: [...new Set([...(preferences.include ?? []), code])],
@@ -240,6 +260,7 @@ function Dashboard({ profile }: { profile: Profile }) {
               plan={data}
               inProgress={inProgress}
               locks={preferences.locks ?? []}
+              preferences={preferences}
               actions={actions}
             />
           </TabPanel>

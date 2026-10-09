@@ -1,0 +1,47 @@
+{
+  "id": "coht-dental-technology",
+  "name": "Dental Technology",
+  "kind": "major",
+  "sis_title": null,
+  "catalog_year": null,
+  "total_units": 119.0,
+  "standard_terms": 8,
+  "source": "Program description and course descriptions in the College of Healthcare Technology curriculum (Dental Technology, Appendices V and VI). Draft: the CAD-CAM lab (1 credit) is left out because the document gives it the code BDT 461L, which Digital Dentistry Lab II also uses",
+  "source_date": null,
+  "published": false,
+  "groups": {
+    "BS Dental Technology": {
+      "label": "Dental Technology"
+    },
+    "Dental Technology - Core liberal arts": {
+      "label": "Core liberal arts (CLA)"
+    },
+    "Dental Technology - CLA courses the program sets": {
+      "label": "CLA: courses the program sets",
+      "role": "core"
+    },
+    "Dental Technology - CLA humanities": {
+      "label": "CLA: three more humanities",
+      "role": "general_education"
+    },
+    "Dental Technology - CLA social science": {
+      "label": "CLA: one more social science",
+      "role": "general_education"
+    },
+    "Dental Technology - Science and college requirements": {
+      "label": "Science and college requirements"
+    },
+    "Dental Technology - Sciences": {
+      "label": "Sciences",
+      "role": "core"
+    },
+    "Dental Technology - Technical elective": {
+      "label": "Technical elective",
+      "role": "major_elective"
+    },
+    "Dental Technology - Core requirements": {
+      "label": "Dental technology core",
+      "role": "core"
+    }
+  }
+}

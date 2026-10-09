@@ -1,0 +1,232 @@
+[
+  {
+    "index": 0,
+    "title": "Bachelor of Pharmacy",
+    "level": 0,
+    "parent": null,
+    "units_required": 174.0,
+    "courses": []
+  },
+  {
+    "index": 1,
+    "title": "BPharm CLA - Core Liberal Arts",
+    "level": 1,
+    "parent": "Bachelor of Pharmacy",
+    "units_required": 42.0,
+    "courses": []
+  },
+  {
+    "index": 2,
+    "title": "BPharm CLA - First-year experience",
+    "level": 2,
+    "parent": "BPharm CLA - Core Liberal Arts",
+    "units_required": 3.0,
+    "courses": [
+      "UNI 101"
+    ]
+  },
+  {
+    "index": 3,
+    "title": "BPharm CLA - Communication skills",
+    "level": 2,
+    "parent": "BPharm CLA - Core Liberal Arts",
+    "units_required": 9.0,
+    "courses": [
+      "ENL 101",
+      "ENL 201",
+      "ENL 210"
+    ]
+  },
+  {
+    "index": 4,
+    "title": "BPharm CLA - Computer science",
+    "level": 2,
+    "parent": "BPharm CLA - Core Liberal Arts",
+    "units_required": 3.0,
+    "courses": [
+      "CSC 101"
+    ]
+  },
+  {
+    "index": 5,
+    "title": "BPharm CLA - Mathematics",
+    "level": 2,
+    "parent": "BPharm CLA - Core Liberal Arts",
+    "units_required": 3.0,
+    "courses": [
+      "MAT 101"
+    ]
+  },
+  {
+    "index": 6,
+    "title": "BPharm CLA - Humanities electives",
+    "level": 2,
+    "parent": "BPharm CLA - Core Liberal Arts",
+    "units_required": 12.0,
+    "courses": [
+      "ARC 101",
+      "CIN 101",
+      "ENL 212",
+      "HIS 101",
+      "HIS 102",
+      "HIS 105",
+      "HUM 101",
+      "LIT 101",
+      "PHA 210",
+      "PHI 101",
+      "POL 125",
+      "THE 101",
+      "TLD 100",
+      "TLD 101",
+      "TLD 102",
+      "TLD 103",
+      "HIS 201",
+      "HIS 341",
+      "HIS 350"
+    ]
+  },
+  {
+    "index": 7,
+    "title": "BPharm CLA - Social science electives",
+    "level": 2,
+    "parent": "BPharm CLA - Core Liberal Arts",
+    "units_required": 6.0,
+    "courses": [
+      "ARC 100",
+      "ARC 102",
+      "COM 101",
+      "ECO 101",
+      "FIN 101",
+      "HCT 108",
+      "MIS 101",
+      "POL 101",
+      "POL 112",
+      "POL 191",
+      "PSY 101",
+      "PSY 334",
+      "SOC 101",
+      "TLD 203",
+      "TLD 208",
+      "HUM 210"
+    ]
+  },
+  {
+    "index": 8,
+    "title": "BPharm CLA - Natural sciences (required)",
+    "level": 2,
+    "parent": "BPharm CLA - Core Liberal Arts",
+    "units_required": 3.0,
+    "courses": [
+      "BIO 101"
+    ]
+  },
+  {
+    "index": 9,
+    "title": "BPharm CLA - Natural sciences",
+    "level": 2,
+    "parent": "BPharm CLA - Core Liberal Arts",
+    "units_required": 3.0,
+    "courses": [
+      "CHE 100",
+      "CSC 100",
+      "ENV 201",
+      "GEO 101",
+      "PHY 100",
+      "PHY 105"
+    ]
+  },
+  {
+    "index": 10,
+    "title": "BPharm - Science requirements",
+    "level": 1,
+    "parent": "Bachelor of Pharmacy",
+    "units_required": 33.0,
+    "courses": [
+      "HCT 101",
+      "CHE 105",
+      "CHE 105L",
+      "BIO 211",
+      "BIO 211L",
+      "BIO 217",
+      "CHE 211",
+      "CHE 211L",
+      "CHE 212",
+      "BIO 219",
+      "BIO 210",
+      "BIO 218",
+      "BIO 225"
+    ]
+  },
+  {
+    "index": 11,
+    "title": "BPharm - Pharmacy courses",
+    "level": 1,
+    "parent": "Bachelor of Pharmacy",
+    "units_required": 90.0,
+    "courses": [
+      "PHA 101",
+      "PHA 300",
+      "PHA 300L",
+      "PHA 310",
+      "PHA 310L",
+      "PHA 320",
+      "PHA 330",
+      "PHA 330L",
+      "PHA 350",
+      "PHA 360",
+      "PHA 360L",
+      "PHA 370",
+      "PHA 380",
+      "PHA 380L",
+      "PHA 390",
+      "PHA 395",
+      "PHA 400",
+      "PHA 420",
+      "PHA 420L",
+      "PHA 430",
+      "PHA 430L",
+      "PHA 440",
+      "PHA 450",
+      "PHA 460",
+      "PHA 470",
+      "PHA 470L",
+      "PHA 480",
+      "PHA 480L",
+      "PHA 495",
+      "PHA 500",
+      "PHA 510",
+      "PHA 520",
+      "PHA 545",
+      "PHA 550",
+      "PHA 560",
+      "PHA 595"
+    ]
+  },
+  {
+    "index": 12,
+    "title": "BPharm - Pharmacy electives",
+    "level": 1,
+    "parent": "Bachelor of Pharmacy",
+    "units_required": 6.0,
+    "courses": [
+      "PHA 580",
+      "PHA 581",
+      "PHA 584",
+      "PHA 585"
+    ]
+  },
+  {
+    "index": 13,
+    "title": "BPharm - Healthcare elective",
+    "level": 1,
+    "parent": "Bachelor of Pharmacy",
+    "units_required": 3.0,
+    "courses": [
+      "HCT 480",
+      "HCT 481",
+      "HCT 482",
+      "HCT 483",
+      "HCT 485"
+    ]
+  }
+]

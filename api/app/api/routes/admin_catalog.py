@@ -333,6 +333,7 @@ def _program_from_draft(draft: a.ProgramDraftIn) -> Program:
         published=draft.published,
         family=draft.family if draft.family and draft.family != draft.id else "",
         valid_from=Term.parse(draft.valid_from) if draft.valid_from else None,
+        standard_terms=draft.standard_terms,
     )
 
 
@@ -369,6 +370,7 @@ def _program_summary(row: ProgramRow, groups: int) -> a.AdminProgramSummaryOut:
         groups=groups,
         family=row.family or row.id,
         valid_from=row.valid_from,
+        standard_terms=row.standard_terms or 8,
     )
 
 

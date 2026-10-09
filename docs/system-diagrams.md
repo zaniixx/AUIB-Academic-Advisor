@@ -161,6 +161,11 @@ gives the same plan. Conditions the app cannot check, such as instructor consent
 are shown to the student and never hide a course. [ADR 0003](decisions/0003-heuristic-planner.md)
 explains why a rule-based planner was chosen over a solver.
 
+Students build their plan one term at a time (F1.9). A term they have finished keeps exactly the
+courses they chose, and the planner fills only the terms after it. The response also names the term
+they are building next and the other courses that could go in it, counting the courses in earlier
+terms as done.
+
 **What to check**
 
 - The code: [api/app/domain/planner.py](../api/app/domain/planner.py), with
@@ -172,6 +177,8 @@ explains why a rule-based planner was chosen over a solver.
   - `test_plans_are_deterministic`
   - `test_internships_are_planned_in_summer`
   - `test_replacement_options_follow_the_rules`
+  - `test_a_built_term_holds_only_the_students_courses` and
+    `test_choices_for_the_term_being_built_count_the_terms_before_it`
   - the minor tests in `test_minor.py`
 - Every plan shows the assumptions it was made under: `ASSUMPTIONS` in
   [api/app/api/convert.py](../api/app/api/convert.py).
@@ -185,7 +192,9 @@ The diagram shows who does what when a program is added or refreshed. No code ch
 1. The data maintainer scrapes the program from SIS, read-only, on their own computer.
 2. `prepare_program_package.py` drops the personal fields. It adds the program's courses to the shared
    catalog (`data/catalog/courses.json`) and writes the program package (`program.json` and
-   `requirements.json`). Both are committed.
+   `requirements.json`). Both are committed. Programs AUIB publishes as curricula (PDF, Word or
+   spreadsheet) go through `scripts/curricula/build.py` instead, which also adds the courses they
+   need that SIS does not list.
 3. On the server, the catalog and the package are validated. Errors block the import, and warnings
    block publishing. On start, the API container imports the catalog and any package not imported
    yet.
@@ -201,7 +210,11 @@ flagged when the files change, and a program edited there is only replaced with 
 
 **What to check**
 
-- The step-by-step procedure: [data-pipeline.md](data-pipeline.md).
+- The step-by-step procedure: [data-pipeline.md](data-pipeline.md), with the programs taken from the
+  released curricula and what is still to confirm with each college.
+- Every package validates and plans: `test_every_package_validates` and
+  `test_a_new_student_can_plan_every_published_major` in
+  [api/tests/domain/test_programs.py](../api/tests/domain/test_programs.py).
 - Validation rules: [api/app/importer/validate.py](../api/app/importer/validate.py).
 - The shared catalog: `test_catalog_is_shared_and_names_no_program` and
   `test_validate_checks_the_catalog_and_every_package` in [api/tests/test_cli.py](../api/tests/test_cli.py).
@@ -222,7 +235,8 @@ The database holds the catalog (programs, requirement groups, courses, requisite
 published term schedules with their sections) and admin records (import runs, the audit log and the
 catalog revision). Courses and programs record whether an admin hid or edited them, so imports keep
 that work. Versions of one program share a `family`, and `valid_from` is the first term each applies
-to. There is no table for students, grades, goals or plans.
+to, and `standard_terms` is the program's length in Fall and Spring semesters. There is no table for
+students, grades, goals or plans.
 
 **What to check**
 

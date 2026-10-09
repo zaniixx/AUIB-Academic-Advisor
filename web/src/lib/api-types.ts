@@ -183,7 +183,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** A term-by-term plan to graduation (F1.3, F1.4, F1.6) */
+        /** A term-by-term plan to graduation (F1.3, F1.4, F1.6, F1.9) */
         post: operations["plan_api_v1_planner_plan_post"];
         delete?: never;
         options?: never;
@@ -746,6 +746,11 @@ export interface components {
              * @description Applies to students who joined from this term
              */
             valid_from: string | null;
+            /**
+             * Standard Terms
+             * @description Regular semesters of the standard degree
+             */
+            standard_terms: number;
             /** Source */
             source: string | null;
             /** Source Date */
@@ -787,6 +792,11 @@ export interface components {
              * @description Applies to students who joined from this term
              */
             valid_from: string | null;
+            /**
+             * Standard Terms
+             * @description Regular semesters of the standard degree
+             */
+            standard_terms: number;
         };
         /** AdminRuleListOut */
         AdminRuleListOut: {
@@ -917,6 +927,18 @@ export interface components {
             in_backup: number;
             /** Now */
             now: number;
+        };
+        /**
+         * BuildingOut
+         * @description The term the student is building now (F1.9).
+         */
+        BuildingOut: {
+            term: components["schemas"]["TermOut"];
+            /**
+             * Choices
+             * @description Courses that could be added besides the ones the plan has in this term: they count toward an open requirement, run that term and have their prerequisites done in earlier terms
+             */
+            choices: components["schemas"]["TermChoiceOut"][];
         };
         /** CatalogInfoOut */
         CatalogInfoOut: {
@@ -1660,6 +1682,8 @@ export interface components {
             progress_with_plan: components["schemas"]["GroupProgressOut"];
             /** Eligible Next Term */
             eligible_next_term: components["schemas"]["EligibleOut"][];
+            /** @description The first planned term the student has not built yet (F1.9) */
+            building?: components["schemas"]["BuildingOut"] | null;
             degree_map: components["schemas"]["DegreeMapOut"];
             /** @description Null until the student has a graded course */
             gpa: components["schemas"]["GpaOut"] | null;
@@ -1678,6 +1702,11 @@ export interface components {
             units: number;
             /** Items */
             items: components["schemas"]["PlanItemOut"][];
+            /**
+             * Built
+             * @description The student chose this term's courses themselves (F1.9)
+             */
+            built: boolean;
             /**
              * Schedule Published
              * @description True when the courses were checked against the registrar's published schedule for this term (F1.8); otherwise it is not known yet whether they will be offered
@@ -1712,6 +1741,11 @@ export interface components {
             start_term?: string | null;
             /** Locks */
             locks?: components["schemas"]["LockIn"][];
+            /**
+             * Built Terms
+             * @description Terms the student finished building (F1.9): they hold the student's locked courses and nothing else
+             */
+            built_terms?: string[];
             /** Exclude */
             exclude?: string[];
             /** Include */
@@ -1775,6 +1809,12 @@ export interface components {
             catalog_year?: string | null;
             /** Total Units */
             total_units: number;
+            /**
+             * Standard Terms
+             * @description Regular semesters of the standard degree (8 for a four-year major)
+             * @default 8
+             */
+            standard_terms: number;
             /** Source */
             source?: string | null;
             /** Source Date */
@@ -2167,6 +2207,22 @@ export interface components {
              * @default true
              */
             dry_run: boolean;
+        };
+        /** TermChoiceOut */
+        TermChoiceOut: {
+            course: components["schemas"]["CourseRef"];
+            /** Group Key */
+            group_key: string;
+            /** Group Label */
+            group_label: string;
+            /** Unlocks */
+            unlocks: number;
+            /** Advisories */
+            advisories: string[];
+            /** Take With */
+            take_with: string[];
+            /** @description A later term the plan already has this course in; null when it is not in the plan */
+            planned_for: components["schemas"]["TermOut"] | null;
         };
         /** TermGpaOut */
         TermGpaOut: {

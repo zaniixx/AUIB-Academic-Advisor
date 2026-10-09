@@ -9,7 +9,7 @@ from app.domain.catalog import Catalog, Group, Program, VersionChoice, group_req
 from app.domain.gpa import GPA_ASSUMPTIONS, GpaSummary, gpa_summary
 from app.domain.history import HistoryParseResult
 from app.domain.journey import DegreeMap, degree_map
-from app.domain.planner import EligibleCourse, Lock, Plan, PlanItem, PlanOptions
+from app.domain.planner import EligibleCourse, Lock, Plan, PlanItem, PlannedTerm, PlanOptions
 from app.domain.progress import CountedCourse, GroupProgress, ProgramProgress, whats_left
 from app.domain.recommend import GroupSuggestions, Preferences
 from app.domain.record import Attempt, StudentRecord, build_record
@@ -96,7 +96,8 @@ def record_from(attempts: Iterable[s.AttemptIn]) -> StudentRecord:
     )
 
 
-def options_from(preferences: s.PreferencesIn) -> PlanOptions:
+def options_from(preferences: s.PreferencesIn, program: Program | None = None) -> PlanOptions:
+    """The planner's options from the student's preferences and, when given, the program's standard length."""
     locks = tuple(
         Lock(lock.code, term) for lock in preferences.locks if (term := Term.parse(lock.term)) is not None
     )
@@ -108,9 +109,13 @@ def options_from(preferences: s.PreferencesIn) -> PlanOptions:
         summer_max_units=preferences.summer_max_units,
         start_term=Term.parse(preferences.start_term) if preferences.start_term else None,
         locks=locks,
+        built_terms=frozenset(term for text in preferences.built_terms if (term := Term.parse(text))),
         exclude=frozenset(preferences.exclude),
         include=frozenset(preferences.include),
         preferences=preferences_from(preferences),
+        regular_terms_to_graduate=program.standard_terms
+        if program
+        else PlanOptions.regular_terms_to_graduate,
     )
 
 
@@ -363,6 +368,22 @@ def gpa_out(summary: GpaSummary | None, catalog: Catalog) -> s.GpaOut | None:
     )
 
 
+def building_out(
+    planned: PlannedTerm, choices: list[EligibleCourse], plan: Plan, catalog: Catalog
+) -> s.BuildingOut:
+    terms = plan.course_terms()
+    return s.BuildingOut(
+        term=required_term(planned.term),
+        choices=[
+            s.TermChoiceOut(
+                **eligible_out(course, catalog).model_dump(),
+                planned_for=term_out(terms.get(course.code)),
+            )
+            for course in choices
+        ],
+    )
+
+
 def plan_out(
     plan: Plan,
     program: Program,
@@ -375,6 +396,7 @@ def plan_out(
     minor_current: ProgramProgress | None = None,
     choice: VersionChoice | None = None,
     entry_source: str = "start",
+    building: s.BuildingOut | None = None,
 ) -> s.PlanOut:
     minor_out = None
     if minor is not None and minor_current is not None and plan.minor_progress is not None:
@@ -389,6 +411,7 @@ def plan_out(
                 units=t.units,
                 items=[plan_item_out(item, catalog) for item in t.items],
                 schedule_published=t.term in catalog.schedules,
+                built=t.built,
             )
             for t in plan.terms
         ],
@@ -398,6 +421,7 @@ def plan_out(
         progress=progress_out(current, record, catalog),
         progress_with_plan=group_progress_out(plan.progress.root, catalog, plan.slot_units),
         eligible_next_term=[eligible_out(course, catalog) for course in eligible],
+        building=building,
         degree_map=degree_map_out(degree_map(plan, record, catalog, program, in_session)),
         gpa=gpa_out(gpa_summary(record, catalog, set(plan.course_terms())), catalog),
         minor=minor_out,

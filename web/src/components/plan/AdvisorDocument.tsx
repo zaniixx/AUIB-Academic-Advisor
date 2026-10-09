@@ -15,6 +15,7 @@ import {
   isLate,
   loadSummary,
   overviewRows,
+  suggestedNote,
   unconfirmedNote,
   pageStyle,
   planNotes,
@@ -27,6 +28,7 @@ import {
 import { pluralize, units } from "@/lib/format";
 import { useAsync, useProfile } from "@/lib/hooks";
 import { toStudent, type Profile } from "@/lib/profile";
+import { InfoIcon } from "@/components/icons";
 import { Alert, AlertIcon, Button, ButtonLink, CheckIcon, Select, Spinner } from "@/components/ui";
 
 // Table cells: roomy on screen, tighter on paper.
@@ -229,6 +231,12 @@ function Sheet({
             {unconfirmedNote(detail.term.term.label)}
           </p>
         )}
+        {detail && !detail.term.built && (
+          <p className="flex items-start gap-2 text-sm">
+            <InfoIcon className="mt-0.5 h-4 w-4 shrink-0" />
+            {suggestedNote(detail.term.term.label)}
+          </p>
+        )}
         {detail ? (
           <TermSection detail={detail} profile={profile} inProgress={inProgress} />
         ) : (
@@ -412,6 +420,11 @@ function Overview({
               <th scope="row" className={`${CELL} text-left font-semibold`}>
                 {row.label}
                 {row.current && <span className="block text-xs font-normal text-paper-muted">In progress now</span>}
+                {!row.current && (
+                  <span className="block text-xs font-normal text-paper-muted">
+                    {row.chosen ? "Chosen by the student" : "Suggested by the app"}
+                  </span>
+                )}
                 {!row.confirmed && (
                   <span className="mt-0.5 flex items-center gap-1 text-xs font-normal text-paper-muted">
                     <AlertIcon className="h-3 w-3 shrink-0" />

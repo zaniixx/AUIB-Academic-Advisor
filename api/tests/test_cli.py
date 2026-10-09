@@ -38,7 +38,7 @@ def test_validate_checks_the_catalog_and_every_package(capsys: pytest.CaptureFix
         "minor-teaching-and-learning-design",
     ):
         assert f"{program}: 0 errors" in output
-    assert "courses=626" in output
+    assert "courses=821" in output
 
 
 def test_validate_fails_for_a_broken_package(tmp_path: Path) -> None:
@@ -65,12 +65,12 @@ def test_import_publishes_only_when_warnings_are_accepted(
 ) -> None:
     assert cli.main(["import", str(CS_PACKAGE)]) == 0
     first = capsys.readouterr().out
-    assert "courses_created': 626" in first
+    assert "courses_created': 821" in first
     assert "published=False" in first
     assert cli.main(["import", str(CS_PACKAGE), "--accept-warnings"]) == 0
     output = capsys.readouterr().out
     assert "published=True" in output
-    assert "courses_unchanged': 626" in output
+    assert "courses_unchanged': 821" in output
 
 
 def test_import_all_only_if_empty(database: str, capsys: pytest.CaptureFixture[str]) -> None:
@@ -117,7 +117,7 @@ def test_catalog_marks_internships_as_summer_only() -> None:
 
 def test_catalog_is_shared_and_names_no_program() -> None:
     raw = json.loads(COURSES_FILE.read_text(encoding="utf-8"))
-    assert len(raw) == 626
+    assert len(raw) == 821
     assert not any("requirements" in course for course in raw.values())
     assert not (CS_PACKAGE / "courses.json").exists()
 

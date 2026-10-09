@@ -28,7 +28,8 @@ output folder (`sis_data/`) contains a logged-in browser profile and pages that 
 progress. It is listed in `.gitignore` and excluded from every Docker build context. The committed
 course catalog (`data/catalog/`) and package in `data/programs/` are produced by
 `scripts/prepare_program_package.py`, which removes the per-student fields (`page_text`, `element_id`)
-and keeps only catalog facts. The minors were written by hand from announcements sent to all students.
+and keeps only catalog facts. The minors were written by hand from announcements sent to all students, and the other majors were
+generated from AUIB's published curricula (`scripts/curricula`); none of these hold personal data.
 
 ## Controls
 
@@ -46,7 +47,7 @@ and keeps only catalog facts. The minors were written by hand from announcements
 | Browser | Content Security Policy, `X-Frame-Options: DENY`, `nosniff`, strict referrer policy, permissions policy; planning and admin responses are `Cache-Control: no-store` | `web/next.config.ts`, `app/security.py` |
 | Storage in the browser | Profile in local storage with a "Clear my data" button on the plan and privacy pages; admin token in session storage only | `web/src/lib/profile.ts` |
 | Dependencies | Pinned versions; `pip-audit` and `npm audit` (production dependencies) run in CI; Dependabot opens weekly update PRs | `.github/` |
-| Code quality | Strict type checking (mypy, TypeScript), linting with security rules (Ruff's Bandit set), 247 API tests, browser tests including automated WCAG 2.1 AA checks | CI workflow |
+| Code quality | Strict type checking (mypy, TypeScript), linting with security rules (Ruff's Bandit set), 272 API tests, browser tests including automated WCAG 2.1 AA checks | CI workflow |
 
 At the time of writing, `pip-audit` and `npm audit --omit=dev` report no known vulnerabilities. `npm
 audit` without `--omit=dev` reports a denial-of-service advisory in a glob library used only by the

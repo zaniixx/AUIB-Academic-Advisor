@@ -56,6 +56,29 @@ def test_plan_for_a_new_student(client: TestClient) -> None:
     assert "CSC 101" in eligible
 
 
+def test_a_student_builds_their_plan_term_by_term(client: TestClient) -> None:
+    fresh = client.post("/api/v1/planner/plan", json={"program_id": CS}).json()
+    assert fresh["building"]["term"]["label"] == "Spring 2027"
+    assert not any(t["built"] for t in fresh["terms"])
+    picks = ["CSC 101", "MAT 111", "ENL 101"]
+    preferences = {
+        "locks": [{"code": code, "term": "Spring 2027"} for code in picks],
+        "built_terms": ["Spring 2027"],
+    }
+    plan = client.post("/api/v1/planner/plan", json={"program_id": CS, "preferences": preferences}).json()
+    first = plan["terms"][0]
+    assert first["built"] and sorted(i["code"] for i in first["items"]) == sorted(picks)
+    building = plan["building"]
+    assert building["term"]["label"] == plan["terms"][1]["term"]["label"]
+    choices = {c["course"]["code"]: c for c in building["choices"]}
+    assert "ENL 201" in choices  # its prerequisite, ENL 101, is in the built term
+    later = [c for c in building["choices"] if c["planned_for"]]
+    assert all(c["planned_for"]["label"] != building["term"]["label"] for c in later)
+
+    bad = {"program_id": CS, "preferences": {"built_terms": ["Someday"]}}
+    assert client.post("/api/v1/planner/plan", json=bad).status_code == 422
+
+
 def test_plan_with_history_and_preferences(client: TestClient) -> None:
     body = {
         "program_id": CS,

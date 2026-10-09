@@ -268,6 +268,7 @@ function ProgramForm({
   const [catalogYear, setCatalogYear] = useState(existing?.catalog_year ?? "");
   const [validFrom, setValidFrom] = useState(existing?.valid_from ?? "");
   const [totalUnits, setTotalUnits] = useState(base?.total_units ?? (kind === "minor" ? 18 : 120));
+  const [standardTerms, setStandardTerms] = useState(base?.standard_terms ?? 8);
   const [source, setSource] = useState(base?.source ?? "");
   const [published, setPublished] = useState(existing?.published ?? false);
   const [acceptWarnings, setAcceptWarnings] = useState(false);
@@ -291,6 +292,7 @@ function ProgramForm({
     kind,
     catalog_year: catalogYear.trim() || null,
     total_units: totalUnits,
+    standard_terms: standardTerms,
     source: source.trim() || null,
     source_date: existing?.source_date ?? null,
     published,
@@ -388,6 +390,19 @@ function ProgramForm({
           <span className="mb-1 block font-medium">Total credits</span>
           <input type="number" min={1} max={400} value={totalUnits} onChange={(e) => setTotalUnits(Number(e.target.value))} className={FIELD} />
         </label>
+        {kind === "major" && (
+          <label className="block text-sm">
+            <span className="mb-1 block font-medium">Standard length (Fall and Spring semesters)</span>
+            <input
+              type="number"
+              min={2}
+              max={14}
+              value={standardTerms}
+              onChange={(e) => setStandardTerms(Number(e.target.value))}
+              className={FIELD}
+            />
+          </label>
+        )}
         <label className="block text-sm">
           <span className="mb-1 block font-medium">Catalog year</span>
           <input value={catalogYear} maxLength={20} placeholder="2026-2027" onChange={(e) => setCatalogYear(e.target.value)} className={FIELD} />

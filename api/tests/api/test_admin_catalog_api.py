@@ -333,6 +333,8 @@ def test_build_a_minor_by_hand_and_plan_with_it(client: TestClient, admin_header
 
 def test_a_program_edited_here_is_kept_by_imports(client: TestClient, admin_headers: dict[str, str]) -> None:
     current = client.get(f"{ADMIN}/programs/{CS}", headers=admin_headers).json()
+    assert current["standard_terms"] == 8
+    assert _plan(client)["on_time_term"]["label"] == "Fall 2030"
 
     def draft(group: dict[str, Any]) -> dict[str, Any]:
         return {
@@ -349,6 +351,7 @@ def test_a_program_edited_here_is_kept_by_imports(client: TestClient, admin_head
         "name": "Computer Science (edited)",
         "kind": "major",
         "total_units": current["total_units"],
+        "standard_terms": 10,
         "published": True,
         "accept_warnings": True,
         "root": draft(current["root"]),
@@ -356,7 +359,10 @@ def test_a_program_edited_here_is_kept_by_imports(client: TestClient, admin_head
     saved = client.put(f"{ADMIN}/programs/{CS}", json=body, headers=admin_headers).json()
     assert saved["saved"] is True
     assert saved["program"]["admin_edited"] is True
-    assert _plan(client)["catalog"]["program_name"] == "Computer Science (edited)"
+    assert saved["program"]["standard_terms"] == 10
+    edited = _plan(client)
+    assert edited["catalog"]["program_name"] == "Computer Science (edited)"
+    assert edited["on_time_term"]["label"] == "Fall 2031"  # ten regular semesters instead of eight
 
     with _session(client) as session:
         refused = import_package(session, load_package(CS_PACKAGE), actor="test", accept_warnings=True)
@@ -435,13 +441,13 @@ def test_encrypted_backup_round_trip(client: TestClient, admin_headers: dict[str
         read_backup(tampered, passphrase)
 
     data = read_backup(blob, passphrase)
-    assert len(data["tables"]["courses"]) == 626
+    assert len(data["tables"]["courses"]) == 821
     # Restore into an empty database: everything comes back, including the hidden flag.
     other = build_app()
     with other.state.session_factory() as session:
         counts = restore_data(session, data)
         session.commit()
-        assert counts["courses"] == 626
+        assert counts["courses"] == 821
         assert session.get(CourseRow, "CSC 101").hidden is True
     assert "backup.export" in _audit_actions(client)
 
@@ -474,7 +480,7 @@ def test_restore_from_the_admin_page(client: TestClient, admin_headers: dict[str
     check = client.post(f"{ADMIN}/restore/check", json=upload, headers=admin_headers).json()
     assert check["restorable"] is True
     courses = next(table for table in check["tables"] if table["name"] == "courses")
-    assert courses == {"name": "courses", "in_backup": 626, "now": 626}
+    assert courses == {"name": "courses", "in_backup": 821, "now": 821}
     assert client.get("/api/v1/courses/CSC 101").status_code == 404  # checking changes nothing
 
     assert (
@@ -483,7 +489,7 @@ def test_restore_from_the_admin_page(client: TestClient, admin_headers: dict[str
     done = client.post(
         f"{ADMIN}/restore", json={**upload, "confirm": "RESTORE"}, headers=admin_headers
     ).json()
-    assert done["restored"]["courses"] == 626
+    assert done["restored"]["courses"] == 821
     assert "audit_log" not in done["restored"]
     assert done["audit_log_kept"] is True
     assert client.get("/api/v1/courses/CSC 101").status_code == 200  # back as it was in the backup

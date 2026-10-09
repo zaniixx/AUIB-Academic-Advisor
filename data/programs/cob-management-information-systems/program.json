@@ -1,0 +1,56 @@
+{
+  "id": "cob-management-information-systems",
+  "name": "Business Administration: Management Information Systems",
+  "kind": "major",
+  "sis_title": null,
+  "catalog_year": null,
+  "total_units": 120.0,
+  "standard_terms": 8,
+  "source": "Degree plan \"Bachelor of Business Administration: Management Information Systems Track\" in the College of Business degree plans (November 2024)",
+  "source_date": "2024-11-10",
+  "published": true,
+  "groups": {
+    "Bachelor of Business Administration: Management Information Systems": {
+      "label": "Business Administration: Management Information Systems"
+    },
+    "BBA Management Information Systems - Business core and track courses": {
+      "label": "Business core and track courses",
+      "role": "core"
+    },
+    "BBA Management Information Systems CLA - Core Liberal Arts": {
+      "label": "Core liberal arts (CLA)"
+    },
+    "BBA Management Information Systems CLA - First-year experience": {
+      "label": "First-year experience",
+      "role": "core"
+    },
+    "BBA Management Information Systems CLA - Communication skills": {
+      "label": "Communication skills",
+      "role": "core"
+    },
+    "BBA Management Information Systems CLA - Computer science": {
+      "label": "Quantitative reasoning: computing",
+      "role": "core"
+    },
+    "BBA Management Information Systems CLA - Mathematics": {
+      "label": "Quantitative reasoning: mathematics",
+      "role": "core"
+    },
+    "BBA Management Information Systems CLA - Humanities electives": {
+      "label": "Humanities electives",
+      "role": "general_education"
+    },
+    "BBA Management Information Systems CLA - Social sciences (required)": {
+      "label": "Social sciences: required",
+      "role": "core"
+    },
+    "BBA Management Information Systems CLA - Social sciences (choice)": {
+      "label": "Social sciences: SOC 101 or HUM 210",
+      "role": "general_education"
+    },
+    "BBA Management Information Systems CLA - Natural sciences": {
+      "label": "Natural sciences",
+      "role": "general_education"
+    }
+  }
+}

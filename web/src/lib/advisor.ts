@@ -71,6 +71,8 @@ export interface OverviewRow {
   current: boolean;
   /** False when no published schedule confirms the term's courses will be offered (F1.8). */
   confirmed: boolean;
+  /** True when the student chose the term's courses; false for the app's suggestion (F1.9). */
+  chosen: boolean;
   courses: { key: string; code: string | null; title: string; units: number; choice: boolean }[];
   units: number;
 }
@@ -199,6 +201,11 @@ export function unconfirmedNote(label: string): string {
   );
 }
 
+/** F1.9: said of a planned term whose courses the student has not chosen yet. */
+export function suggestedNote(label: string): string {
+  return `The app suggested these courses for ${label}; the student has not chosen them yet.`;
+}
+
 /** The term the in-progress courses belong to, such as "Fall 2026"; null if none says. */
 export function currentTermLabel(inProgress: AttemptIn[]): string | null {
   const counts = new Map<string, number>();
@@ -217,6 +224,7 @@ export function overviewRows(plan: PlanOut, inProgress: AttemptIn[]): OverviewRo
       label: currentTermLabel(inProgress) ?? "This term",
       current: true,
       confirmed: true, // the student is registered in these
+      chosen: true,
       courses: inProgress.map((attempt) => ({
         key: attempt.code,
         code: attempt.code,
@@ -232,6 +240,7 @@ export function overviewRows(plan: PlanOut, inProgress: AttemptIn[]): OverviewRo
       label: term.term.label,
       current: false,
       confirmed: term.schedule_published,
+      chosen: term.built,
       courses: term.items.map((item) => ({
         key: item.key,
         code: item.code,

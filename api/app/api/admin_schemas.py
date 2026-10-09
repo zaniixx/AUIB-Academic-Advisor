@@ -217,6 +217,12 @@ class ProgramDraftIn(StrictModel):
     kind: Literal["major", "minor"]
     catalog_year: str | None = Field(default=None, max_length=20)
     total_units: float = Field(gt=0, le=400)
+    standard_terms: int = Field(
+        default=8,
+        ge=2,
+        le=14,
+        description="Regular semesters of the standard degree (8 for a four-year major)",
+    )
     source: str | None = Field(default=None, max_length=300)
     source_date: date | None = None
     published: bool = False
@@ -292,6 +298,7 @@ class AdminProgramSummaryOut(BaseModel):
     groups: int
     family: str = Field(description="The program this is a version of (its own id for a first version)")
     valid_from: str | None = Field(description="Applies to students who joined from this term")
+    standard_terms: int = Field(description="Regular semesters of the standard degree")
 
 
 class AdminProgramOut(AdminProgramSummaryOut):

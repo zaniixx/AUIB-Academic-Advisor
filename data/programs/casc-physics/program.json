@@ -1,0 +1,67 @@
+{
+  "id": "casc-physics",
+  "name": "Physics",
+  "kind": "major",
+  "sis_title": null,
+  "catalog_year": null,
+  "total_units": 120.0,
+  "standard_terms": 8,
+  "source": "Suggested study plan \"Bachelor of Science in Physics\" in the College of Arts and Sciences degree plans (\"CAS Programs Degree Plans 2023\")",
+  "source_date": null,
+  "published": true,
+  "groups": {
+    "BS Physics": {
+      "label": "Physics"
+    },
+    "Physics - Major core": {
+      "label": "Major core"
+    },
+    "Physics - Physics courses": {
+      "label": "Physics courses",
+      "role": "core"
+    },
+    "Physics - Mathematics and chemistry": {
+      "label": "Mathematics and chemistry",
+      "role": "core"
+    },
+    "Physics CLA - Core Liberal Arts": {
+      "label": "Core liberal arts (CLA)"
+    },
+    "Physics CLA - First-year experience": {
+      "label": "First-year experience",
+      "role": "core"
+    },
+    "Physics CLA - Communication skills": {
+      "label": "Communication skills",
+      "role": "core"
+    },
+    "Physics CLA - Computer science": {
+      "label": "Quantitative reasoning: computing",
+      "role": "core"
+    },
+    "Physics CLA - Mathematics": {
+      "label": "Quantitative reasoning: mathematics",
+      "role": "core"
+    },
+    "Physics CLA - Humanities electives": {
+      "label": "Humanities electives",
+      "role": "general_education"
+    },
+    "Physics CLA - Social science electives": {
+      "label": "Social science electives",
+      "role": "general_education"
+    },
+    "Physics CLA - Natural sciences": {
+      "label": "Natural sciences",
+      "role": "general_education"
+    },
+    "Physics - Major electives": {
+      "label": "Physics electives",
+      "role": "major_elective"
+    },
+    "Physics - Free electives": {
+      "label": "Free electives",
+      "role": "free_elective"
+    }
+  }
+}

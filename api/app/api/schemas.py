@@ -69,6 +69,12 @@ class PreferencesIn(StrictModel):
     summer_max_units: float = Field(default=6, ge=0, le=12)
     start_term: TermText | None = None
     locks: list[LockIn] = Field(default_factory=list, max_length=60)
+    built_terms: list[TermText] = Field(
+        default_factory=list,
+        max_length=36,
+        description="Terms the student finished building (F1.9): they hold the student's locked courses "
+        "and nothing else",
+    )
     exclude: list[CourseCode] = Field(default_factory=list, max_length=100)
     include: list[CourseCode] = Field(default_factory=list, max_length=60)
     interests: list[str] = Field(default_factory=list, max_length=len(INTERESTS))
@@ -76,6 +82,13 @@ class PreferencesIn(StrictModel):
     workload: Workload = Workload.BALANCED
 
     _check_start = field_validator("start_term")(_term)
+
+    @field_validator("built_terms")
+    @classmethod
+    def _built(cls, values: list[str]) -> list[str]:
+        for value in values:
+            _term(value)
+        return values
 
     @field_validator("exclude", "include")
     @classmethod
@@ -384,6 +397,7 @@ class PlannedTermOut(BaseModel):
     term: TermOut
     units: float
     items: list[PlanItemOut]
+    built: bool = Field(description="The student chose this term's courses themselves (F1.9)")
     schedule_published: bool = Field(
         description="True when the courses were checked against the registrar's published schedule for "
         "this term (F1.8); otherwise it is not known yet whether they will be offered"
@@ -427,6 +441,22 @@ class MinorPlanOut(BaseModel):
     progress_with_plan: GroupProgressOut
 
 
+class TermChoiceOut(EligibleOut):
+    planned_for: TermOut | None = Field(
+        description="A later term the plan already has this course in; null when it is not in the plan"
+    )
+
+
+class BuildingOut(BaseModel):
+    """The term the student is building now (F1.9)."""
+
+    term: TermOut
+    choices: list[TermChoiceOut] = Field(
+        description="Courses that could be added besides the ones the plan has in this term: they count "
+        "toward an open requirement, run that term and have their prerequisites done in earlier terms"
+    )
+
+
 class PlanOut(BaseModel):
     start_term: TermOut
     graduation_term: TermOut | None
@@ -438,6 +468,9 @@ class PlanOut(BaseModel):
     progress: ProgressOut
     progress_with_plan: GroupProgressOut
     eligible_next_term: list[EligibleOut]
+    building: BuildingOut | None = Field(
+        default=None, description="The first planned term the student has not built yet (F1.9)"
+    )
     degree_map: DegreeMapOut
     gpa: GpaOut | None = Field(description="Null until the student has a graded course")
     minor: MinorPlanOut | None = Field(default=None, description="Null when no minor was chosen")

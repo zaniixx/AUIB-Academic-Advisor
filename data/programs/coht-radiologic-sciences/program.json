@@ -1,0 +1,36 @@
+{
+  "id": "coht-radiologic-sciences",
+  "name": "Radiologic Sciences",
+  "kind": "major",
+  "sis_title": null,
+  "catalog_year": null,
+  "total_units": 117.0,
+  "standard_terms": 8,
+  "source": "Program planning and course descriptions in the College of Healthcare Technology curriculum (Radiologic Sciences, Appendices III and IV). Draft: Radiographic Anatomy and Pathology II (3 credits) is left out because the document gives it the code RAD 450, which Practicum II also uses",
+  "source_date": null,
+  "published": false,
+  "groups": {
+    "BS Radiologic Sciences": {
+      "label": "Radiologic Sciences"
+    },
+    "Radiologic Sciences - Core liberal arts": {
+      "label": "Core liberal arts (CLA)",
+      "role": "core"
+    },
+    "Radiologic Sciences - College requirements": {
+      "label": "College requirements"
+    },
+    "Radiologic Sciences - Health sciences": {
+      "label": "Health sciences",
+      "role": "core"
+    },
+    "Radiologic Sciences - Technical electives": {
+      "label": "Technical electives",
+      "role": "major_elective"
+    },
+    "Radiologic Sciences - Core requirements": {
+      "label": "Radiologic sciences core",
+      "role": "core"
+    }
+  }
+}

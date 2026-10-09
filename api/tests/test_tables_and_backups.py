@@ -101,7 +101,7 @@ def test_backups_from_the_command_line(
     assert cli.main(["backup-export", str(backup)]) == 0
     assert backup.read_bytes().startswith(b"AUIBBAK1")
     assert cli.main(["backup-inspect", str(backup)]) == 0
-    assert "courses=626" in capsys.readouterr().out
+    assert "courses=821" in capsys.readouterr().out
 
     factory = make_session_factory(make_engine(database))
     with factory() as session:

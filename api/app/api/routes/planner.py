@@ -14,7 +14,7 @@ from app.api.deps import CatalogDep, TodayDep
 from app.domain.catalog import Catalog, Program, VersionChoice, VersionError, choose_version
 from app.domain.gpa import GPA_ASSUMPTIONS, gpa_summary, grades_for_target, project_gpa
 from app.domain.history import parse_course_history
-from app.domain.planner import build_plan, eligible_next_term
+from app.domain.planner import Plan, PlanOptions, build_plan, building_term, eligible_next_term, term_choices
 from app.domain.progress import CourseState, ProgramProgress, allocate
 from app.domain.recommend import open_groups, suggest_for_group
 from app.domain.record import StudentRecord
@@ -59,6 +59,17 @@ def _programs(catalog: Catalog, student: s.StudentIn, record: StudentRecord, tod
     return Chosen(version.program, minor, version, source)
 
 
+def _building(
+    chosen: Chosen, catalog: Catalog, record: StudentRecord, options: PlanOptions, plan: Plan
+) -> s.BuildingOut | None:
+    """The term the student is building and what they could add to it (F1.9)."""
+    planned = building_term(plan)
+    if planned is None:
+        return None
+    found = term_choices(chosen.program, catalog, record, options, plan, planned, chosen.minor)
+    return convert.building_out(planned, found, plan, catalog)
+
+
 def _current_progress(program: Program, catalog: Catalog, record: StudentRecord) -> ProgramProgress:
     courses = [(c, record.units_of(c, catalog), CourseState.COMPLETED) for c in sorted(record.completed)]
     courses += [(c, record.units_of(c, catalog), CourseState.IN_PROGRESS) for c in sorted(record.in_progress)]
@@ -78,12 +89,12 @@ def progress(student: s.StudentIn, catalog: CatalogDep, today: TodayDep) -> s.Pr
     return convert.progress_out(_current_progress(program, catalog, record), record, catalog)
 
 
-@router.post("/planner/plan", summary="A term-by-term plan to graduation (F1.3, F1.4, F1.6)")
+@router.post("/planner/plan", summary="A term-by-term plan to graduation (F1.3, F1.4, F1.6, F1.9)")
 def plan(student: s.StudentIn, catalog: CatalogDep, today: TodayDep) -> s.PlanOut:
     record = convert.record_from(student.attempts)
     chosen = _programs(catalog, student, record, today)
     program, minor = chosen.program, chosen.minor
-    options = convert.options_from(student.preferences)
+    options = convert.options_from(student.preferences, program)
     result = build_plan(program, catalog, record, options, today, minor)
     eligible = eligible_next_term(program, catalog, record, options, result.start_term, minor)
     current = _current_progress(program, catalog, record)
@@ -100,6 +111,7 @@ def plan(student: s.StudentIn, catalog: CatalogDep, today: TodayDep) -> s.PlanOu
         minor_current,
         chosen.version,
         chosen.entry_source,
+        _building(chosen, catalog, record, options, result),
     )
 
 
@@ -108,7 +120,7 @@ def plan_what_if(body: s.WhatIfIn, catalog: CatalogDep, today: TodayDep) -> s.Wh
     record = convert.record_from(body.attempts)
     chosen = _programs(catalog, body, record, today)
     program, minor = chosen.program, chosen.minor
-    options = convert.options_from(body.preferences)
+    options = convert.options_from(body.preferences, program)
     try:
         result = what_if(
             program, catalog, record, options, Change(body.change.code, body.change.action), today, minor

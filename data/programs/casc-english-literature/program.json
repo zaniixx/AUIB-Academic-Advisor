@@ -1,0 +1,64 @@
+{
+  "id": "casc-english-literature",
+  "name": "English Literature",
+  "kind": "major",
+  "sis_title": null,
+  "catalog_year": null,
+  "total_units": 120.0,
+  "standard_terms": 8,
+  "source": "Suggested study plan \"Bachelor of Arts in English Literature\" in the College of Arts and Sciences degree plans (\"CAS Programs Degree Plans 2023\")",
+  "source_date": null,
+  "published": true,
+  "groups": {
+    "BA English Literature": {
+      "label": "English Literature"
+    },
+    "English Literature - Major core courses": {
+      "label": "Major core courses",
+      "role": "core"
+    },
+    "English Literature CLA - Core Liberal Arts": {
+      "label": "Core liberal arts (CLA)"
+    },
+    "English Literature CLA - First-year experience": {
+      "label": "First-year experience",
+      "role": "core"
+    },
+    "English Literature CLA - Communication skills": {
+      "label": "Communication skills",
+      "role": "core"
+    },
+    "English Literature CLA - Computer science": {
+      "label": "Quantitative reasoning: computing",
+      "role": "core"
+    },
+    "English Literature CLA - Mathematics": {
+      "label": "Quantitative reasoning: mathematics",
+      "role": "general_education"
+    },
+    "English Literature CLA - Humanities (required)": {
+      "label": "Humanities: required",
+      "role": "core"
+    },
+    "English Literature CLA - Humanities electives": {
+      "label": "Humanities electives",
+      "role": "general_education"
+    },
+    "English Literature CLA - Social science electives": {
+      "label": "Social science electives",
+      "role": "general_education"
+    },
+    "English Literature CLA - Natural sciences": {
+      "label": "Natural sciences",
+      "role": "general_education"
+    },
+    "English Literature - Literature electives": {
+      "label": "Literature electives",
+      "role": "major_elective"
+    },
+    "English Literature - Free electives": {
+      "label": "Free electives",
+      "role": "free_elective"
+    }
+  }
+}

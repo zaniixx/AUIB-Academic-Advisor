@@ -34,8 +34,8 @@ def test_review_queue_shows_rules_beside_their_source(
     client: TestClient, admin_headers: dict[str, str]
 ) -> None:
     listing = client.get("/api/v1/admin/rules", headers=admin_headers).json()
-    assert listing["counts"]["all"] == 351
-    assert listing["counts"]["needs_review"] == 351
+    assert listing["counts"]["all"] == 537
+    assert listing["counts"]["needs_review"] == 537
     first = listing["rules"][0]
     assert first["source_text"]
     assert first["parsed_rule"]
@@ -114,7 +114,7 @@ def test_reimport_creates_no_duplicates(client: TestClient) -> None:
         program = import_package(session, load_package(CS_PACKAGE), actor="test", accept_warnings=True)
         session.commit()
         assert session.query(CourseRow).count() == before
-    assert catalog.counts == {"courses_unchanged": 626, "rules_unchanged": 351}
+    assert catalog.counts == {"courses_unchanged": 821, "rules_unchanged": 537}
     assert program.counts == {"groups": 15}
 
 

@@ -1,0 +1,67 @@
+{
+  "id": "casc-chemistry",
+  "name": "Chemistry",
+  "kind": "major",
+  "sis_title": null,
+  "catalog_year": null,
+  "total_units": 120.0,
+  "standard_terms": 8,
+  "source": "Suggested study plan \"Bachelor of Science in Chemistry\" in the College of Arts and Sciences degree plans (\"CAS Programs Degree Plans 2023\")",
+  "source_date": null,
+  "published": true,
+  "groups": {
+    "BS Chemistry": {
+      "label": "Chemistry"
+    },
+    "Chemistry - Major core": {
+      "label": "Major core"
+    },
+    "Chemistry - Chemistry courses": {
+      "label": "Chemistry courses",
+      "role": "core"
+    },
+    "Chemistry - Mathematics and physics": {
+      "label": "Mathematics and physics",
+      "role": "core"
+    },
+    "Chemistry CLA - Core Liberal Arts": {
+      "label": "Core liberal arts (CLA)"
+    },
+    "Chemistry CLA - First-year experience": {
+      "label": "First-year experience",
+      "role": "core"
+    },
+    "Chemistry CLA - Communication skills": {
+      "label": "Communication skills",
+      "role": "core"
+    },
+    "Chemistry CLA - Computer science": {
+      "label": "Quantitative reasoning: computing",
+      "role": "core"
+    },
+    "Chemistry CLA - Mathematics": {
+      "label": "Quantitative reasoning: mathematics",
+      "role": "core"
+    },
+    "Chemistry CLA - Humanities electives": {
+      "label": "Humanities electives",
+      "role": "general_education"
+    },
+    "Chemistry CLA - Social science electives": {
+      "label": "Social science electives",
+      "role": "general_education"
+    },
+    "Chemistry CLA - Natural sciences": {
+      "label": "Natural sciences",
+      "role": "general_education"
+    },
+    "Chemistry - Major electives": {
+      "label": "Chemistry electives",
+      "role": "major_elective"
+    },
+    "Chemistry - Free electives": {
+      "label": "Free electives",
+      "role": "free_elective"
+    }
+  }
+}

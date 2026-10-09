@@ -1,0 +1,60 @@
+{
+  "id": "cod-dental-surgery",
+  "name": "Dental Surgery (BDS)",
+  "kind": "major",
+  "sis_title": null,
+  "catalog_year": null,
+  "total_units": 189.0,
+  "standard_terms": 10,
+  "source": "Year-by-year curriculum and course descriptions in the College of Dentistry academic curriculum (BDS)",
+  "source_date": null,
+  "published": true,
+  "groups": {
+    "Bachelor of Dental Surgery": {
+      "label": "Dental Surgery"
+    },
+    "BDS CLA - Core Liberal Arts": {
+      "label": "Core liberal arts (CLA)"
+    },
+    "BDS CLA - First-year experience": {
+      "label": "First-year experience",
+      "role": "core"
+    },
+    "BDS CLA - Communication skills": {
+      "label": "Communication skills",
+      "role": "core"
+    },
+    "BDS CLA - Computer science": {
+      "label": "Quantitative reasoning: computing",
+      "role": "core"
+    },
+    "BDS CLA - Mathematics": {
+      "label": "Quantitative reasoning: mathematics",
+      "role": "core"
+    },
+    "BDS CLA - Humanities electives": {
+      "label": "Humanities electives",
+      "role": "general_education"
+    },
+    "BDS CLA - Social science electives": {
+      "label": "Social science electives",
+      "role": "general_education"
+    },
+    "BDS CLA - Natural sciences (required)": {
+      "label": "Natural sciences: required",
+      "role": "core"
+    },
+    "BDS CLA - Natural sciences": {
+      "label": "Natural sciences",
+      "role": "general_education"
+    },
+    "BDS - General and medical sciences": {
+      "label": "General and medical sciences",
+      "role": "core"
+    },
+    "BDS - Dentistry courses": {
+      "label": "Dentistry courses",
+      "role": "core"
+    }
+  }
+}

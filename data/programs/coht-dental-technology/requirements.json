@@ -1,0 +1,164 @@
+[
+  {
+    "index": 0,
+    "title": "BS Dental Technology",
+    "level": 0,
+    "parent": null,
+    "units_required": 119.0,
+    "courses": []
+  },
+  {
+    "index": 1,
+    "title": "Dental Technology - Core liberal arts",
+    "level": 1,
+    "parent": "BS Dental Technology",
+    "units_required": 42.0,
+    "courses": []
+  },
+  {
+    "index": 2,
+    "title": "Dental Technology - CLA courses the program sets",
+    "level": 2,
+    "parent": "Dental Technology - Core liberal arts",
+    "units_required": 30.0,
+    "courses": [
+      "UNI 101",
+      "ENL 101",
+      "ENL 201",
+      "ENL 210",
+      "CSC 101",
+      "MAT 101",
+      "BIO 101",
+      "ENV 201",
+      "PHI 101",
+      "FIN 101"
+    ]
+  },
+  {
+    "index": 3,
+    "title": "Dental Technology - CLA humanities",
+    "level": 2,
+    "parent": "Dental Technology - Core liberal arts",
+    "units_required": 9.0,
+    "courses": [
+      "ARC 101",
+      "CIN 101",
+      "ENL 212",
+      "HIS 101",
+      "HIS 102",
+      "HIS 105",
+      "HUM 101",
+      "LIT 101",
+      "PHA 210",
+      "POL 125",
+      "THE 101",
+      "TLD 100",
+      "TLD 101",
+      "TLD 102",
+      "TLD 103",
+      "HIS 201",
+      "HIS 341",
+      "HIS 350"
+    ]
+  },
+  {
+    "index": 4,
+    "title": "Dental Technology - CLA social science",
+    "level": 2,
+    "parent": "Dental Technology - Core liberal arts",
+    "units_required": 3.0,
+    "courses": [
+      "ARC 100",
+      "ARC 102",
+      "COM 101",
+      "ECO 101",
+      "HCT 108",
+      "MIS 101",
+      "POL 101",
+      "POL 112",
+      "POL 191",
+      "PSY 101",
+      "PSY 334",
+      "SOC 101",
+      "TLD 203",
+      "TLD 208",
+      "HUM 210"
+    ]
+  },
+  {
+    "index": 5,
+    "title": "Dental Technology - Science and college requirements",
+    "level": 1,
+    "parent": "BS Dental Technology",
+    "units_required": 27.0,
+    "courses": []
+  },
+  {
+    "index": 6,
+    "title": "Dental Technology - Sciences",
+    "level": 2,
+    "parent": "Dental Technology - Science and college requirements",
+    "units_required": 24.0,
+    "courses": [
+      "CHE 105",
+      "CHE 210",
+      "BDS 105",
+      "BIO 217",
+      "HCT 101",
+      "BDS 200",
+      "BDS 200L",
+      "BDS 217",
+      "BDS 217L",
+      "BDS 240"
+    ]
+  },
+  {
+    "index": 7,
+    "title": "Dental Technology - Technical elective",
+    "level": 2,
+    "parent": "Dental Technology - Science and college requirements",
+    "units_required": 3.0,
+    "courses": [
+      "HCT 480",
+      "HCT 481",
+      "HCT 482",
+      "HCT 483",
+      "HCT 485"
+    ]
+  },
+  {
+    "index": 8,
+    "title": "Dental Technology - Core requirements",
+    "level": 1,
+    "parent": "BS Dental Technology",
+    "units_required": 50.0,
+    "courses": [
+      "BDT 210",
+      "BDT 210L",
+      "BDT 211",
+      "BDT 320",
+      "BDT 320L",
+      "BDT 321L",
+      "BDT 330",
+      "BDT 330L",
+      "BDT 331L",
+      "BDT 340",
+      "BDT 350",
+      "BDT 360",
+      "BDT 370",
+      "BDT 370L",
+      "BDT 380",
+      "BDT 380L",
+      "BDT 420L",
+      "BDT 430L",
+      "BDT 460L",
+      "BDT 461L",
+      "BDT 470L",
+      "BDT 471L",
+      "BDT 490L",
+      "BDT 492L",
+      "BDT 496",
+      "BDT 498"
+    ]
+  }
+]

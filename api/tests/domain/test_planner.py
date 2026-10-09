@@ -5,7 +5,17 @@ from datetime import date
 import pytest
 
 from app.domain.catalog import Catalog, Program, level_courses
-from app.domain.planner import ItemKind, Lock, Pace, Plan, PlanOptions, build_plan, eligible_next_term
+from app.domain.planner import (
+    ItemKind,
+    Lock,
+    Pace,
+    Plan,
+    PlanOptions,
+    build_plan,
+    building_term,
+    eligible_next_term,
+    term_choices,
+)
 from app.domain.recommend import Preferences
 from app.domain.record import StudentRecord
 from app.domain.requisites import EvalContext, evaluate
@@ -103,6 +113,77 @@ def test_locked_courses_stay_put(cs_program: Program, cs_catalog: Catalog, today
     plan = build_plan(cs_program, cs_catalog, second_year(), PlanOptions(locks=(lock,)), today)
     assert plan.term_of("CSC 233") == lock.term
     assert next(i for i in plan.terms[0].items if i.code == "CSC 233").locked
+
+
+SPRING_2027 = Term(2027, Season.SPRING)
+FIRST_PICKS = ("CSC 101", "MAT 111", "ENL 101")
+
+
+def _built_spring(picks: tuple[str, ...] = FIRST_PICKS) -> PlanOptions:
+    """A student who built Spring 2027 with ``picks`` (F1.9)."""
+    return PlanOptions(
+        locks=tuple(Lock(code, SPRING_2027) for code in picks), built_terms=frozenset({SPRING_2027})
+    )
+
+
+def test_a_built_term_holds_only_the_students_courses(
+    cs_program: Program, cs_catalog: Catalog, today: date
+) -> None:
+    options = _built_spring()
+    plan = build_plan(cs_program, cs_catalog, new_student(), options, today)
+    first = plan.terms[0]
+    assert first.term == SPRING_2027 and first.built
+    assert {item.code for item in first.items} == set(FIRST_PICKS)
+    assert not any(planned.built for planned in plan.terms[1:])
+    # What the app would have added moves to later terms; nothing is lost.
+    later = plan.term_of("UNI 101")
+    assert later is not None and later > SPRING_2027
+    assert building_term(plan) is plan.terms[1]
+    assert_plan_is_valid(plan, cs_program, cs_catalog, new_student(), options)
+
+
+def test_a_term_built_with_no_courses_is_left_empty(
+    cs_program: Program, cs_catalog: Catalog, today: date
+) -> None:
+    options = PlanOptions(built_terms=frozenset({SPRING_2027}))
+    plan = build_plan(cs_program, cs_catalog, new_student(), options, today)
+    assert plan.terms[0].term > SPRING_2027
+    assert_plan_is_valid(plan, cs_program, cs_catalog, new_student(), options)
+
+
+def test_choices_for_the_term_being_built_count_the_terms_before_it(
+    cs_program: Program, cs_catalog: Catalog, today: date
+) -> None:
+    record, options = new_student(), _built_spring()
+    plan = build_plan(cs_program, cs_catalog, record, options, today)
+    planned = building_term(plan)
+    assert planned is not None and planned.term == Term(2027, Season.FALL)
+    codes = {course.code for course in term_choices(cs_program, cs_catalog, record, options, plan, planned)}
+    in_term = {item.code for item in planned.items if item.code}
+    assert codes and not codes & in_term and not codes & set(FIRST_PICKS)
+    # ENL 201 needs ENL 101, which the student put in the term before.
+    assert "ENL 201" in codes
+    now = eligible_next_term(cs_program, cs_catalog, record, options, SPRING_2027)
+    assert "ENL 201" not in {course.code for course in now}
+
+
+def test_a_summer_the_student_did_not_plan_offers_only_summer_courses(
+    cs_program: Program, cs_catalog: Catalog, today: date
+) -> None:
+    record = second_year()
+    suggested = build_plan(cs_program, cs_catalog, record, PlanOptions(), today)
+    picks = tuple(item.code for item in suggested.terms[0].items if item.code)
+    options = _built_spring(picks)
+    plan = build_plan(cs_program, cs_catalog, record, options, today)
+    planned = building_term(plan)
+    assert planned is not None and planned.term.season is Season.SUMMER
+    found = term_choices(cs_program, cs_catalog, record, options, plan, planned)
+    assert all(cs_catalog.courses[course.code].summer_only for course in found)
+    summers = PlanOptions(include_summer=True, locks=options.locks, built_terms=options.built_terms)
+    with_summers = build_plan(cs_program, cs_catalog, record, summers, today)
+    summer = building_term(with_summers)
+    assert summer is not None
+    assert term_choices(cs_program, cs_catalog, record, summers, with_summers, summer)
 
 
 def test_chosen_courses_are_planned(cs_program: Program, cs_catalog: Catalog, today: date) -> None:

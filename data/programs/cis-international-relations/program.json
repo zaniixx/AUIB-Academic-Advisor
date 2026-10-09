@@ -1,0 +1,64 @@
+{
+  "id": "cis-international-relations",
+  "name": "International Relations and Security Studies",
+  "kind": "major",
+  "sis_title": null,
+  "catalog_year": null,
+  "total_units": 120.0,
+  "standard_terms": 8,
+  "source": "\"BA in International Relations & Security Studies\" in the College of International Studies curriculum (Fall 2023)",
+  "source_date": "2023-09-01",
+  "published": true,
+  "groups": {
+    "BA International Relations and Security Studies": {
+      "label": "International Relations and Security Studies"
+    },
+    "IR&SS - Major core courses": {
+      "label": "Major core courses",
+      "role": "core"
+    },
+    "IR&SS CLA - Core Liberal Arts": {
+      "label": "Core liberal arts (CLA)"
+    },
+    "IR&SS CLA - First-year experience": {
+      "label": "First-year experience",
+      "role": "core"
+    },
+    "IR&SS CLA - Communication skills": {
+      "label": "Communication skills",
+      "role": "core"
+    },
+    "IR&SS CLA - Computer science": {
+      "label": "Quantitative reasoning: computing",
+      "role": "core"
+    },
+    "IR&SS CLA - Mathematics": {
+      "label": "Quantitative reasoning: mathematics",
+      "role": "general_education"
+    },
+    "IR&SS CLA - History": {
+      "label": "Humanities: 2 history courses",
+      "role": "general_education"
+    },
+    "IR&SS CLA - Humanities electives": {
+      "label": "Humanities electives",
+      "role": "general_education"
+    },
+    "IR&SS CLA - Social science electives": {
+      "label": "Social science electives",
+      "role": "general_education"
+    },
+    "IR&SS CLA - Natural sciences (required)": {
+      "label": "Natural sciences: required",
+      "role": "core"
+    },
+    "IR&SS CLA - Natural sciences": {
+      "label": "Natural sciences",
+      "role": "general_education"
+    },
+    "IR&SS - Major electives": {
+      "label": "IR&SS electives",
+      "role": "major_elective"
+    }
+  }
+}

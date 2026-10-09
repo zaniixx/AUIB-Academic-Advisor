@@ -54,7 +54,7 @@ api/app/
 ```
 
 The `domain` package has no dependencies on the web or database layers, so every rule can be tested
-with plain data. 168 of the API's 247 tests exercise it directly against the real course catalog and programs.
+with plain data. 192 of the API's 272 tests exercise it directly against the real course catalog and programs.
 
 ### A planning request
 
@@ -64,7 +64,12 @@ with plain data. 168 of the API's 247 tests exercise it directly against the rea
 3. The planner selects the courses still needed (complete course lists, the prerequisites they
    require, electives that fit the student's interests without lengthening the longest chain, and
    open-choice "slots"), then schedules them term by term. See
-   [ADR 0003](decisions/0003-heuristic-planner.md).
+   [ADR 0003](decisions/0003-heuristic-planner.md). Students build their plan one term at a time
+   (F1.9): a term they finished (`built_terms` in the preferences) holds only the courses they locked
+   there, and the planner fills the terms after it. The first term they have not built is the one
+   they are building; the response lists the other courses they could add to it (`term_choices`),
+   counting the courses in earlier terms as done. The standard finish is the program's
+   `standard_terms` Fall and Spring semesters from when the student joined (ten for Dentistry).
 4. The response includes the plan, progress per requirement group, what is left, courses eligible next
    term, the degree map, GPA, warnings, the assumptions used and the catalog's source date. A full degree
    takes about 20 ms.

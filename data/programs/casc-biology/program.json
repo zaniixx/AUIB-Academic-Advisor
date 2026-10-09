@@ -1,0 +1,71 @@
+{
+  "id": "casc-biology",
+  "name": "Biology",
+  "kind": "major",
+  "sis_title": null,
+  "catalog_year": null,
+  "total_units": 120.0,
+  "standard_terms": 8,
+  "source": "Suggested study plan \"Bachelor of Science in Biology\" in the College of Arts and Sciences degree plans (\"CAS Programs Degree Plans 2023\")",
+  "source_date": null,
+  "published": true,
+  "groups": {
+    "BS Biology": {
+      "label": "Biology"
+    },
+    "Biology - Major core": {
+      "label": "Major core"
+    },
+    "Biology - Chemistry and physics": {
+      "label": "Chemistry and physics",
+      "role": "core"
+    },
+    "Biology - Biology courses": {
+      "label": "Biology courses",
+      "role": "core"
+    },
+    "Biology CLA - Core Liberal Arts": {
+      "label": "Core liberal arts (CLA)"
+    },
+    "Biology CLA - First-year experience": {
+      "label": "First-year experience",
+      "role": "core"
+    },
+    "Biology CLA - Communication skills": {
+      "label": "Communication skills",
+      "role": "core"
+    },
+    "Biology CLA - Computer science": {
+      "label": "Quantitative reasoning: computing",
+      "role": "core"
+    },
+    "Biology CLA - Mathematics": {
+      "label": "Quantitative reasoning: mathematics",
+      "role": "core"
+    },
+    "Biology CLA - Humanities electives": {
+      "label": "Humanities electives",
+      "role": "general_education"
+    },
+    "Biology CLA - Social science electives": {
+      "label": "Social science electives",
+      "role": "general_education"
+    },
+    "Biology CLA - Natural sciences (required)": {
+      "label": "Natural sciences: required",
+      "role": "core"
+    },
+    "Biology CLA - Natural sciences": {
+      "label": "Natural sciences",
+      "role": "general_education"
+    },
+    "Biology - Major electives": {
+      "label": "Biology electives",
+      "role": "major_elective"
+    },
+    "Biology - Free electives": {
+      "label": "Free electives",
+      "role": "free_elective"
+    }
+  }
+}

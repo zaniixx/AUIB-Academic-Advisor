@@ -1,0 +1,161 @@
+[
+  {
+    "index": 0,
+    "title": "Bachelor of Business Administration: Marketing",
+    "level": 0,
+    "parent": null,
+    "units_required": 120.0,
+    "courses": []
+  },
+  {
+    "index": 1,
+    "title": "BBA Marketing - Business core and track courses",
+    "level": 1,
+    "parent": "Bachelor of Business Administration: Marketing",
+    "units_required": 78.0,
+    "courses": [
+      "MIS 101",
+      "BUS 112",
+      "ACC 201",
+      "ECO 221",
+      "MKT 201",
+      "ECO 222",
+      "BUS 212",
+      "MGT 201",
+      "BUS 250",
+      "MKT 334",
+      "MKT 340",
+      "MGT 301",
+      "FIN 301",
+      "MGT 342",
+      "BUS 305",
+      "MGT 329",
+      "MGT 360",
+      "MGT 315",
+      "MKT 328",
+      "BUS 375",
+      "MKT 426",
+      "MGT 420",
+      "MGT 410",
+      "MKT 430",
+      "MKT 429",
+      "MKT 480"
+    ]
+  },
+  {
+    "index": 2,
+    "title": "BBA Marketing CLA - Core Liberal Arts",
+    "level": 1,
+    "parent": "Bachelor of Business Administration: Marketing",
+    "units_required": 42.0,
+    "courses": []
+  },
+  {
+    "index": 3,
+    "title": "BBA Marketing CLA - First-year experience",
+    "level": 2,
+    "parent": "BBA Marketing CLA - Core Liberal Arts",
+    "units_required": 3.0,
+    "courses": [
+      "UNI 101"
+    ]
+  },
+  {
+    "index": 4,
+    "title": "BBA Marketing CLA - Communication skills",
+    "level": 2,
+    "parent": "BBA Marketing CLA - Core Liberal Arts",
+    "units_required": 9.0,
+    "courses": [
+      "ENL 101",
+      "ENL 201",
+      "ENL 210"
+    ]
+  },
+  {
+    "index": 5,
+    "title": "BBA Marketing CLA - Computer science",
+    "level": 2,
+    "parent": "BBA Marketing CLA - Core Liberal Arts",
+    "units_required": 3.0,
+    "courses": [
+      "CSC 101"
+    ]
+  },
+  {
+    "index": 6,
+    "title": "BBA Marketing CLA - Mathematics",
+    "level": 2,
+    "parent": "BBA Marketing CLA - Core Liberal Arts",
+    "units_required": 3.0,
+    "courses": [
+      "MAT 101"
+    ]
+  },
+  {
+    "index": 7,
+    "title": "BBA Marketing CLA - Humanities electives",
+    "level": 2,
+    "parent": "BBA Marketing CLA - Core Liberal Arts",
+    "units_required": 12.0,
+    "courses": [
+      "ARC 101",
+      "CIN 101",
+      "ENL 212",
+      "HIS 101",
+      "HIS 102",
+      "HIS 105",
+      "HUM 101",
+      "LIT 101",
+      "PHA 210",
+      "PHI 101",
+      "POL 125",
+      "THE 101",
+      "TLD 100",
+      "TLD 101",
+      "TLD 102",
+      "TLD 103",
+      "HIS 201",
+      "HIS 341",
+      "HIS 350"
+    ]
+  },
+  {
+    "index": 8,
+    "title": "BBA Marketing CLA - Social sciences (required)",
+    "level": 2,
+    "parent": "BBA Marketing CLA - Core Liberal Arts",
+    "units_required": 3.0,
+    "courses": [
+      "PSY 101"
+    ]
+  },
+  {
+    "index": 9,
+    "title": "BBA Marketing CLA - Social sciences (choice)",
+    "level": 2,
+    "parent": "BBA Marketing CLA - Core Liberal Arts",
+    "units_required": 3.0,
+    "courses": [
+      "SOC 101",
+      "HUM 210"
+    ]
+  },
+  {
+    "index": 10,
+    "title": "BBA Marketing CLA - Natural sciences",
+    "level": 2,
+    "parent": "BBA Marketing CLA - Core Liberal Arts",
+    "units_required": 6.0,
+    "courses": [
+      "BIO 101",
+      "CHE 100",
+      "CHE 105",
+      "CSC 100",
+      "ENV 201",
+      "GEO 101",
+      "PHY 100",
+      "PHY 105"
+    ]
+  }
+]

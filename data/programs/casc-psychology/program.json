@@ -1,0 +1,64 @@
+{
+  "id": "casc-psychology",
+  "name": "Psychology",
+  "kind": "major",
+  "sis_title": null,
+  "catalog_year": null,
+  "total_units": 120.0,
+  "standard_terms": 8,
+  "source": "Suggested study plan \"Bachelor of Arts in Psychology\" in the College of Arts and Sciences degree plans (\"CAS Programs Degree Plans 2023\")",
+  "source_date": null,
+  "published": true,
+  "groups": {
+    "BA Psychology": {
+      "label": "Psychology"
+    },
+    "Psychology major - Major core courses": {
+      "label": "Major core courses",
+      "role": "core"
+    },
+    "Psychology major CLA - Core Liberal Arts": {
+      "label": "Core liberal arts (CLA)"
+    },
+    "Psychology major CLA - First-year experience": {
+      "label": "First-year experience",
+      "role": "core"
+    },
+    "Psychology major CLA - Communication skills": {
+      "label": "Communication skills",
+      "role": "core"
+    },
+    "Psychology major CLA - Computer science": {
+      "label": "Quantitative reasoning: computing",
+      "role": "core"
+    },
+    "Psychology major CLA - Mathematics": {
+      "label": "Quantitative reasoning: mathematics",
+      "role": "general_education"
+    },
+    "Psychology major CLA - Humanities electives": {
+      "label": "Humanities electives",
+      "role": "general_education"
+    },
+    "Psychology major CLA - Social sciences (required)": {
+      "label": "Social sciences: required",
+      "role": "core"
+    },
+    "Psychology major CLA - Social science electives": {
+      "label": "Social science electives",
+      "role": "general_education"
+    },
+    "Psychology major CLA - Natural sciences": {
+      "label": "Natural sciences",
+      "role": "general_education"
+    },
+    "Psychology major - Psychology electives": {
+      "label": "Psychology electives",
+      "role": "major_elective"
+    },
+    "Psychology major - Free electives": {
+      "label": "Free electives",
+      "role": "free_elective"
+    }
+  }
+}

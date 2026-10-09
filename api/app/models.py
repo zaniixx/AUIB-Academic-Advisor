@@ -122,6 +122,8 @@ class ProgramRow(Base):
     # ``valid_from`` (a term such as "Fall 2027"; NULL means from the start) (F0.4).
     family: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     valid_from: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    # Regular semesters of the standard degree; NULL means the usual eight.
+    standard_terms: Mapped[int | None] = mapped_column(Integer, nullable=True)
     imported_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     groups: Mapped[list[RequirementGroupRow]] = relationship(

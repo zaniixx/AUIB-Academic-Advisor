@@ -114,6 +114,7 @@ def load_catalog(session: Session, revision: int) -> Catalog:
             hidden=program_row.hidden,
             family=program_row.family or "",
             valid_from=Term.parse(program_row.valid_from) if program_row.valid_from else None,
+            standard_terms=program_row.standard_terms or 8,
         )
     return Catalog(
         courses=courses, rules=rules, programs=programs, revision=revision, schedules=load_schedules(session)

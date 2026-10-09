@@ -1,0 +1,209 @@
+[
+  {
+    "index": 0,
+    "title": "BA International Relations and Security Studies",
+    "level": 0,
+    "parent": null,
+    "units_required": 120.0,
+    "courses": []
+  },
+  {
+    "index": 1,
+    "title": "IR&SS - Major core courses",
+    "level": 1,
+    "parent": "BA International Relations and Security Studies",
+    "units_required": 60.0,
+    "courses": [
+      "POL 101",
+      "POL 111",
+      "POL 112",
+      "POL 140",
+      "POL 142",
+      "POL 191",
+      "POL 214",
+      "POL 219",
+      "POL 221",
+      "POL 230",
+      "POL 240",
+      "POL 311",
+      "POL 312",
+      "POL 340",
+      "POL 350",
+      "POL 392",
+      "POL 404",
+      "POL 405",
+      "POL 491",
+      "POL 492"
+    ]
+  },
+  {
+    "index": 2,
+    "title": "IR&SS CLA - Core Liberal Arts",
+    "level": 1,
+    "parent": "BA International Relations and Security Studies",
+    "units_required": 42.0,
+    "courses": []
+  },
+  {
+    "index": 3,
+    "title": "IR&SS CLA - First-year experience",
+    "level": 2,
+    "parent": "IR&SS CLA - Core Liberal Arts",
+    "units_required": 3.0,
+    "courses": [
+      "UNI 101"
+    ]
+  },
+  {
+    "index": 4,
+    "title": "IR&SS CLA - Communication skills",
+    "level": 2,
+    "parent": "IR&SS CLA - Core Liberal Arts",
+    "units_required": 9.0,
+    "courses": [
+      "ENL 101",
+      "ENL 201",
+      "ENL 210"
+    ]
+  },
+  {
+    "index": 5,
+    "title": "IR&SS CLA - Computer science",
+    "level": 2,
+    "parent": "IR&SS CLA - Core Liberal Arts",
+    "units_required": 3.0,
+    "courses": [
+      "CSC 101"
+    ]
+  },
+  {
+    "index": 6,
+    "title": "IR&SS CLA - Mathematics",
+    "level": 2,
+    "parent": "IR&SS CLA - Core Liberal Arts",
+    "units_required": 3.0,
+    "courses": [
+      "MAT 101",
+      "MAT 101A",
+      "MAT 102",
+      "MAT 111"
+    ]
+  },
+  {
+    "index": 7,
+    "title": "IR&SS CLA - History",
+    "level": 2,
+    "parent": "IR&SS CLA - Core Liberal Arts",
+    "units_required": 6.0,
+    "courses": [
+      "HIS 101",
+      "HIS 102",
+      "HIS 105",
+      "HIS 201",
+      "HIS 341",
+      "HIS 350"
+    ]
+  },
+  {
+    "index": 8,
+    "title": "IR&SS CLA - Humanities electives",
+    "level": 2,
+    "parent": "IR&SS CLA - Core Liberal Arts",
+    "units_required": 6.0,
+    "courses": [
+      "ARC 101",
+      "CIN 101",
+      "ENL 212",
+      "HIS 101",
+      "HIS 102",
+      "HIS 105",
+      "HUM 101",
+      "LIT 101",
+      "PHA 210",
+      "PHI 101",
+      "THE 101",
+      "TLD 100",
+      "TLD 101",
+      "TLD 102",
+      "TLD 103",
+      "HIS 201",
+      "HIS 341",
+      "HIS 350"
+    ]
+  },
+  {
+    "index": 9,
+    "title": "IR&SS CLA - Social science electives",
+    "level": 2,
+    "parent": "IR&SS CLA - Core Liberal Arts",
+    "units_required": 6.0,
+    "courses": [
+      "ARC 100",
+      "ARC 102",
+      "COM 101",
+      "ECO 101",
+      "FIN 101",
+      "HCT 108",
+      "MIS 101",
+      "PSY 101",
+      "PSY 334",
+      "SOC 101",
+      "TLD 203",
+      "TLD 208",
+      "HUM 210"
+    ]
+  },
+  {
+    "index": 10,
+    "title": "IR&SS CLA - Natural sciences (required)",
+    "level": 2,
+    "parent": "IR&SS CLA - Core Liberal Arts",
+    "units_required": 3.0,
+    "courses": [
+      "GEO 101"
+    ]
+  },
+  {
+    "index": 11,
+    "title": "IR&SS CLA - Natural sciences",
+    "level": 2,
+    "parent": "IR&SS CLA - Core Liberal Arts",
+    "units_required": 3.0,
+    "courses": [
+      "BIO 101",
+      "CHE 100",
+      "CHE 105",
+      "CSC 100",
+      "ENV 201",
+      "PHY 100",
+      "PHY 105"
+    ]
+  },
+  {
+    "index": 12,
+    "title": "IR&SS - Major electives",
+    "level": 1,
+    "parent": "BA International Relations and Security Studies",
+    "units_required": 18.0,
+    "courses": [
+      "POL 125",
+      "POL 252",
+      "POL 262",
+      "POL 263",
+      "POL 265",
+      "POL 266",
+      "POL 267",
+      "POL 268",
+      "POL 270",
+      "POL 285",
+      "POL 307",
+      "POL 113",
+      "POL 200",
+      "POL 253",
+      "POL 342",
+      "POL 360",
+      "POL 390",
+      "POL 391"
+    ]
+  }
+]

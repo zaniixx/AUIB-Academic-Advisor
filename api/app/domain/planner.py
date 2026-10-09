@@ -1,4 +1,4 @@
-"""Term-by-term plans to graduation (F1.3, F1.4, F1.6).
+"""Term-by-term plans to graduation (F1.3, F1.4, F1.6, F1.9).
 
 Planning happens in two steps.
 
@@ -12,6 +12,8 @@ Planning happens in two steps.
    "On time" pace keeps terms at the student's preferred load and goes above it
    (never above the maximum) only when needed to graduate within the standard
    number of regular terms; "fastest" fills every term to the maximum.
+   A term the student has built themselves (F1.9) holds only the courses they
+   put there; the planner fills the terms after it.
 
 The heuristic is deterministic, explains itself and plans a full degree in
 milliseconds; see docs/decisions/0003-heuristic-planner.md.
@@ -20,7 +22,7 @@ milliseconds; see docs/decisions/0003-heuristic-planner.md.
 from __future__ import annotations
 
 import math
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Callable, Collection, Iterable, Mapping
 from dataclasses import dataclass, field, replace
 from datetime import date
 from enum import StrEnum
@@ -73,6 +75,8 @@ class PlanOptions:
     not_before: tuple[tuple[str, Term], ...] = ()  # used by what-if to push a course later
     exclude: frozenset[str] = frozenset()
     include: frozenset[str] = frozenset()  # courses the student wants; the planner picks the term
+    # Terms the student built (F1.9): they hold the student's locked courses and nothing else.
+    built_terms: frozenset[Term] = frozenset()
     preferences: Preferences = field(default_factory=Preferences)
     standing_credits: Mapping[Standing, int] = field(default_factory=lambda: dict(DEFAULT_STANDING_CREDITS))
     regular_terms_to_graduate: int = 8
@@ -105,6 +109,7 @@ class PlanItem:
 class PlannedTerm:
     term: Term
     items: list[PlanItem]
+    built: bool = False  # the student chose this term's courses (F1.9)
 
     @property
     def units(self) -> float:
@@ -235,26 +240,36 @@ def eligible_next_term(
     options: PlanOptions,
     term: Term | None = None,
     minor: Program | None = None,
+    before: Collection[str] = (),
+    alongside: Collection[str] = (),
 ) -> list[EligibleCourse]:
     """Courses that count toward an unmet requirement and can be taken next term (F1.3).
 
     With ``term``, courses that cannot run in that term (internships outside summer,
     courses missing from the term's published schedule, hidden courses) are left out.
-    With ``minor``, its unmet requirements count too.
+    With ``minor``, its unmet requirements count too. ``before`` are courses planned for
+    earlier terms, counted as done; ``alongside`` are courses already chosen for this
+    term: they count toward requirements, satisfy corequisites and are not listed again.
     """
-    have = record.have
+    have = record.have | frozenset(before)
+    chosen = frozenset(alongside) - have
+    planned_codes = sorted((have - record.have) | chosen)
+    planned = [(code, catalog.units(code), CourseState.PLANNED) for code in planned_codes]
     programs = [program] if minor is None else [program, minor]
     progress = {
         leaf_key: leaf
         for each in programs
-        for leaf_key, leaf in allocate(each, catalog, _counted(record, catalog)).leaves.items()
+        for leaf_key, leaf in allocate(each, catalog, [*_counted(record, catalog), *planned]).leaves.items()
     }
     leaves = [leaf for each in programs for leaf in each.leaf_groups()]
     level_map = level_courses(program, catalog)
     unlocks = {g.code: len(g.dependents) for g in gateways(program, catalog, minimum=1)}
     context = EvalContext(
         completed=have,
-        credits=record.completed_units(catalog) + record.in_progress_units(catalog),
+        credits=record.completed_units(catalog)
+        + record.in_progress_units(catalog)
+        + sum(catalog.units(code) for code in have - record.have),
+        concurrent=chosen,
         level_courses=level_map,
         standing_credits=options.standing_credits,
     )
@@ -265,6 +280,7 @@ def eligible_next_term(
         for code in leaf.courses
         if code in catalog.courses
         and code not in have
+        and code not in chosen
         and (catalog.visible(code) if term is None else catalog.offered(code, term))
         and evaluate(catalog.prerequisite(code), context).satisfied
     }
@@ -272,7 +288,7 @@ def eligible_next_term(
     result: list[EligibleCourse] = []
     seen: set[str] = set()
     for leaf in leaves:
-        if leaf.is_open_pool or progress[leaf.key].remaining_after_current <= EPSILON:
+        if leaf.is_open_pool or progress[leaf.key].remaining <= EPSILON:
             continue
         for code in leaf.courses:
             if code in seen or code not in eligible_codes or catalog.courses[code].is_placeholder:
@@ -282,7 +298,7 @@ def eligible_next_term(
             for rule in catalog.corequisites(code):
                 if evaluate(rule, context).satisfied:
                     continue
-                needed = courses_to_add(rule, have, level_map, lambda _c: 1.0)
+                needed = courses_to_add(rule, have | chosen, level_map, lambda _c: 1.0)
                 if needed <= eligible_codes:
                     take_with |= needed
                 else:
@@ -303,6 +319,40 @@ def eligible_next_term(
                 )
             )
     return result
+
+
+def building_term(plan: Plan) -> PlannedTerm | None:
+    """The term the student is building now (F1.9): the first planned term they have not built."""
+    return next((planned for planned in plan.terms if not planned.built), None)
+
+
+def term_choices(
+    program: Program,
+    catalog: Catalog,
+    record: StudentRecord,
+    options: PlanOptions,
+    plan: Plan,
+    planned: PlannedTerm,
+    minor: Program | None = None,
+) -> list[EligibleCourse]:
+    """Courses the student could add to ``planned`` besides the ones the plan already has there (F1.9).
+
+    Courses in earlier terms count as done and the student's own courses in this term count as
+    taken with it, so a course is listed when it still counts toward a requirement, runs that
+    term and has its prerequisites done by the end of the term before.
+    """
+    index = plan.terms.index(planned)
+    before = {item.code for earlier in plan.terms[:index] for item in earlier.items if item.code}
+    chosen = {item.code for item in planned.items if item.code and item.locked}
+    in_term = {item.code for item in planned.items if item.code}
+    found = eligible_next_term(program, catalog, record, options, planned.term, minor, before, chosen)
+    # A student who does not plan summers only sees a summer for the courses that run then alone.
+    summer_only = planned.term.season is Season.SUMMER and not options.include_summer
+    return [
+        course
+        for course in found
+        if course.code not in in_term and (not summer_only or catalog.courses[course.code].summer_only)
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -694,6 +744,10 @@ class _Scheduler:
 
     def _fill(self, term: Term) -> _TermDraft:
         draft = _TermDraft(term, self._capacity(term))
+        if term in self.options.built_terms:
+            # The student chose this term's courses (F1.9): nothing else goes in.
+            self._place_locked(draft)
+            return draft
         if term.season is Season.SUMMER and not self.options.include_summer:
             # The student did not plan summers, but some courses (internships) run only then.
             self._place_locked(draft)
@@ -736,10 +790,11 @@ class _Scheduler:
             if draft.courses or draft.slots:
                 items = [self._course_item(code) for code in draft.courses]
                 items += [_slot_item(slot) for slot in draft.slots]
-                terms.append(PlannedTerm(term, items))
+                terms.append(PlannedTerm(term, items, built=term in self.options.built_terms))
                 stalled = 0
             elif term.season is not Season.SUMMER:
-                stalled = 0 if self._waiting(term) else stalled + 1
+                waiting = self._waiting(term) or term in self.options.built_terms
+                stalled = 0 if waiting else stalled + 1
                 if stalled >= 2:
                     break
             self.pending = [c for c in self.pending if c not in draft.courses]
@@ -914,7 +969,7 @@ def _attach_alternatives(
             items.append(
                 replace(item, alternatives=tuple(options_found), group_key=group.key, group_label=group.label)
             )
-        result.append(PlannedTerm(planned.term, items))
+        result.append(PlannedTerm(planned.term, items, planned.built))
         completed.update(same_term)
         credits += planned.units
     return result

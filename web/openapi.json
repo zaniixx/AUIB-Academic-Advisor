@@ -439,7 +439,7 @@
         "tags": [
           "planner"
         ],
-        "summary": "A term-by-term plan to graduation (F1.3, F1.4, F1.6)",
+        "summary": "A term-by-term plan to graduation (F1.3, F1.4, F1.6, F1.9)",
         "operationId": "plan_api_v1_planner_plan_post",
         "requestBody": {
           "content": {
@@ -2380,6 +2380,11 @@
             "title": "Valid From",
             "description": "Applies to students who joined from this term"
           },
+          "standard_terms": {
+            "type": "integer",
+            "title": "Standard Terms",
+            "description": "Regular semesters of the standard degree"
+          },
           "source": {
             "anyOf": [
               {
@@ -2421,6 +2426,7 @@
           "groups",
           "family",
           "valid_from",
+          "standard_terms",
           "source",
           "source_date",
           "root"
@@ -2496,6 +2502,11 @@
             ],
             "title": "Valid From",
             "description": "Applies to students who joined from this term"
+          },
+          "standard_terms": {
+            "type": "integer",
+            "title": "Standard Terms",
+            "description": "Regular semesters of the standard degree"
           }
         },
         "type": "object",
@@ -2511,7 +2522,8 @@
           "admin_edited",
           "groups",
           "family",
-          "valid_from"
+          "valid_from",
+          "standard_terms"
         ],
         "title": "AdminProgramSummaryOut"
       },
@@ -2896,6 +2908,28 @@
           "now"
         ],
         "title": "BackupTableOut"
+      },
+      "BuildingOut": {
+        "properties": {
+          "term": {
+            "$ref": "#/components/schemas/TermOut"
+          },
+          "choices": {
+            "items": {
+              "$ref": "#/components/schemas/TermChoiceOut"
+            },
+            "type": "array",
+            "title": "Choices",
+            "description": "Courses that could be added besides the ones the plan has in this term: they count toward an open requirement, run that term and have their prerequisites done in earlier terms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "term",
+          "choices"
+        ],
+        "title": "BuildingOut",
+        "description": "The term the student is building now (F1.9)."
       },
       "CatalogInfoOut": {
         "properties": {
@@ -5015,6 +5049,17 @@
             "type": "array",
             "title": "Eligible Next Term"
           },
+          "building": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BuildingOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The first planned term the student has not built yet (F1.9)"
+          },
           "degree_map": {
             "$ref": "#/components/schemas/DegreeMapOut"
           },
@@ -5091,6 +5136,11 @@
             "type": "array",
             "title": "Items"
           },
+          "built": {
+            "type": "boolean",
+            "title": "Built",
+            "description": "The student chose this term's courses themselves (F1.9)"
+          },
           "schedule_published": {
             "type": "boolean",
             "title": "Schedule Published",
@@ -5102,6 +5152,7 @@
           "term",
           "units",
           "items",
+          "built",
           "schedule_published"
         ],
         "title": "PlannedTermOut"
@@ -5162,6 +5213,21 @@
             "type": "array",
             "maxItems": 60,
             "title": "Locks"
+          },
+          "built_terms": {
+            "items": {
+              "type": "string",
+              "maxLength": 40,
+              "minLength": 6,
+              "examples": [
+                "Fall 2027",
+                "2027/2028 Fall"
+              ]
+            },
+            "type": "array",
+            "maxItems": 36,
+            "title": "Built Terms",
+            "description": "Terms the student finished building (F1.9): they hold the student's locked courses and nothing else"
           },
           "exclude": {
             "items": {
@@ -5364,6 +5430,14 @@
             "maximum": 400.0,
             "exclusiveMinimum": 0.0,
             "title": "Total Units"
+          },
+          "standard_terms": {
+            "type": "integer",
+            "maximum": 14.0,
+            "minimum": 2.0,
+            "title": "Standard Terms",
+            "description": "Regular semesters of the standard degree (8 for a four-year major)",
+            "default": 8
           },
           "source": {
             "anyOf": [
@@ -6412,6 +6486,61 @@
         "type": "object",
         "title": "TableIn",
         "description": "Either text (CSV, or cells pasted from a spreadsheet) or an .xlsx file in base64."
+      },
+      "TermChoiceOut": {
+        "properties": {
+          "course": {
+            "$ref": "#/components/schemas/CourseRef"
+          },
+          "group_key": {
+            "type": "string",
+            "title": "Group Key"
+          },
+          "group_label": {
+            "type": "string",
+            "title": "Group Label"
+          },
+          "unlocks": {
+            "type": "integer",
+            "title": "Unlocks"
+          },
+          "advisories": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Advisories"
+          },
+          "take_with": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Take With"
+          },
+          "planned_for": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TermOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A later term the plan already has this course in; null when it is not in the plan"
+          }
+        },
+        "type": "object",
+        "required": [
+          "course",
+          "group_key",
+          "group_label",
+          "unlocks",
+          "advisories",
+          "take_with",
+          "planned_for"
+        ],
+        "title": "TermChoiceOut"
       },
       "TermGpaOut": {
         "properties": {

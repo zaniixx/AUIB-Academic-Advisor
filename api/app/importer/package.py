@@ -47,6 +47,8 @@ class ProgramMeta(BaseModel):
     sis_title: str | None = None
     catalog_year: str | None = None
     total_units: float = Field(gt=0, le=400)
+    # Regular semesters of the standard degree (eight for a four-year major).
+    standard_terms: int = Field(default=8, ge=2, le=14)
     source: str | None = None
     source_date: date | None = None
     published: bool = False
@@ -238,6 +240,7 @@ def build_program(package: ProgramPackage) -> Program:
         published=meta.published,
         family=meta.family or "",
         valid_from=Term.parse(meta.valid_from) if meta.valid_from else None,
+        standard_terms=meta.standard_terms,
     )
 
 

@@ -1,0 +1,104 @@
+[
+  {
+    "index": 0,
+    "title": "BS Anesthesia Technology",
+    "level": 0,
+    "parent": null,
+    "units_required": 123.0,
+    "courses": []
+  },
+  {
+    "index": 1,
+    "title": "Anesthesia Technology - Core liberal arts",
+    "level": 1,
+    "parent": "BS Anesthesia Technology",
+    "units_required": 42.0,
+    "courses": [
+      "UNI 101",
+      "ENL 101",
+      "ENL 201",
+      "ENL 210",
+      "BIO 101",
+      "CHE 105",
+      "CSC 101",
+      "MAT 101",
+      "HIS 101",
+      "HIS 102",
+      "HUM 101",
+      "PHI 101",
+      "PSY 101",
+      "SOC 101"
+    ]
+  },
+  {
+    "index": 2,
+    "title": "Anesthesia Technology - College requirements",
+    "level": 1,
+    "parent": "BS Anesthesia Technology",
+    "units_required": 19.0,
+    "courses": []
+  },
+  {
+    "index": 3,
+    "title": "Anesthesia Technology - Health sciences",
+    "level": 2,
+    "parent": "Anesthesia Technology - College requirements",
+    "units_required": 13.0,
+    "courses": [
+      "HCT 101",
+      "BIO 217",
+      "BIO 217L",
+      "BIO 218",
+      "BIO 210"
+    ]
+  },
+  {
+    "index": 4,
+    "title": "Anesthesia Technology - Technical electives",
+    "level": 2,
+    "parent": "Anesthesia Technology - College requirements",
+    "units_required": 6.0,
+    "courses": [
+      "HCT 480",
+      "HCT 481",
+      "HCT 482",
+      "HCT 483",
+      "HCT 485"
+    ]
+  },
+  {
+    "index": 5,
+    "title": "Anesthesia Technology - Core requirements",
+    "level": 1,
+    "parent": "BS Anesthesia Technology",
+    "units_required": 62.0,
+    "courses": [
+      "ANT 101",
+      "CHE 215",
+      "ANT 240",
+      "ANT 240L",
+      "ANT 245",
+      "ANT 295",
+      "ANT 320",
+      "ANT 320L",
+      "ANT 330",
+      "ANT 340",
+      "ANT 340L",
+      "ANT 343L",
+      "ANT 350",
+      "ANT 360",
+      "ANT 370",
+      "ANT 390",
+      "ANT 399",
+      "ANT 410",
+      "ANT 420",
+      "ANT 430L",
+      "ANT 455",
+      "ANT 460",
+      "ANT 460L",
+      "ANT 490",
+      "ANT 495",
+      "ANT 496"
+    ]
+  }
+]

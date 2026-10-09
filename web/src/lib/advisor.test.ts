@@ -12,6 +12,7 @@ import {
   pageStyle,
   planNotes,
   requirementRows,
+  suggestedNote,
   termDetail,
   unconfirmedNote,
 } from "./advisor";
@@ -61,6 +62,7 @@ const plan = {
       term: { label: "Spring 2027", year: 2027, season: "Spring" },
       units: 9,
       schedule_published: true,
+      built: true,
       items: [
         item({ code: "CSC 231", title: "Data Structure", reason: "Required: Major core courses", unlocks: 20 }),
         item({
@@ -84,6 +86,7 @@ const plan = {
       term: { label: "Summer 2027", year: 2027, season: "Summer" },
       units: 3,
       schedule_published: false,
+      built: false,
       items: [item({ code: "CSC 390", title: "Internship I in Computer Science", locked: true, reason: "You placed this course" })],
     },
   ],
@@ -209,6 +212,18 @@ describe("the rest of the document", () => {
     expect(unconfirmedNote("Summer 2027")).toBe(
       "Course offerings for Summer 2027 are not published yet, so it is not known whether these courses will " +
         "run. Check the schedule in SIS before registering.",
+    );
+  });
+
+  it("tells the terms the student chose from the app's suggestions (F1.9)", () => {
+    const rows = overviewRows(plan, inProgress);
+    expect(rows.map((row) => [row.label, row.chosen])).toEqual([
+      ["Fall 2026", true],
+      ["Spring 2027", true],
+      ["Summer 2027", false],
+    ]);
+    expect(suggestedNote("Summer 2027")).toBe(
+      "The app suggested these courses for Summer 2027; the student has not chosen them yet.",
     );
   });
 

@@ -44,7 +44,9 @@ test("a guest pastes their history and gets a plan", async ({ page }) => {
   await expectAccessible(page);
   await page.getByRole("link", { name: "Start planning" }).first().click();
 
-  await expect(page.getByLabel("Your major")).toHaveValue("casc-computer-science");
+  // With several majors none is chosen for the student.
+  await expect(page.getByLabel("Your major")).toHaveValue("");
+  await page.getByLabel("Your major").selectOption("casc-computer-science");
   await shots("1-program", page);
   await page.getByRole("button", { name: "Next", exact: true }).click();
 
@@ -67,7 +69,7 @@ test("a guest pastes their history and gets a plan", async ({ page }) => {
   await expect(page).toHaveURL(/\/plan$/);
   await expect(page.getByRole("region", { name: "Summary" }).getByText("Expected graduation", { exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Term by term" })).toBeVisible();
-  await expect(page.getByText("This term")).toBeVisible();
+  await expect(page.getByText("This term", { exact: true })).toBeVisible();
   // F1.8: with no published schedule, planned terms carry a quiet mark; its note shows only on demand.
   const mark = page.getByRole("button", { name: /^Course offerings for Spring \d{4} are not confirmed yet$/ }).first();
   await expect(page.getByRole("tooltip")).toHaveCount(0);
@@ -75,8 +77,27 @@ test("a guest pastes their history and gets a plan", async ({ page }) => {
   await expect(page.getByRole("tooltip")).toContainText("Check the schedule in SIS before you register.");
   await page.keyboard.press("Escape");
   await expect(page.getByRole("tooltip")).toHaveCount(0);
+  // F1.9: the student builds the next term from recommendations; later terms stay folded away.
+  const build = page.getByRole("region", { name: /^Build Spring \d{4}$/ });
+  await expect(build.getByText(/^Nothing here yet\./)).toBeVisible();
+  await expect(page.getByRole("region", { name: "Later terms" })).toBeVisible();
+  await expect(page.getByRole("list", { name: "Suggested later terms" })).toHaveCount(0);
   await expectAccessible(page);
   await shots("5-plan", page);
+  const add = build.getByRole("button", { name: /^Add [A-Z]{3} \d{3}[A-Z]? to / }).first();
+  const added = /^Add (.+) to /.exec((await add.getAttribute("aria-label")) ?? "")![1];
+  await add.click();
+  await expect(build.getByRole("button", { name: `Remove ${added} from Spring 2027` })).toBeVisible();
+  await expect(build.getByRole("meter", { name: "Credits chosen for this term" })).not.toHaveAttribute("aria-valuenow", "0");
+  await build.getByRole("button", { name: "Auto-fill Spring 2027" }).click();
+  await expect(build.getByText("You have added everything the app recommends for this term.")).toBeVisible();
+  await expectAccessible(page);
+  await shots("5e-term-built", page);
+  await build.getByRole("button", { name: "Done with Spring 2027" }).click();
+  const yours = page.getByRole("list", { name: "Your terms" });
+  await expect(yours.getByRole("heading", { name: "Spring 2027" })).toBeVisible();
+  await expect(yours.getByRole("button", { name: "Change Spring 2027" })).toBeVisible();
+  await expect(page.getByRole("region", { name: /^Build (Summer|Fall) 2027$/ })).toBeVisible();
 
   // GPA card: CGPA, then last term, then the retake that helps most.
   const gpa = page.getByRole("region", { name: "GPA" });
@@ -105,19 +126,19 @@ test("a guest pastes their history and gets a plan", async ({ page }) => {
   await expect(page.getByText(/^Needs first: .*CSC 230/)).toBeVisible();
   await shots("5b-map", page);
 
-  // Internships run in summer only.
+  // Internships run in summer only, so the suggested later terms hold a summer for the second one.
   await page.getByRole("tab", { name: "Plan", exact: true }).click();
-  const summer = page.locator("li", { has: page.getByRole("heading", { name: /^Summer \d{4}$/ }) }).first();
-  await expect(summer).toContainText("CSC 390");
+  await page.getByRole("button", { name: "Show the suggested terms" }).click();
+  const later = page.getByRole("list", { name: "Suggested later terms" });
+  const summer = later.locator("li", { has: page.getByRole("heading", { name: /^Summer \d{4}$/ }) }).first();
+  await expect(summer).toContainText(/CSC 39[01]/);
 
-  // "Replace with" swaps an elective for another course that fits the same term.
-  const replace = page.getByLabel(/^Replace with/).first();
+  // "Replace with" swaps an elective in a term the student built for another course that fits it.
+  const replace = yours.getByLabel(/^Replace with/).first();
   const choice = await replace.locator("option").nth(1).getAttribute("value");
   expect(choice).toBeTruthy();
   await replace.selectOption(choice!);
-  await expect(
-    page.locator("li").filter({ hasText: choice! }).filter({ hasText: "Kept here" }).first(),
-  ).toBeVisible();
+  await expect(yours.getByRole("link", { name: choice!, exact: true })).toBeVisible();
   await shots("5c-replaced", page);
 
   // Each course row opens for more options, including the what-if.
@@ -139,8 +160,17 @@ test("a guest pastes their history and gets a plan", async ({ page }) => {
   );
   await expect(page.getByLabel("Paper size")).toHaveValue("a4");
   await expect(page.getByText(/^Course offerings for .* are not published yet/)).toBeVisible();
-  // An open choice prints as a blank line to write the chosen course on.
+  // The term the student built prints as their choice. A term the app suggested says so, and its open
+  // choices print as a blank line to write the chosen course on.
+  await expect(page.getByText(/^The app suggested these courses for/)).toHaveCount(0);
+  const semester = page.getByLabel("Semester to discuss");
+  const lastTerm = (await semester.locator("option").last().textContent())!;
+  await semester.selectOption(lastTerm);
+  await expect(
+    page.getByText(`The app suggested these courses for ${lastTerm}; the student has not chosen them yet.`),
+  ).toBeVisible();
   await expect(page.getByText(/^Open choice for .*: write in the course$/).first()).toBeAttached();
+  await semester.selectOption({ index: 0 });
   // Every term at a glance is left out until the student adds it.
   await expect(page.getByRole("heading", { name: /Every term at a glance/ })).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "2. Advisor review" })).toBeVisible();
@@ -151,6 +181,8 @@ test("a guest pastes their history and gets a plan", async ({ page }) => {
   await overview.click();
   await expect(overview).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByRole("region", { name: "Courses by term" })).toContainText("CSC 390");
+  await expect(page.getByText("Chosen by the student")).toHaveCount(1); // only the term built above
+  await expect(page.getByText("Suggested by the app").first()).toBeVisible();
   await expect(page.getByRole("heading", { name: "3. Advisor review" })).toBeVisible();
   await expectAccessible(page);
   await shots("8b-advisor-document-all-terms", page);
@@ -171,6 +203,7 @@ test("a guest pastes their history and gets a plan", async ({ page }) => {
 
 test("a new student adds a minor and sees it in the plan and the advisor document", async ({ page }) => {
   await page.goto("/start");
+  await page.getByLabel("Your major").selectOption("casc-computer-science");
   await page.getByLabel("Minor (optional)").selectOption({ label: "Psychology" });
   await page.getByRole("button", { name: "Next", exact: true }).click();
   await page.getByRole("button", { name: "I'm a new student, skip" }).click();

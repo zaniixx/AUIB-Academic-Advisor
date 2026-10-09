@@ -28,6 +28,7 @@ export const DEFAULT_PREFERENCES: PreferencesIn = {
   include_summer: false,
   summer_max_units: 6,
   locks: [],
+  built_terms: [],
   exclude: [],
   include: [],
   interests: [],
