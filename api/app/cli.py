@@ -5,18 +5,25 @@ python -m app.cli import-courses [--courses FILE]
 python -m app.cli import ../data/programs/minor-psychology [--accept-warnings]
 python -m app.cli import-all [--only-if-empty | --only-new] [--accept-warnings]
 python -m app.cli export-openapi ../web/openapi.json
+python -m app.cli backup-export backup.aab | backup-inspect backup.aab | backup-restore backup.aab --yes
 
 The course catalog (data/catalog/courses.json by default) is shared by every program.
 "validate" checks it and then each program against it; "import" and "import-all"
 import it first, so a program is always checked against the latest courses.
+
+Backups are encrypted (see app/services/backup.py). The passphrase is read from
+ADVISOR_BACKUP_PASSPHRASE, or asked for when that is not set.
 """
 
 from __future__ import annotations
 
 import argparse
+import getpass
 import json
+import os
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from app.importer.load import ImportResult, import_courses, import_package
 from app.importer.package import (
@@ -28,6 +35,9 @@ from app.importer.package import (
     load_package,
 )
 from app.importer.validate import Severity, ValidationReport, validate_courses, validate_package
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session, sessionmaker
 
 
 def _print_report(report: ValidationReport, verbose: bool) -> None:
@@ -120,7 +130,12 @@ def _import(paths: list[Path], args: argparse.Namespace, *, only_new: bool = Fal
         publish = None if args.publish is None else args.publish == "yes"
         for package in packages:
             result = import_package(
-                session, package, actor=args.actor, publish=publish, accept_warnings=args.accept_warnings
+                session,
+                package,
+                actor=args.actor,
+                publish=publish,
+                accept_warnings=args.accept_warnings,
+                replace_admin_edits=args.replace_admin_edits,
             )
             _print_result(result, args.verbose)
             failed = failed or result.status != "imported"
@@ -161,6 +176,92 @@ def cmd_export_openapi(args: argparse.Namespace) -> int:
     return 0
 
 
+def _passphrase(confirm: bool) -> str:
+    from_env = os.environ.get("ADVISOR_BACKUP_PASSPHRASE")
+    if from_env:
+        return from_env
+    first = getpass.getpass("Backup passphrase: ")
+    if confirm and getpass.getpass("Same passphrase again: ") != first:
+        raise SystemExit("The passphrases do not match.")
+    return first
+
+
+def _session_factory() -> sessionmaker[Session]:
+    from app.db import make_engine, make_session_factory
+    from app.settings import get_settings
+
+    return make_session_factory(make_engine(get_settings().database_url))
+
+
+def cmd_backup_export(args: argparse.Namespace) -> int:
+    from app.models import AuditLogRow
+    from app.services.backup import BackupError, make_backup
+
+    with _session_factory()() as session:
+        try:
+            blob, counts = make_backup(session, _passphrase(confirm=True))
+        except BackupError as error:
+            print(error)
+            return 1
+        session.add(
+            AuditLogRow(actor=args.actor, action="backup.export", target="database", detail={"rows": counts})
+        )
+        session.commit()
+    Path(args.output).write_bytes(blob)
+    print(f"Wrote {args.output} ({len(blob):,} bytes): " + ", ".join(f"{k}={v}" for k, v in counts.items()))
+    return 0
+
+
+def _read_backup(path: str) -> dict[str, object] | None:
+    from app.services.backup import BackupError, read_backup
+
+    try:
+        return read_backup(Path(path).read_bytes(), _passphrase(confirm=False))
+    except (BackupError, OSError) as error:
+        print(error)
+        return None
+
+
+def cmd_backup_inspect(args: argparse.Namespace) -> int:
+    data = _read_backup(args.file)
+    if data is None:
+        return 1
+    tables = data["tables"]
+    assert isinstance(tables, dict)
+    print(f"Made {data['created_at']} by version {data['app_version']} (schema {data['schema_revision']})")
+    print("  " + ", ".join(f"{name}={len(rows)}" for name, rows in tables.items()))
+    return 0
+
+
+def cmd_backup_restore(args: argparse.Namespace) -> int:
+    from app.models import AuditLogRow
+    from app.services.backup import BackupError, restore_data
+
+    if not args.yes:
+        print("Restoring replaces every table in the database. Run again with --yes to go ahead.")
+        return 1
+    data = _read_backup(args.file)
+    if data is None:
+        return 1
+    with _session_factory()() as session:
+        try:
+            counts = restore_data(session, data)
+        except BackupError as error:
+            print(error)
+            return 1
+        session.add(
+            AuditLogRow(
+                actor=args.actor,
+                action="backup.restore",
+                target="database",
+                detail={"rows": counts, "made": data["created_at"]},
+            )
+        )
+        session.commit()
+    print("Restored: " + ", ".join(f"{k}={v}" for k, v in counts.items()))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="python -m app.cli", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -183,6 +284,11 @@ def main(argv: list[str] | None = None) -> int:
         sub.add_argument("--publish", choices=("yes", "no"), help="Override the package's published flag")
         sub.add_argument(
             "--accept-warnings", action="store_true", help="Publish even if validation has warnings"
+        )
+        sub.add_argument(
+            "--replace-admin-edits",
+            action="store_true",
+            help="Replace programs that were edited in the admin page with the package",
         )
         sub.add_argument("--actor", default="cli", help="Name recorded in the audit log")
         sub.add_argument("--verbose", action="store_true")
@@ -213,6 +319,23 @@ def main(argv: list[str] | None = None) -> int:
     openapi = commands.add_parser("export-openapi", help="Write the OpenAPI schema for the web client")
     openapi.add_argument("output")
     openapi.set_defaults(func=cmd_export_openapi)
+
+    backup_export = commands.add_parser("backup-export", help="Write an encrypted backup of the database")
+    backup_export.add_argument("output")
+    backup_export.add_argument("--actor", default="cli", help="Name recorded in the audit log")
+    backup_export.set_defaults(func=cmd_backup_export)
+
+    backup_inspect = commands.add_parser("backup-inspect", help="Decrypt a backup and show what it holds")
+    backup_inspect.add_argument("file")
+    backup_inspect.set_defaults(func=cmd_backup_inspect)
+
+    backup_restore = commands.add_parser(
+        "backup-restore", help="Replace the database's contents with an encrypted backup"
+    )
+    backup_restore.add_argument("file")
+    backup_restore.add_argument("--yes", action="store_true", help="Confirm replacing every table")
+    backup_restore.add_argument("--actor", default="cli", help="Name recorded in the audit log")
+    backup_restore.set_defaults(func=cmd_backup_restore)
 
     args = parser.parse_args(argv)
     result: int = args.func(args)

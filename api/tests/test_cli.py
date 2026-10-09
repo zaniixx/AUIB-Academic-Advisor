@@ -4,7 +4,7 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 
 from app import cli
 from app.domain.terms import Season
@@ -120,3 +120,32 @@ def test_catalog_is_shared_and_names_no_program() -> None:
     assert len(raw) == 626
     assert not any("requirements" in course for course in raw.values())
     assert not (CS_PACKAGE / "courses.json").exists()
+
+
+def test_a_package_can_be_a_new_version_of_a_program(database: str, tmp_path: Path) -> None:
+    assert cli.main(["import", str(CS_PACKAGE), "--accept-warnings"]) == 0
+    version = tmp_path / "casc-computer-science-2027"
+    shutil.copytree(CS_PACKAGE, version)
+    meta = json.loads((version / "program.json").read_text(encoding="utf-8"))
+    meta.update(id="casc-computer-science-2027", family="casc-computer-science", valid_from="2027/2028 Fall")
+    (version / "program.json").write_text(json.dumps(meta), encoding="utf-8")
+    assert cli.main(["import", str(version), "--accept-warnings"]) == 0
+
+    engine = create_engine(database)
+    with engine.connect() as connection:
+        rows = connection.execute(
+            text(
+                "SELECT id, family, valid_from FROM programs WHERE id LIKE 'casc-computer-science%' ORDER BY id"
+            )
+        ).all()
+    engine.dispose()
+    assert [tuple(row) for row in rows] == [
+        ("casc-computer-science", None, None),
+        ("casc-computer-science-2027", "casc-computer-science", "Fall 2027"),
+    ]
+    # The same first term twice is refused.
+    clash = tmp_path / "clash"
+    shutil.copytree(version, clash)
+    meta.update(id="casc-computer-science-2027b")
+    (clash / "program.json").write_text(json.dumps(meta), encoding="utf-8")
+    assert cli.main(["import", str(clash), "--accept-warnings"]) == 1

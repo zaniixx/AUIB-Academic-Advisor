@@ -74,7 +74,7 @@
         "tags": [
           "catalog"
         ],
-        "summary": "Published programs (F11.2)",
+        "summary": "Published programs, one entry per program with its versions (F11.2, F0.4)",
         "operationId": "programs_api_v1_programs_get",
         "parameters": [
           {
@@ -557,6 +557,47 @@
         }
       }
     },
+    "/api/v1/planner/gpa": {
+      "post": {
+        "tags": [
+          "planner"
+        ],
+        "summary": "Project the CGPA from expected grades, or the grades a target CGPA needs (F7.2, F7.3)",
+        "operationId": "gpa_plan_api_v1_planner_gpa_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GpaPlanIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GpaPlanOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/admin/rules": {
       "get": {
         "tags": [
@@ -743,6 +784,44 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "admin: catalog"
+        ],
+        "summary": "Delete a rule an admin added",
+        "operationId": "delete_rule_api_v1_admin_rules__rule_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "rule_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Rule Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
           },
           "422": {
             "description": "Validation Error",
@@ -958,10 +1037,1484 @@
           }
         }
       }
+    },
+    "/api/v1/admin/courses": {
+      "get": {
+        "tags": [
+          "admin: catalog"
+        ],
+        "summary": "Every course, including hidden ones and ones added here",
+        "operationId": "list_courses_api_v1_admin_courses_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "show",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "all",
+                "hidden",
+                "edited",
+                "admin",
+                "source_changed"
+              ],
+              "type": "string",
+              "default": "all",
+              "title": "Show"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 60
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminCourseListOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "admin: catalog"
+        ],
+        "summary": "Add a course by hand",
+        "operationId": "create_course_api_v1_admin_courses_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CourseCreateIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminCourseOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/courses/{code}": {
+      "get": {
+        "tags": [
+          "admin: catalog"
+        ],
+        "summary": "A course with its rules, the requirements it counts toward and its sections",
+        "operationId": "course_detail_api_v1_admin_courses__code__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Code"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminCourseOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "admin: catalog"
+        ],
+        "summary": "Edit a course; later imports keep the edit",
+        "operationId": "update_course_api_v1_admin_courses__code__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Code"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CourseFieldsIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminCourseOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/courses/{code}/revert": {
+      "post": {
+        "tags": [
+          "admin: catalog"
+        ],
+        "summary": "Drop the admin's edit and use the values from the course files",
+        "operationId": "revert_course_api_v1_admin_courses__code__revert_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Code"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminCourseOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/courses/{code}/hidden": {
+      "put": {
+        "tags": [
+          "admin: catalog"
+        ],
+        "summary": "Hide a course from students and plans, or show it again",
+        "operationId": "hide_course_api_v1_admin_courses__code__hidden_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Code"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HiddenIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminCourseSummaryOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/courses/{code}/rules": {
+      "post": {
+        "tags": [
+          "admin: catalog"
+        ],
+        "summary": "Add a prerequisite or corequisite rule that the description does not state",
+        "operationId": "add_rule_api_v1_admin_courses__code__rules_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Code"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RuleCreateIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminRuleOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/courses/bulk": {
+      "post": {
+        "tags": [
+          "admin: catalog"
+        ],
+        "summary": "Add or update many courses from a CSV, a spreadsheet paste or an .xlsx sheet",
+        "description": "With dry_run (the default) nothing is saved: the answer previews every row. Saving is all or nothing, and only when no row has a problem. Blank cells keep the current value.",
+        "operationId": "bulk_courses_api_v1_admin_courses_bulk_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TableIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CourseBulkOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/programs": {
+      "get": {
+        "tags": [
+          "admin: catalog"
+        ],
+        "summary": "Every major and minor, including hidden and unpublished ones",
+        "operationId": "list_programs_api_v1_admin_programs_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AdminProgramSummaryOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Programs Api V1 Admin Programs Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "admin: catalog"
+        ],
+        "summary": "Add a major or minor by hand",
+        "operationId": "create_program_api_v1_admin_programs_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProgramDraftIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgramSaveOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/programs/{program_id}": {
+      "get": {
+        "tags": [
+          "admin: catalog"
+        ],
+        "summary": "A program's requirement tree, ready to edit",
+        "operationId": "program_detail_api_v1_admin_programs__program_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "program_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Program Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProgramOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "admin: catalog"
+        ],
+        "summary": "Replace a program's details and requirement tree",
+        "operationId": "update_program_api_v1_admin_programs__program_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "program_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Program Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProgramDraftIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgramSaveOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/programs/check": {
+      "post": {
+        "tags": [
+          "admin: catalog"
+        ],
+        "summary": "Check a draft program without saving it",
+        "operationId": "check_program_api_v1_admin_programs_check_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProgramDraftIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgramCheckOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/programs/{program_id}/hidden": {
+      "put": {
+        "tags": [
+          "admin: catalog"
+        ],
+        "summary": "Hide a major or minor from students, or show it again",
+        "operationId": "hide_program_api_v1_admin_programs__program_id__hidden_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "program_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Program Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HiddenIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminProgramSummaryOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/schedules": {
+      "get": {
+        "tags": [
+          "admin: catalog"
+        ],
+        "summary": "Published term schedules, newest first",
+        "operationId": "list_schedules_api_v1_admin_schedules_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ScheduleSummaryOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Schedules Api V1 Admin Schedules Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "admin: catalog"
+        ],
+        "summary": "Publish a term's course schedule from a CSV, a spreadsheet paste or an .xlsx sheet",
+        "description": "The term's schedule is replaced by the uploaded one. Rows for courses that are not in the catalog are skipped and listed. With dry_run (the default) nothing is saved.",
+        "operationId": "upload_schedule_api_v1_admin_schedules_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ScheduleUploadIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleUploadOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/schedules/{year}/{season}": {
+      "get": {
+        "tags": [
+          "admin: catalog"
+        ],
+        "summary": "A term's schedule, section by section",
+        "operationId": "schedule_detail_api_v1_admin_schedules__year___season__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "year",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 2100,
+              "minimum": 2000,
+              "title": "Year"
+            }
+          },
+          {
+            "name": "season",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "spring",
+                "summer",
+                "fall"
+              ],
+              "type": "string",
+              "title": "Season"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScheduleOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "admin: catalog"
+        ],
+        "summary": "Remove a term's schedule; that term is planned by season again",
+        "operationId": "delete_schedule_api_v1_admin_schedules__year___season__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "year",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Year"
+            }
+          },
+          {
+            "name": "season",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "spring",
+                "summer",
+                "fall"
+              ],
+              "type": "string",
+              "title": "Season"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/backup": {
+      "post": {
+        "tags": [
+          "admin: catalog"
+        ],
+        "summary": "Download an encrypted backup of the whole database",
+        "description": "AES-256-GCM, with the key derived from the passphrase (scrypt). The passphrase is not stored anywhere: without it the backup cannot be read or restored.",
+        "operationId": "backup_api_v1_admin_backup_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BackupIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The encrypted backup",
+            "content": {
+              "application/octet-stream": {}
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/restore/check": {
+      "post": {
+        "tags": [
+          "admin: catalog"
+        ],
+        "summary": "Open an uploaded backup and compare it with the data now, without changing anything",
+        "operationId": "check_restore_api_v1_admin_restore_check_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RestoreFileIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackupCheckOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/restore": {
+      "post": {
+        "tags": [
+          "admin: catalog"
+        ],
+        "summary": "Restore the data from an uploaded backup",
+        "description": "Replaces courses, rules, programs, term schedules and import history with the backup's, in one transaction. The audit log is kept and records the restore. The data from just before the restore is returned as an encrypted backup (same passphrase), so the restore can be undone.",
+        "operationId": "restore_api_v1_admin_restore_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RestoreIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RestoreOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
     }
   },
   "components": {
     "schemas": {
+      "AdminCourseListOut": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Counts"
+          },
+          "courses": {
+            "items": {
+              "$ref": "#/components/schemas/AdminCourseSummaryOut"
+            },
+            "type": "array",
+            "title": "Courses"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "counts",
+          "courses"
+        ],
+        "title": "AdminCourseListOut"
+      },
+      "AdminCourseOut": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "units": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Units"
+          },
+          "hidden": {
+            "type": "boolean",
+            "title": "Hidden"
+          },
+          "admin_edited": {
+            "type": "boolean",
+            "title": "Admin Edited"
+          },
+          "source_changed": {
+            "type": "boolean",
+            "title": "Source Changed"
+          },
+          "origin": {
+            "type": "string",
+            "enum": [
+              "import",
+              "admin"
+            ],
+            "title": "Origin"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "component": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Component"
+          },
+          "notices": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Notices"
+          },
+          "offered_terms": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Offered Terms"
+          },
+          "imported_values": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Imported Values",
+            "description": "The values from the course files, kept while an admin edit is in force"
+          },
+          "rules": {
+            "items": {
+              "$ref": "#/components/schemas/AdminRuleOut"
+            },
+            "type": "array",
+            "title": "Rules"
+          },
+          "counts_toward": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Counts Toward"
+          },
+          "offerings": {
+            "items": {
+              "$ref": "#/components/schemas/TermOfferingsOut"
+            },
+            "type": "array",
+            "title": "Offerings"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "title",
+          "units",
+          "hidden",
+          "admin_edited",
+          "source_changed",
+          "origin",
+          "description",
+          "component",
+          "notices",
+          "offered_terms",
+          "imported_values",
+          "rules",
+          "counts_toward",
+          "offerings"
+        ],
+        "title": "AdminCourseOut"
+      },
+      "AdminCourseSummaryOut": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "units": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Units"
+          },
+          "hidden": {
+            "type": "boolean",
+            "title": "Hidden"
+          },
+          "admin_edited": {
+            "type": "boolean",
+            "title": "Admin Edited"
+          },
+          "source_changed": {
+            "type": "boolean",
+            "title": "Source Changed"
+          },
+          "origin": {
+            "type": "string",
+            "enum": [
+              "import",
+              "admin"
+            ],
+            "title": "Origin"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "title",
+          "units",
+          "hidden",
+          "admin_edited",
+          "source_changed",
+          "origin"
+        ],
+        "title": "AdminCourseSummaryOut"
+      },
+      "AdminProgramOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "catalog_year": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Catalog Year"
+          },
+          "total_units": {
+            "type": "number",
+            "title": "Total Units"
+          },
+          "published": {
+            "type": "boolean",
+            "title": "Published"
+          },
+          "hidden": {
+            "type": "boolean",
+            "title": "Hidden"
+          },
+          "origin": {
+            "type": "string",
+            "enum": [
+              "import",
+              "admin"
+            ],
+            "title": "Origin"
+          },
+          "admin_edited": {
+            "type": "boolean",
+            "title": "Admin Edited"
+          },
+          "groups": {
+            "type": "integer",
+            "title": "Groups"
+          },
+          "family": {
+            "type": "string",
+            "title": "Family",
+            "description": "The program this is a version of (its own id for a first version)"
+          },
+          "valid_from": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid From",
+            "description": "Applies to students who joined from this term"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "source_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Date"
+          },
+          "root": {
+            "$ref": "#/components/schemas/GroupDraftOut"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "catalog_year",
+          "total_units",
+          "published",
+          "hidden",
+          "origin",
+          "admin_edited",
+          "groups",
+          "family",
+          "valid_from",
+          "source",
+          "source_date",
+          "root"
+        ],
+        "title": "AdminProgramOut"
+      },
+      "AdminProgramSummaryOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "catalog_year": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Catalog Year"
+          },
+          "total_units": {
+            "type": "number",
+            "title": "Total Units"
+          },
+          "published": {
+            "type": "boolean",
+            "title": "Published"
+          },
+          "hidden": {
+            "type": "boolean",
+            "title": "Hidden"
+          },
+          "origin": {
+            "type": "string",
+            "enum": [
+              "import",
+              "admin"
+            ],
+            "title": "Origin"
+          },
+          "admin_edited": {
+            "type": "boolean",
+            "title": "Admin Edited"
+          },
+          "groups": {
+            "type": "integer",
+            "title": "Groups"
+          },
+          "family": {
+            "type": "string",
+            "title": "Family",
+            "description": "The program this is a version of (its own id for a first version)"
+          },
+          "valid_from": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid From",
+            "description": "Applies to students who joined from this term"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "catalog_year",
+          "total_units",
+          "published",
+          "hidden",
+          "origin",
+          "admin_edited",
+          "groups",
+          "family",
+          "valid_from"
+        ],
+        "title": "AdminProgramSummaryOut"
+      },
       "AdminRuleListOut": {
         "properties": {
           "total": {
@@ -1230,11 +2783,126 @@
         ],
         "title": "AuditOut"
       },
+      "BackupCheckOut": {
+        "properties": {
+          "created_at": {
+            "type": "string",
+            "title": "Created At"
+          },
+          "app_version": {
+            "type": "string",
+            "title": "App Version"
+          },
+          "schema_revision": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Schema Revision"
+          },
+          "restorable": {
+            "type": "boolean",
+            "title": "Restorable"
+          },
+          "problem": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Problem",
+            "description": "Why it cannot be restored here, if it cannot"
+          },
+          "tables": {
+            "items": {
+              "$ref": "#/components/schemas/BackupTableOut"
+            },
+            "type": "array",
+            "title": "Tables"
+          }
+        },
+        "type": "object",
+        "required": [
+          "created_at",
+          "app_version",
+          "schema_revision",
+          "restorable",
+          "problem",
+          "tables"
+        ],
+        "title": "BackupCheckOut"
+      },
+      "BackupFileOut": {
+        "properties": {
+          "filename": {
+            "type": "string",
+            "title": "Filename"
+          },
+          "data_base64": {
+            "type": "string",
+            "title": "Data Base64"
+          }
+        },
+        "type": "object",
+        "required": [
+          "filename",
+          "data_base64"
+        ],
+        "title": "BackupFileOut"
+      },
+      "BackupIn": {
+        "properties": {
+          "passphrase": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 12,
+            "title": "Passphrase",
+            "description": "Needed to read the backup; not stored"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "passphrase"
+        ],
+        "title": "BackupIn"
+      },
+      "BackupTableOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "in_backup": {
+            "type": "integer",
+            "title": "In Backup"
+          },
+          "now": {
+            "type": "integer",
+            "title": "Now"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "in_backup",
+          "now"
+        ],
+        "title": "BackupTableOut"
+      },
       "CatalogInfoOut": {
         "properties": {
           "program_id": {
             "type": "string",
-            "title": "Program Id"
+            "title": "Program Id",
+            "description": "The version of the major this plan follows"
           },
           "program_name": {
             "type": "string",
@@ -1276,6 +2944,56 @@
           "revision": {
             "type": "integer",
             "title": "Revision"
+          },
+          "family_id": {
+            "type": "string",
+            "title": "Family Id",
+            "description": "The program, whichever version"
+          },
+          "valid_from": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid From"
+          },
+          "entry_term": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entry Term",
+            "description": "The term the student joined AUIB, as the plan understood it"
+          },
+          "version_choice": {
+            "type": "string",
+            "enum": [
+              "only",
+              "joined",
+              "chosen",
+              "earliest"
+            ],
+            "title": "Version Choice"
+          },
+          "version_note": {
+            "type": "string",
+            "title": "Version Note",
+            "description": "Which requirements apply to this student and why"
+          },
+          "versions": {
+            "items": {
+              "$ref": "#/components/schemas/ProgramVersionOut"
+            },
+            "type": "array",
+            "title": "Versions"
           }
         },
         "type": "object",
@@ -1285,7 +3003,13 @@
           "catalog_year",
           "source",
           "source_date",
-          "revision"
+          "revision",
+          "family_id",
+          "valid_from",
+          "entry_term",
+          "version_choice",
+          "version_note",
+          "versions"
         ],
         "title": "CatalogInfoOut"
       },
@@ -1352,6 +3076,224 @@
           "state"
         ],
         "title": "CountedCourseOut"
+      },
+      "CourseBulkOut": {
+        "properties": {
+          "applied": {
+            "type": "boolean",
+            "title": "Applied"
+          },
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Counts"
+          },
+          "columns": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Columns",
+            "description": "Columns that were recognised"
+          },
+          "ignored_columns": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Ignored Columns"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/RowOut"
+            },
+            "type": "array",
+            "title": "Rows",
+            "description": "Every row that creates, changes or has a problem"
+          }
+        },
+        "type": "object",
+        "required": [
+          "applied",
+          "counts",
+          "columns",
+          "ignored_columns",
+          "rows"
+        ],
+        "title": "CourseBulkOut"
+      },
+      "CourseCreateIn": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "units": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 30.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Units",
+            "description": "None: planning assumes 3"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 20000,
+            "title": "Description",
+            "default": ""
+          },
+          "component": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 60
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Component"
+          },
+          "offered_terms": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "fall",
+                    "spring",
+                    "summer"
+                  ]
+                },
+                "type": "array",
+                "maxItems": 3
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Offered Terms",
+            "description": "Seasons it runs in; null or empty means every Fall and Spring"
+          },
+          "notices": {
+            "items": {
+              "type": "string",
+              "maxLength": 300
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Notices"
+          },
+          "code": {
+            "type": "string",
+            "maxLength": 16,
+            "minLength": 5,
+            "title": "Code",
+            "examples": [
+              "CSC 231"
+            ]
+          },
+          "hidden": {
+            "type": "boolean",
+            "title": "Hidden",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "title",
+          "code"
+        ],
+        "title": "CourseCreateIn"
+      },
+      "CourseFieldsIn": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Title"
+          },
+          "units": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 30.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Units",
+            "description": "None: planning assumes 3"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 20000,
+            "title": "Description",
+            "default": ""
+          },
+          "component": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 60
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Component"
+          },
+          "offered_terms": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "fall",
+                    "spring",
+                    "summer"
+                  ]
+                },
+                "type": "array",
+                "maxItems": 3
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Offered Terms",
+            "description": "Seasons it runs in; null or empty means every Fall and Spring"
+          },
+          "notices": {
+            "items": {
+              "type": "string",
+              "maxLength": 300
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Notices"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "title"
+        ],
+        "title": "CourseFieldsIn"
       },
       "CourseListOut": {
         "properties": {
@@ -1448,6 +3390,14 @@
             },
             "type": "array",
             "title": "Groups"
+          },
+          "offerings": {
+            "items": {
+              "$ref": "#/components/schemas/TermOfferingsOut"
+            },
+            "type": "array",
+            "title": "Offerings",
+            "description": "Sections on published schedules, this term onward"
           }
         },
         "type": "object",
@@ -1564,6 +3514,79 @@
         ],
         "title": "EligibleOut"
       },
+      "ExpectedGradeIn": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "maxLength": 16,
+            "minLength": 5,
+            "title": "Code",
+            "examples": [
+              "CSC 231"
+            ]
+          },
+          "grade": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "A",
+                  "A-",
+                  "B+",
+                  "B",
+                  "B-",
+                  "C+",
+                  "C",
+                  "C-",
+                  "D+",
+                  "D",
+                  "D-",
+                  "F"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grade",
+            "description": "The grade expected; empty if unsure"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code"
+        ],
+        "title": "ExpectedGradeIn"
+      },
+      "FindingOut": {
+        "properties": {
+          "severity": {
+            "type": "string",
+            "enum": [
+              "error",
+              "warning",
+              "info"
+            ],
+            "title": "Severity"
+          },
+          "where": {
+            "type": "string",
+            "title": "Where"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "severity",
+          "where",
+          "message"
+        ],
+        "title": "FindingOut"
+      },
       "GatewayOut": {
         "properties": {
           "course": {
@@ -1634,6 +3657,345 @@
         ],
         "title": "GpaOut",
         "description": "Cumulative GPA, the last graded term's GPA and the retakes that would raise the CGPA most (F7)."
+      },
+      "GpaPlanIn": {
+        "properties": {
+          "program_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 2,
+            "title": "Program Id"
+          },
+          "minor_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minor Id"
+          },
+          "attempts": {
+            "items": {
+              "$ref": "#/components/schemas/AttemptIn"
+            },
+            "type": "array",
+            "maxItems": 300,
+            "title": "Attempts"
+          },
+          "preferences": {
+            "$ref": "#/components/schemas/PreferencesIn"
+          },
+          "entry_term": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40,
+                "minLength": 6,
+                "examples": [
+                  "Fall 2027",
+                  "2027/2028 Fall"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entry Term",
+            "description": "The term the student joined AUIB; worked out from the course history if empty"
+          },
+          "program_version": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Program Version",
+            "description": "A specific version of the major, when the registrar approved a move to it (F0.4)"
+          },
+          "courses": {
+            "items": {
+              "$ref": "#/components/schemas/ExpectedGradeIn"
+            },
+            "type": "array",
+            "maxItems": 40,
+            "title": "Courses"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 4.0,
+                "exclusiveMinimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "program_id"
+        ],
+        "title": "GpaPlanIn",
+        "description": "Courses to project (F7.2) and, optionally, a target CGPA to work back from (F7.3)."
+      },
+      "GpaPlanOut": {
+        "properties": {
+          "current": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current"
+          },
+          "projected": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projected",
+            "description": "The CGPA with the expected grades; null when none is given"
+          },
+          "courses_gpa": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Courses Gpa",
+            "description": "The GPA of the courses with an expected grade alone"
+          },
+          "graded_credits": {
+            "type": "number",
+            "title": "Graded Credits"
+          },
+          "target": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GpaTargetOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "assumptions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Assumptions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "current",
+          "projected",
+          "courses_gpa",
+          "graded_credits",
+          "target",
+          "assumptions"
+        ],
+        "title": "GpaPlanOut"
+      },
+      "GpaTargetOut": {
+        "properties": {
+          "target": {
+            "type": "number",
+            "title": "Target"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "met",
+              "reachable",
+              "out_of_reach",
+              "no_courses"
+            ],
+            "title": "Status",
+            "description": "met: reached whatever the open courses' grades; out_of_reach: not even with A's"
+          },
+          "average_needed": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Average Needed",
+            "description": "Grade points per credit the open courses must average"
+          },
+          "grade_needed": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Grade Needed",
+            "description": "The lowest letter grade at or above that average"
+          },
+          "open_credits": {
+            "type": "number",
+            "title": "Open Credits",
+            "description": "Credits of the courses without an expected grade"
+          },
+          "best_possible": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Best Possible",
+            "description": "The CGPA with an A in every open course"
+          }
+        },
+        "type": "object",
+        "required": [
+          "target",
+          "status",
+          "average_needed",
+          "grade_needed",
+          "open_credits",
+          "best_possible"
+        ],
+        "title": "GpaTargetOut"
+      },
+      "GroupDraftIn": {
+        "properties": {
+          "label": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Label",
+            "description": "The name students see"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title",
+            "description": "The SIS title, if different"
+          },
+          "role": {
+            "$ref": "#/components/schemas/GroupRole",
+            "default": "other"
+          },
+          "units_required": {
+            "type": "number",
+            "maximum": 400.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Units Required"
+          },
+          "courses": {
+            "items": {
+              "type": "string",
+              "maxLength": 16
+            },
+            "type": "array",
+            "maxItems": 2000,
+            "title": "Courses",
+            "description": "Course codes; leave empty when it has sub-groups"
+          },
+          "children": {
+            "items": {
+              "$ref": "#/components/schemas/GroupDraftIn"
+            },
+            "type": "array",
+            "maxItems": 60,
+            "title": "Children"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "label",
+          "units_required"
+        ],
+        "title": "GroupDraftIn"
+      },
+      "GroupDraftOut": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "title": "Key"
+          },
+          "label": {
+            "type": "string",
+            "title": "Label"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "role": {
+            "$ref": "#/components/schemas/GroupRole"
+          },
+          "units_required": {
+            "type": "number",
+            "title": "Units Required"
+          },
+          "courses": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Courses"
+          },
+          "children": {
+            "items": {
+              "$ref": "#/components/schemas/GroupDraftOut"
+            },
+            "type": "array",
+            "title": "Children"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key",
+          "label",
+          "title",
+          "role",
+          "units_required",
+          "courses",
+          "children"
+        ],
+        "title": "GroupDraftOut"
       },
       "GroupOut": {
         "properties": {
@@ -1753,6 +4115,17 @@
         ],
         "title": "GroupProgressOut"
       },
+      "GroupRole": {
+        "type": "string",
+        "enum": [
+          "core",
+          "general_education",
+          "major_elective",
+          "free_elective",
+          "other"
+        ],
+        "title": "GroupRole"
+      },
       "GroupSuggestionsOut": {
         "properties": {
           "group_key": {
@@ -1810,6 +4183,20 @@
           "status"
         ],
         "title": "HealthOut"
+      },
+      "HiddenIn": {
+        "properties": {
+          "hidden": {
+            "type": "boolean",
+            "title": "Hidden"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "hidden"
+        ],
+        "title": "HiddenIn"
       },
       "HistoryParseIn": {
         "properties": {
@@ -2353,6 +4740,18 @@
             ],
             "title": "Source Date"
           },
+          "valid_from": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid From",
+            "description": "The minor version's first entry term (F0.4)"
+          },
           "progress": {
             "$ref": "#/components/schemas/ProgressOut"
           },
@@ -2372,6 +4771,49 @@
         ],
         "title": "MinorPlanOut",
         "description": "The minor the student chose: its requirements now and once the plan is done.\n\nA course can count toward the major and the minor at the same time."
+      },
+      "OfferingOut": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "section": {
+            "type": "string",
+            "title": "Section"
+          },
+          "days": {
+            "type": "string",
+            "title": "Days"
+          },
+          "time": {
+            "type": "string",
+            "title": "Time"
+          },
+          "instructor": {
+            "type": "string",
+            "title": "Instructor"
+          },
+          "room": {
+            "type": "string",
+            "title": "Room"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "title",
+          "section",
+          "days",
+          "time",
+          "instructor",
+          "room"
+        ],
+        "title": "OfferingOut"
       },
       "OptionOut": {
         "properties": {
@@ -2648,13 +5090,19 @@
             },
             "type": "array",
             "title": "Items"
+          },
+          "schedule_published": {
+            "type": "boolean",
+            "title": "Schedule Published",
+            "description": "True when the courses were checked against the registrar's published schedule for this term (F1.8); otherwise it is not known yet whether they will be offered"
           }
         },
         "type": "object",
         "required": [
           "term",
           "units",
-          "items"
+          "items",
+          "schedule_published"
         ],
         "title": "PlannedTermOut"
       },
@@ -2770,6 +5218,35 @@
         "type": "object",
         "title": "PreferencesIn"
       },
+      "ProgramCheckOut": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/FindingOut"
+            },
+            "type": "array",
+            "title": "Findings"
+          },
+          "stats": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Stats"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ok",
+          "findings",
+          "stats"
+        ],
+        "title": "ProgramCheckOut"
+      },
       "ProgramDetailOut": {
         "properties": {
           "id": {
@@ -2821,6 +5298,14 @@
             ],
             "title": "Source Date"
           },
+          "versions": {
+            "items": {
+              "$ref": "#/components/schemas/ProgramVersionOut"
+            },
+            "type": "array",
+            "title": "Versions",
+            "description": "Every version of the program, oldest first (F0.4)"
+          },
           "root": {
             "$ref": "#/components/schemas/GroupOut"
           }
@@ -2837,6 +5322,165 @@
           "root"
         ],
         "title": "ProgramDetailOut"
+      },
+      "ProgramDraftIn": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]{1,62}$",
+            "title": "Id",
+            "examples": [
+              "casc-computer-science"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "major",
+              "minor"
+            ],
+            "title": "Kind"
+          },
+          "catalog_year": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 20
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Catalog Year"
+          },
+          "total_units": {
+            "type": "number",
+            "maximum": 400.0,
+            "exclusiveMinimum": 0.0,
+            "title": "Total Units"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 300
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "source_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Date"
+          },
+          "published": {
+            "type": "boolean",
+            "title": "Published",
+            "default": false
+          },
+          "accept_warnings": {
+            "type": "boolean",
+            "title": "Accept Warnings",
+            "description": "Publish even though the check found warnings",
+            "default": false
+          },
+          "family": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9-]{1,62}$",
+                "examples": [
+                  "casc-computer-science"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Family",
+            "description": "Make this a version of an existing program: that program's id (F0.4)"
+          },
+          "valid_from": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40,
+                "minLength": 6,
+                "examples": [
+                  "Fall 2027",
+                  "2027/2028 Fall"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid From",
+            "description": "Applies to students who joined from this term; empty means from the start"
+          },
+          "root": {
+            "$ref": "#/components/schemas/GroupDraftIn"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "total_units",
+          "root"
+        ],
+        "title": "ProgramDraftIn"
+      },
+      "ProgramSaveOut": {
+        "properties": {
+          "saved": {
+            "type": "boolean",
+            "title": "Saved",
+            "description": "False when the check found errors; the findings say what to fix"
+          },
+          "program": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AdminProgramOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/FindingOut"
+            },
+            "type": "array",
+            "title": "Findings"
+          }
+        },
+        "type": "object",
+        "required": [
+          "saved",
+          "program",
+          "findings"
+        ],
+        "title": "ProgramSaveOut"
       },
       "ProgramSummaryOut": {
         "properties": {
@@ -2888,6 +5532,14 @@
               }
             ],
             "title": "Source Date"
+          },
+          "versions": {
+            "items": {
+              "$ref": "#/components/schemas/ProgramVersionOut"
+            },
+            "type": "array",
+            "title": "Versions",
+            "description": "Every version of the program, oldest first (F0.4)"
           }
         },
         "type": "object",
@@ -2901,6 +5553,61 @@
           "source_date"
         ],
         "title": "ProgramSummaryOut"
+      },
+      "ProgramVersionOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "catalog_year": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Catalog Year"
+          },
+          "valid_from": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid From",
+            "description": "The first entry term it applies to; null means from the start"
+          },
+          "applies_to": {
+            "type": "string",
+            "title": "Applies To",
+            "description": "Whom it applies to, e.g. \"students who joined from Fall 2027 on\""
+          },
+          "in_use": {
+            "type": "boolean",
+            "title": "In Use",
+            "description": "The version this plan follows",
+            "default": false
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "catalog_year",
+          "valid_from",
+          "applies_to"
+        ],
+        "title": "ProgramVersionOut"
       },
       "ProgressOut": {
         "properties": {
@@ -2997,6 +5704,85 @@
         ],
         "title": "RecommendationsOut"
       },
+      "RestoreFileIn": {
+        "properties": {
+          "backup_base64": {
+            "type": "string",
+            "maxLength": 6990514,
+            "title": "Backup Base64"
+          },
+          "passphrase": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Passphrase"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "backup_base64",
+          "passphrase"
+        ],
+        "title": "RestoreFileIn",
+        "description": "An uploaded backup file (base64) and the passphrase or key it was made with."
+      },
+      "RestoreIn": {
+        "properties": {
+          "backup_base64": {
+            "type": "string",
+            "maxLength": 6990514,
+            "title": "Backup Base64"
+          },
+          "passphrase": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Passphrase"
+          },
+          "confirm": {
+            "type": "string",
+            "const": "RESTORE",
+            "title": "Confirm",
+            "description": "Type RESTORE to confirm replacing the data"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "backup_base64",
+          "passphrase",
+          "confirm"
+        ],
+        "title": "RestoreIn"
+      },
+      "RestoreOut": {
+        "properties": {
+          "restored": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Restored",
+            "description": "Rows restored per table"
+          },
+          "audit_log_kept": {
+            "type": "boolean",
+            "title": "Audit Log Kept"
+          },
+          "previous": {
+            "$ref": "#/components/schemas/BackupFileOut",
+            "description": "The data from just before the restore, encrypted with the same passphrase"
+          }
+        },
+        "type": "object",
+        "required": [
+          "restored",
+          "audit_log_kept",
+          "previous"
+        ],
+        "title": "RestoreOut"
+      },
       "RetakeOut": {
         "properties": {
           "course": {
@@ -3031,6 +5817,52 @@
           "in_plan"
         ],
         "title": "RetakeOut"
+      },
+      "RowOut": {
+        "properties": {
+          "line": {
+            "type": "integer",
+            "title": "Line",
+            "description": "Row number as the spreadsheet shows it (the header is row 1)"
+          },
+          "code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "create",
+              "update",
+              "unchanged",
+              "error",
+              "skip"
+            ],
+            "title": "Action"
+          },
+          "messages": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Messages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "line",
+          "code",
+          "action",
+          "messages"
+        ],
+        "title": "RowOut"
       },
       "RuleCheckIn": {
         "properties": {
@@ -3111,6 +5943,44 @@
         ],
         "title": "RuleCheckOut"
       },
+      "RuleCreateIn": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "pre",
+              "co",
+              "pre_or_co"
+            ],
+            "title": "Kind"
+          },
+          "rule": {
+            "type": "string",
+            "maxLength": 2000,
+            "title": "Rule",
+            "description": "Rule in the admin rule language"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 1000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "rule"
+        ],
+        "title": "RuleCreateIn"
+      },
       "RuleOut": {
         "properties": {
           "kind": {
@@ -3182,6 +6052,180 @@
         ],
         "title": "RuleUpdateIn"
       },
+      "ScheduleOut": {
+        "properties": {
+          "term": {
+            "$ref": "#/components/schemas/TermOut"
+          },
+          "courses": {
+            "type": "integer",
+            "title": "Courses"
+          },
+          "sections": {
+            "type": "integer",
+            "title": "Sections"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "updated_by": {
+            "type": "string",
+            "title": "Updated By"
+          },
+          "offerings": {
+            "items": {
+              "$ref": "#/components/schemas/OfferingOut"
+            },
+            "type": "array",
+            "title": "Offerings"
+          }
+        },
+        "type": "object",
+        "required": [
+          "term",
+          "courses",
+          "sections",
+          "updated_at",
+          "updated_by",
+          "offerings"
+        ],
+        "title": "ScheduleOut"
+      },
+      "ScheduleSummaryOut": {
+        "properties": {
+          "term": {
+            "$ref": "#/components/schemas/TermOut"
+          },
+          "courses": {
+            "type": "integer",
+            "title": "Courses"
+          },
+          "sections": {
+            "type": "integer",
+            "title": "Sections"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          },
+          "updated_by": {
+            "type": "string",
+            "title": "Updated By"
+          }
+        },
+        "type": "object",
+        "required": [
+          "term",
+          "courses",
+          "sections",
+          "updated_at",
+          "updated_by"
+        ],
+        "title": "ScheduleSummaryOut"
+      },
+      "ScheduleUploadIn": {
+        "properties": {
+          "text": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 3000000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          },
+          "xlsx_base64": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 6990514
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Xlsx Base64"
+          },
+          "dry_run": {
+            "type": "boolean",
+            "title": "Dry Run",
+            "description": "Only check and preview; nothing is saved",
+            "default": true
+          },
+          "term": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 6,
+            "title": "Term",
+            "examples": [
+              "Fall 2027",
+              "2027/2028 Fall"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "term"
+        ],
+        "title": "ScheduleUploadIn"
+      },
+      "ScheduleUploadOut": {
+        "properties": {
+          "applied": {
+            "type": "boolean",
+            "title": "Applied"
+          },
+          "term": {
+            "$ref": "#/components/schemas/TermOut"
+          },
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Counts"
+          },
+          "columns": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Columns"
+          },
+          "ignored_columns": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Ignored Columns"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/RowOut"
+            },
+            "type": "array",
+            "title": "Rows",
+            "description": "Rows that were skipped, with the reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "applied",
+          "term",
+          "counts",
+          "columns",
+          "ignored_columns",
+          "rows"
+        ],
+        "title": "ScheduleUploadOut"
+      },
       "ShiftOut": {
         "properties": {
           "code": {
@@ -3252,6 +6296,37 @@
           },
           "preferences": {
             "$ref": "#/components/schemas/PreferencesIn"
+          },
+          "entry_term": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40,
+                "minLength": 6,
+                "examples": [
+                  "Fall 2027",
+                  "2027/2028 Fall"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entry Term",
+            "description": "The term the student joined AUIB; worked out from the course history if empty"
+          },
+          "program_version": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Program Version",
+            "description": "A specific version of the major, when the registrar approved a move to it (F0.4)"
           }
         },
         "additionalProperties": false,
@@ -3300,6 +6375,44 @@
         ],
         "title": "SuggestionOut"
       },
+      "TableIn": {
+        "properties": {
+          "text": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 3000000
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          },
+          "xlsx_base64": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 6990514
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Xlsx Base64"
+          },
+          "dry_run": {
+            "type": "boolean",
+            "title": "Dry Run",
+            "description": "Only check and preview; nothing is saved",
+            "default": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "TableIn",
+        "description": "Either text (CSV, or cells pasted from a spreadsheet) or an .xlsx file in base64."
+      },
       "TermGpaOut": {
         "properties": {
           "term": {
@@ -3321,6 +6434,26 @@
           "units"
         ],
         "title": "TermGpaOut"
+      },
+      "TermOfferingsOut": {
+        "properties": {
+          "term": {
+            "$ref": "#/components/schemas/TermOut"
+          },
+          "sections": {
+            "items": {
+              "$ref": "#/components/schemas/OfferingOut"
+            },
+            "type": "array",
+            "title": "Sections"
+          }
+        },
+        "type": "object",
+        "required": [
+          "term",
+          "sections"
+        ],
+        "title": "TermOfferingsOut"
       },
       "TermOut": {
         "properties": {
@@ -3443,6 +6576,37 @@
           },
           "preferences": {
             "$ref": "#/components/schemas/PreferencesIn"
+          },
+          "entry_term": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40,
+                "minLength": 6,
+                "examples": [
+                  "Fall 2027",
+                  "2027/2028 Fall"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entry Term",
+            "description": "The term the student joined AUIB; worked out from the course history if empty"
+          },
+          "program_version": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Program Version",
+            "description": "A specific version of the major, when the registrar approved a move to it (F0.4)"
           },
           "change": {
             "$ref": "#/components/schemas/ChangeIn"

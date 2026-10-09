@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- The app mark: AUIB maroon square with a graduation cap (not the AUIB logo). -->
+  <rect width="64" height="64" rx="14" fill="#9C213F"/>
+  <g fill="none" stroke="#fff" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round" transform="translate(12 11) scale(1.667)">
+    <path d="M22 9 12 4 2 9l10 5 10-5Z"/>
+    <path d="M6 11.5V16c0 1.7 2.7 3 6 3s6-1.3 6-3v-4.5"/>
+    <path d="M22 9v6"/>
+  </g>
+</svg>

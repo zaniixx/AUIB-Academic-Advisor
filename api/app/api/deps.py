@@ -40,7 +40,7 @@ def get_today(request: Request) -> date:
 
 def published_program(catalog: Catalog, program_id: str) -> Program:
     program = catalog.programs.get(program_id)
-    if program is None or not program.published:
+    if program is None or not program.available:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"Program {program_id!r} is not available")
     return program
 

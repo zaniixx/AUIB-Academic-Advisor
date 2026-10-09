@@ -12,6 +12,10 @@ export interface Profile {
   programId: string;
   /** Optional; profiles saved before minors existed have none. */
   minorId?: string | null;
+  /** When the student joined AUIB ("Fall 2025"); empty means "work it out from the history" (F0.4). */
+  entryTerm?: string | null;
+  /** A version of the major the student follows with the registrar's approval; empty means automatic. */
+  programVersion?: string | null;
   attempts: AttemptIn[];
   preferences: PreferencesIn;
   updatedAt: string;
@@ -110,9 +114,19 @@ export function toStudent(profile: Profile): StudentIn {
   return {
     program_id: profile.programId,
     minor_id: profile.minorId ?? null,
+    entry_term: profile.entryTerm || null,
+    program_version: profile.programVersion || null,
     attempts: profile.attempts,
     preferences: profile.preferences,
   };
+}
+
+/** Change when the student joined, or which version of the major they follow (F0.4). */
+export function withRequirements(
+  profile: Profile,
+  changes: Partial<Pick<Profile, "entryTerm" | "programVersion">>,
+): Profile {
+  return saveProfile({ ...profile, ...changes });
 }
 
 export function withPreferences(profile: Profile, changes: Partial<PreferencesIn>): Profile {

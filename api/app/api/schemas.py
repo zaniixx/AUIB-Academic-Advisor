@@ -105,6 +105,34 @@ class StudentIn(StrictModel):
     minor_id: str | None = Field(default=None, max_length=64)
     attempts: list[AttemptIn] = Field(default_factory=list, max_length=300)
     preferences: PreferencesIn = Field(default_factory=PreferencesIn)
+    entry_term: TermText | None = Field(
+        default=None,
+        description="The term the student joined AUIB; worked out from the course history if empty",
+    )
+    program_version: str | None = Field(
+        default=None,
+        max_length=64,
+        description="A specific version of the major, when the registrar approved a move to it (F0.4)",
+    )
+
+    _check_entry = field_validator("entry_term")(_term)
+
+
+GradeLetter = Literal["A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D+", "D", "D-", "F"]
+
+
+class ExpectedGradeIn(StrictModel):
+    code: CourseCode
+    grade: GradeLetter | None = Field(default=None, description="The grade expected; empty if unsure")
+
+    _check_code = field_validator("code")(_code)
+
+
+class GpaPlanIn(StudentIn):
+    """Courses to project (F7.2) and, optionally, a target CGPA to work back from (F7.3)."""
+
+    courses: list[ExpectedGradeIn] = Field(default_factory=list, max_length=40)
+    target: float | None = Field(default=None, gt=0, le=4)
 
 
 class ChangeIn(StrictModel):
@@ -166,6 +194,17 @@ class MetaOut(BaseModel):
     disclaimer: str
 
 
+class ProgramVersionOut(BaseModel):
+    id: str
+    name: str
+    catalog_year: str | None
+    valid_from: str | None = Field(
+        description="The first entry term it applies to; null means from the start"
+    )
+    applies_to: str = Field(description='Whom it applies to, e.g. "students who joined from Fall 2027 on"')
+    in_use: bool = Field(default=False, description="The version this plan follows")
+
+
 class ProgramSummaryOut(BaseModel):
     id: str
     name: str
@@ -174,6 +213,9 @@ class ProgramSummaryOut(BaseModel):
     total_units: float
     source: str | None
     source_date: str | None
+    versions: list[ProgramVersionOut] = Field(
+        default_factory=list, description="Every version of the program, oldest first (F0.4)"
+    )
 
 
 class GroupOut(BaseModel):
@@ -212,6 +254,21 @@ class RuleOut(BaseModel):
     overridden: bool
 
 
+class OfferingOut(BaseModel):
+    code: str
+    title: str
+    section: str
+    days: str
+    time: str
+    instructor: str
+    room: str
+
+
+class TermOfferingsOut(BaseModel):
+    term: TermOut
+    sections: list[OfferingOut]
+
+
 class CourseOut(CourseRef):
     description: str
     component: str | None
@@ -222,6 +279,9 @@ class CourseOut(CourseRef):
     rules: list[RuleOut]
     unlocks: list[CourseRef]
     groups: list[dict[str, str]]
+    offerings: list[TermOfferingsOut] = Field(
+        default_factory=list, description="Sections on published schedules, this term onward"
+    )
 
 
 class CourseListOut(BaseModel):
@@ -324,6 +384,10 @@ class PlannedTermOut(BaseModel):
     term: TermOut
     units: float
     items: list[PlanItemOut]
+    schedule_published: bool = Field(
+        description="True when the courses were checked against the registrar's published schedule for "
+        "this term (F1.8); otherwise it is not known yet whether they will be offered"
+    )
 
 
 class IssueOut(BaseModel):
@@ -333,12 +397,18 @@ class IssueOut(BaseModel):
 
 
 class CatalogInfoOut(BaseModel):
-    program_id: str
+    program_id: str = Field(description="The version of the major this plan follows")
     program_name: str
     catalog_year: str | None
     source: str | None
     source_date: str | None
     revision: int
+    family_id: str = Field(description="The program, whichever version")
+    valid_from: str | None
+    entry_term: str | None = Field(description="The term the student joined AUIB, as the plan understood it")
+    version_choice: Literal["only", "joined", "chosen", "earliest"]
+    version_note: str = Field(description="Which requirements apply to this student and why")
+    versions: list[ProgramVersionOut]
 
 
 class MinorPlanOut(BaseModel):
@@ -352,6 +422,7 @@ class MinorPlanOut(BaseModel):
     total_units: float
     source: str | None
     source_date: str | None
+    valid_from: str | None = Field(default=None, description="The minor version's first entry term (F0.4)")
     progress: ProgressOut
     progress_with_plan: GroupProgressOut
 
@@ -514,6 +585,26 @@ class AuditOut(BaseModel):
     action: str
     target: str
     detail: dict[str, Any]
+
+
+class GpaTargetOut(BaseModel):
+    target: float
+    status: Literal["met", "reachable", "out_of_reach", "no_courses"] = Field(
+        description="met: reached whatever the open courses' grades; out_of_reach: not even with A's"
+    )
+    average_needed: float | None = Field(description="Grade points per credit the open courses must average")
+    grade_needed: str | None = Field(description="The lowest letter grade at or above that average")
+    open_credits: float = Field(description="Credits of the courses without an expected grade")
+    best_possible: float | None = Field(description="The CGPA with an A in every open course")
+
+
+class GpaPlanOut(BaseModel):
+    current: float | None
+    projected: float | None = Field(description="The CGPA with the expected grades; null when none is given")
+    courses_gpa: float | None = Field(description="The GPA of the courses with an expected grade alone")
+    graded_credits: float
+    target: GpaTargetOut | None
+    assumptions: list[str]
 
 
 class HealthOut(BaseModel):

@@ -12,9 +12,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app import __version__
-from app.api.routes import admin, catalog, health, planner
+from app.api.routes import admin, admin_catalog, catalog, health, planner
 from app.db import make_engine, make_session_factory
 from app.security import (
+    ADMIN_PREFIX,
     BodySizeLimitMiddleware,
     RateLimitMiddleware,
     RequestLogMiddleware,
@@ -52,7 +53,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.session_factory = session_factory
     app.state.catalog_cache = CatalogCache()
 
-    for router in (health.router, catalog.router, planner.router, admin.router):
+    for router in (health.router, catalog.router, planner.router, admin.router, admin_catalog.router):
         app.include_router(router)
 
     @app.exception_handler(RequestValidationError)
@@ -79,7 +80,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
         )
     app.add_middleware(RateLimitMiddleware, per_minute=settings.rate_limit_per_minute)
-    app.add_middleware(BodySizeLimitMiddleware, max_bytes=settings.max_request_bytes)
+    app.add_middleware(
+        BodySizeLimitMiddleware,
+        max_bytes=settings.max_request_bytes,
+        larger={ADMIN_PREFIX: settings.max_admin_request_bytes},
+    )
     app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(RequestLogMiddleware)
     return app

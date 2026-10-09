@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeCode, normalizeTerm, percent, pluralize, units } from "./format";
+import { credits, joinTermOptions, normalizeCode, normalizeTerm, percent, pluralize, units } from "./format";
 
 describe("normalizeCode", () => {
   it.each([
@@ -33,12 +33,23 @@ describe("normalizeTerm", () => {
 });
 
 describe("numbers", () => {
-  it("formats units and percentages", () => {
+  it("formats credits and percentages", () => {
     expect(units(3)).toBe("3");
     expect(units(0.5)).toBe("0.5");
+    expect(credits(3)).toBe("3 credits");
+    expect(credits(1)).toBe("1 credit");
+    expect(credits(1.5)).toBe("1.5 credits");
     expect(percent(30, 126)).toBe(24);
     expect(percent(5, 0)).toBe(0);
     expect(pluralize(1, "course")).toBe("1 course");
     expect(pluralize(2, "course")).toBe("2 courses");
+  });
+});
+
+describe("join terms", () => {
+  it("lists terms newest first, from next year back to 2010", () => {
+    const terms = joinTermOptions(new Date(2026, 9, 9));
+    expect(terms.slice(0, 4)).toEqual(["Fall 2027", "Summer 2027", "Spring 2027", "Fall 2026"]);
+    expect(terms.at(-1)).toBe("Spring 2010");
   });
 });

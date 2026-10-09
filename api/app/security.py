@@ -25,7 +25,8 @@ ASGIApp = Callable[[Scope, Receive, Send], Awaitable[None]]
 log = logging.getLogger("app.access")
 
 # Responses about a student's own courses must never be cached by browsers or proxies.
-PRIVATE_PREFIXES = ("/api/v1/planner", "/api/v1/history", "/api/v1/admin")
+ADMIN_PREFIX = "/api/v1/admin"
+PRIVATE_PREFIXES = ("/api/v1/planner", "/api/v1/history", ADMIN_PREFIX)
 RATE_LIMITED_PREFIXES = ("/api/v1/planner", "/api/v1/history")
 
 
@@ -80,18 +81,25 @@ class SecurityHeadersMiddleware:
 
 
 class BodySizeLimitMiddleware:
-    """Rejects request bodies over ``max_bytes`` (413), whether or not Content-Length is sent."""
+    """Rejects request bodies over ``max_bytes`` (413), whether or not Content-Length is sent.
 
-    def __init__(self, app: ASGIApp, max_bytes: int) -> None:
+    Paths under a prefix in ``larger`` get that prefix's limit instead (admin uploads).
+    """
+
+    def __init__(self, app: ASGIApp, max_bytes: int, larger: dict[str, int] | None = None) -> None:
         self.app = app
         self.max_bytes = max_bytes
+        self.larger = larger or {}
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
+        limit = next(
+            (size for prefix, size in self.larger.items() if scope["path"].startswith(prefix)), self.max_bytes
+        )
         declared = dict(scope.get("headers", [])).get(b"content-length")
-        if declared is not None and declared.isdigit() and int(declared) > self.max_bytes:
+        if declared is not None and declared.isdigit() and int(declared) > limit:
             await _send_json(send, 413, {"detail": "Request body is too large"}, [])
             return
         received = 0
@@ -101,7 +109,7 @@ class BodySizeLimitMiddleware:
             message = await receive()
             if message["type"] == "http.request":
                 received += len(message.get("body", b""))
-                if received > self.max_bytes:
+                if received > limit:
                     raise _BodyTooLargeError
             return message
 

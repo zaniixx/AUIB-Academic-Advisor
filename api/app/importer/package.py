@@ -10,7 +10,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from app.domain.catalog import (
     Catalog,
@@ -24,6 +24,7 @@ from app.domain.catalog import (
 )
 from app.domain.codes import normalize_code
 from app.domain.requisites import parse_description
+from app.domain.terms import Term
 
 MAX_PACKAGE_FILE_BYTES = 20 * 1024 * 1024
 
@@ -49,7 +50,21 @@ class ProgramMeta(BaseModel):
     source: str | None = None
     source_date: date | None = None
     published: bool = False
+    # F0.4: another version of the program ``family`` (a program id), applying to students who
+    # joined from ``valid_from`` (a term such as "Fall 2027"); leave both out for a first version.
+    family: str | None = Field(default=None, pattern=r"^[a-z0-9][a-z0-9-]{1,62}$")
+    valid_from: str | None = None
     groups: dict[str, GroupSetting] = Field(default_factory=dict)
+
+    @field_validator("valid_from")
+    @classmethod
+    def _term(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        term = Term.parse(value)
+        if term is None:
+            raise ValueError("valid_from must be a term like 'Fall 2027'")
+        return term.label
 
 
 @dataclass
@@ -197,7 +212,7 @@ def build_program(package: ProgramPackage) -> Program:
 
     def convert(entry: GroupEntry) -> Group:
         setting = package.meta.groups.get(entry.title, GroupSetting())
-        key = _unique_key(entry.title, used_keys)
+        key = unique_key(entry.title, used_keys)
         children = tuple(convert(child) for child in entry.children)
         courses = tuple(code for raw in entry.courses if (code := normalize_code(raw)))
         return Group(
@@ -221,10 +236,12 @@ def build_program(package: ProgramPackage) -> Program:
         source=meta.source,
         source_date=meta.source_date.isoformat() if meta.source_date else None,
         published=meta.published,
+        family=meta.family or "",
+        valid_from=Term.parse(meta.valid_from) if meta.valid_from else None,
     )
 
 
-def _unique_key(title: str, used: set[str]) -> str:
+def unique_key(title: str, used: set[str]) -> str:
     base = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")[:80] or "group"
     key, counter = base, 2
     while key in used:

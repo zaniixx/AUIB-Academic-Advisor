@@ -1,7 +1,13 @@
 import type { AttemptStatus } from "./api";
 
+/** A credit amount as a number: 3, or 1.5. */
 export function units(value: number): string {
   return Number.isInteger(value) ? String(value) : value.toFixed(1);
+}
+
+/** AUIB counts course load in credits: "3 credits", "1 credit", "1.5 credits". */
+export function credits(value: number): string {
+  return `${units(value)} ${value === 1 ? "credit" : "credits"}`;
 }
 
 export function percent(part: number, whole: number): number {
@@ -48,4 +54,13 @@ function capitalize(word: string): string {
 
 export function pluralize(count: number, singular: string, plural = `${singular}s`): string {
   return `${count} ${count === 1 ? singular : plural}`;
+}
+
+/** Terms a student may have joined AUIB in, newest first: from next year's Fall back to Spring 2010. */
+export function joinTermOptions(today = new Date()): string[] {
+  const terms: string[] = [];
+  for (let year = today.getFullYear() + 1; year >= 2010; year--) {
+    terms.push(`Fall ${year}`, `Summer ${year}`, `Spring ${year}`);
+  }
+  return terms;
 }

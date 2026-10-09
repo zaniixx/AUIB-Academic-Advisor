@@ -1,12 +1,11 @@
 import { Suspense } from "react";
-import { CourseDetail } from "@/components/courses/CourseDetail";
-import { Spinner } from "@/components/ui";
+import { CourseDetail, CourseDetailSkeleton } from "@/components/courses/CourseDetail";
 
 type Params = Promise<{ code: string }>;
 
 export default function CoursePage({ params }: { params: Params }) {
   return (
-    <Suspense fallback={<Spinner label="Loading course" />}>
+    <Suspense fallback={<CourseDetailSkeleton />}>
       <Course params={params} />
     </Suspense>
   );

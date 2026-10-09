@@ -3,7 +3,7 @@
 import { useId, useMemo, useState } from "react";
 import type { Schemas } from "@/lib/api";
 import { units } from "@/lib/format";
-import { Heading } from "@/components/ui";
+import { InfoIcon } from "@/components/icons";
 
 type DegreeMapData = Schemas["DegreeMapOut"];
 type MapNode = Schemas["MapNodeOut"];
@@ -46,19 +46,21 @@ export function DegreeMap({ id, data }: { id: string; data: DegreeMapData }) {
   const chosen = selected ? byKey.get(selected) : undefined;
 
   return (
-    <section id={id} aria-labelledby={titleId} className="space-y-3">
-      <Heading>
-        <span id={titleId}>Degree map</span>
-      </Heading>
-      <p className="text-sm text-text-muted">
-        Every course on your path, by term. Arrows point from a prerequisite to the course that needs it. Select a
-        course to highlight what it needs and what it opens.
-      </p>
-      <ul className="flex flex-wrap gap-3 text-xs" aria-label="Map legend">
+    <section id={id} aria-labelledby={titleId} className="space-y-4">
+      <div className="space-y-1">
+        <h2 id={titleId} className="font-heading text-xl font-bold tracking-tight">
+          Degree map
+        </h2>
+        <p className="max-w-3xl text-sm text-text-muted">
+          Every course on your path, by term. Arrows point from a prerequisite to the course that needs it. Select a
+          course to highlight what it needs and what it opens.
+        </p>
+      </div>
+      <ul className="flex flex-wrap gap-2 text-xs" aria-label="Map legend">
         {(Object.keys(STATUS) as Status[])
           .filter((status) => counts.get(status))
           .map((status) => (
-            <li key={status} className="flex items-center gap-1">
+            <li key={status} className="flex items-center gap-1.5 rounded-full border border-border bg-surface py-1 ps-1 pe-3 shadow-soft">
               <span
                 aria-hidden
                 className="inline-flex h-5 w-5 items-center justify-center rounded border-2 bg-surface text-[11px] font-bold"
@@ -70,7 +72,7 @@ export function DegreeMap({ id, data }: { id: string; data: DegreeMapData }) {
             </li>
           ))}
       </ul>
-      <div className="relative overflow-x-auto rounded-card border border-border bg-surface">
+      <div className="relative overflow-x-auto rounded-card border border-border bg-surface shadow-soft">
         <svg
           width={layout.width}
           height={layout.height}
@@ -182,7 +184,7 @@ export function DegreeMap({ id, data }: { id: string; data: DegreeMapData }) {
                   <tspan fill={style.color}>{style.icon}</tspan> {node.code ?? "Choice"}
                 </text>
                 <text x={NODE_W - 8} y={18} fontSize={10} textAnchor="end" fill="var(--text-muted)">
-                  {units(node.units)}u
+                  {units(node.units)} cr
                 </text>
                 <text x={8} y={35} fontSize={10.5} fill="var(--text-muted)">
                   {shorten(node.code ? node.title : node.group_label ?? node.title, 23)}
@@ -200,13 +202,18 @@ export function DegreeMap({ id, data }: { id: string; data: DegreeMapData }) {
 
 function Details({ node, data }: { node: MapNode | undefined; data: DegreeMapData }) {
   if (!node) {
-    return <p className="text-xs text-text-muted">Tip: on a phone, scroll the map sideways and tap a course.</p>;
+    return (
+      <p className="flex items-center gap-2 text-xs text-text-muted">
+        <InfoIcon className="h-4 w-4" />
+        Select a course to see what it needs first and what it opens. On a phone, scroll the map sideways.
+      </p>
+    );
   }
   const titles = new Map(data.nodes.map((n) => [n.key, n.code ? `${n.code} ${n.title}` : n.title]));
   const needs = data.edges.filter((edge) => edge.target === node.key).map((edge) => titles.get(edge.source));
   const opens = data.edges.filter((edge) => edge.source === node.key).map((edge) => titles.get(edge.target));
   return (
-    <div role="status" className="rounded-card border border-primary bg-surface p-3 text-sm">
+    <div role="status" className="space-y-1 rounded-card border border-primary/50 bg-tint/60 p-4 text-sm shadow-soft animate-fade-in">
       <p className="font-semibold">
         {node.code ? `${node.code} ${node.title}` : node.title}
         <span className="font-normal text-text-muted">

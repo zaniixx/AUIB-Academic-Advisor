@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from app.domain.catalog import Catalog, Course, Group, GroupRole, Program, Rule, parse_offered_terms
 from app.domain.requisites import ParseStatus, RuleKind, from_json
+from app.domain.terms import Season, Term
 from app.models import (
     CatalogStateRow,
     CourseRow,
@@ -22,6 +23,8 @@ from app.models import (
     ProgramRow,
     RequirementGroupRow,
     RequisiteRuleRow,
+    TermOfferingRow,
+    TermScheduleRow,
 )
 
 
@@ -55,6 +58,7 @@ def load_catalog(session: Session, revision: int) -> Catalog:
             component=row.component,
             notices=tuple(row.notices or ()),
             offered_terms=parse_offered_terms(row.offered_terms),
+            hidden=row.hidden,
         )
         for row in session.scalars(select(CourseRow))
     }
@@ -107,5 +111,22 @@ def load_catalog(session: Session, revision: int) -> Catalog:
             source=program_row.source,
             source_date=program_row.source_date.isoformat() if program_row.source_date else None,
             published=program_row.published,
+            hidden=program_row.hidden,
+            family=program_row.family or "",
+            valid_from=Term.parse(program_row.valid_from) if program_row.valid_from else None,
         )
-    return Catalog(courses=courses, rules=rules, programs=programs, revision=revision)
+    return Catalog(
+        courses=courses, rules=rules, programs=programs, revision=revision, schedules=load_schedules(session)
+    )
+
+
+def load_schedules(session: Session) -> dict[Term, frozenset[str]]:
+    """The course codes on each published term schedule."""
+    codes: dict[int, set[str]] = {}
+    offered = select(TermOfferingRow.schedule_id, TermOfferingRow.course_code)
+    for schedule_id, code in session.execute(offered):
+        codes.setdefault(schedule_id, set()).add(code)
+    return {
+        Term(row.year, Season[row.season.upper()]): frozenset(codes.get(row.id, ()))
+        for row in session.scalars(select(TermScheduleRow))
+    }

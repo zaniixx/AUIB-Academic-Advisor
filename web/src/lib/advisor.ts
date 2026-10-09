@@ -69,6 +69,8 @@ export interface TermDetail {
 export interface OverviewRow {
   label: string;
   current: boolean;
+  /** False when no published schedule confirms the term's courses will be offered (F1.8). */
+  confirmed: boolean;
   courses: { key: string; code: string | null; title: string; units: number; choice: boolean }[];
   units: number;
 }
@@ -189,6 +191,14 @@ function otherOptions(plan: PlanOut, planned: Set<string>): OptionGroup[] {
   }));
 }
 
+/** F1.8: said wherever a planned term is not checked against a published schedule. */
+export function unconfirmedNote(label: string): string {
+  return (
+    `Course offerings for ${label} are not published yet, so it is not known whether these courses will run. ` +
+    "Check the schedule in SIS before registering."
+  );
+}
+
 /** The term the in-progress courses belong to, such as "Fall 2026"; null if none says. */
 export function currentTermLabel(inProgress: AttemptIn[]): string | null {
   const counts = new Map<string, number>();
@@ -206,6 +216,7 @@ export function overviewRows(plan: PlanOut, inProgress: AttemptIn[]): OverviewRo
     rows.push({
       label: currentTermLabel(inProgress) ?? "This term",
       current: true,
+      confirmed: true, // the student is registered in these
       courses: inProgress.map((attempt) => ({
         key: attempt.code,
         code: attempt.code,
@@ -220,6 +231,7 @@ export function overviewRows(plan: PlanOut, inProgress: AttemptIn[]): OverviewRo
     rows.push({
       label: term.term.label,
       current: false,
+      confirmed: term.schedule_published,
       courses: term.items.map((item) => ({
         key: item.key,
         code: item.code,
@@ -268,10 +280,10 @@ export function loadSummary(preferences: PreferencesIn): string {
   const usual = preferences.preferred_units ?? 15;
   const most = preferences.max_units ?? 18;
   const summer = preferences.include_summer
-    ? `Summer terms are used, up to ${preferences.summer_max_units ?? 6} units.`
+    ? `Summer terms are used, up to ${preferences.summer_max_units ?? 6} credits.`
     : "Summer terms are used only for courses that run in summer only, such as internships.";
   const pace = preferences.pace === "fastest" ? "finish as early as possible" : "aim for the standard finish";
-  return `Usual load ${usual} units a term, at most ${most}. ${summer} Pace: ${pace}.`;
+  return `Usual load ${usual} credits a term, at most ${most}. ${summer} Pace: ${pace}.`;
 }
 
 /** "8 October 2026": day, month name and year, so it reads the same everywhere. */

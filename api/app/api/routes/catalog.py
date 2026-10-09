@@ -7,12 +7,14 @@ from fastapi import APIRouter, HTTPException, Query, status
 from app import __version__
 from app.api import convert
 from app.api import schemas as s
-from app.api.deps import CatalogDep, published_program
+from app.api.deps import CatalogDep, SessionDep, TodayDep, published_program
 from app.domain.codes import normalize_code
 from app.domain.graph import gateways, longest_chain, prerequisite_graph, program_courses
 from app.domain.planner import PlanOptions
 from app.domain.recommend import GOALS, INTERESTS, Workload
 from app.domain.requisites import describe, format_rule
+from app.domain.terms import current_term
+from app.services.catalog_edit import course_offerings
 
 router = APIRouter(prefix="/api/v1", tags=["catalog"])
 
@@ -39,11 +41,11 @@ def meta(catalog: CatalogDep) -> s.MetaOut:
     )
 
 
-@router.get("/programs", summary="Published programs (F11.2)")
+@router.get("/programs", summary="Published programs, one entry per program with its versions (F11.2, F0.4)")
 def programs(
     catalog: CatalogDep, kind: Annotated[str | None, Query(pattern="^(major|minor)$")] = None
 ) -> list[s.ProgramSummaryOut]:
-    return [convert.program_summary(p) for p in catalog.published_programs(kind)]
+    return [convert.family_summary(versions) for versions in catalog.families(kind)]
 
 
 @router.get("/programs/{program_id}", summary="A program's requirement tree")
@@ -87,7 +89,7 @@ def courses(
     code_query = normalize_code(needle) if needle else None
     matches = []
     for course in sorted(catalog.courses.values(), key=lambda c: c.code):
-        if subject and course.subject != subject.upper():
+        if course.hidden or (subject and course.subject != subject.upper()):
             continue
         if (
             needle
@@ -104,10 +106,10 @@ def courses(
 
 
 @router.get("/courses/{code}", summary="A course with its rules shown beside their source text (F0.2)")
-def course_detail(code: str, catalog: CatalogDep) -> s.CourseOut:
+def course_detail(code: str, catalog: CatalogDep, session: SessionDep, today: TodayDep) -> s.CourseOut:
     normal = normalize_code(code)
     course = catalog.course(normal) if normal else None
-    if course is None:
+    if course is None or course.hidden:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"No course {code!r} in the catalog")
     graph = prerequisite_graph(catalog)
     rules = [
@@ -144,6 +146,13 @@ def course_detail(code: str, catalog: CatalogDep) -> s.CourseOut:
         if course.offered_terms
         else None,
         rules=rules,
-        unlocks=[convert.course_ref(c, catalog) for c in sorted(graph.successors(course.code))],
+        unlocks=[
+            convert.course_ref(c, catalog)
+            for c in sorted(graph.successors(course.code))
+            if catalog.visible(c)
+        ],
         groups=groups,
+        offerings=convert.term_offerings_out(
+            course_offerings(session, course.code, since=current_term(today)), catalog
+        ),
     )

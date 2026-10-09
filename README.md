@@ -15,6 +15,8 @@ term-by-term plan. Their courses stay in their browser and are never stored on t
 | Curriculum import from the SIS scraper, with validation (F0.1, F0.6, F0.7) | Done |
 | Prerequisite parsing from course descriptions, 343 of 351 CS-catalog rules fully understood (F0.2) | Done |
 | Admin review and correction of rules, kept across re-imports, audit log (F0.3, F9.3) | Done |
+| Admin editing: edit, add, bulk-upload (CSV, spreadsheet paste, .xlsx) and hide courses; build, edit and hide majors and minors; edits kept across imports | Done |
+| Encrypted backup and restore in the admin page (AES-256-GCM, passphrase or generated key); the command line restores too, for moving servers | Done |
 | Remaining requirements, eligibility, term-by-term plan, locks (F1.1–F1.6) | Done |
 | Drop/delay what-if with graduation impact (F1.5) | Done |
 | Interest questionnaire and explained elective recommendations (F2.1, F2.2) | Done |
@@ -23,12 +25,14 @@ term-by-term plan. Their courses stay in their browser and are never stored on t
 | Printable plan for the advisor on A4: the next semester in detail, an optional overview of every term, sign-off area (F5.4) | Done |
 | Minors in Psychology and Teaching and Learning Design, planned with the major; shared courses count toward both (F11.2) | Done, TLD lists to confirm with CEHD |
 | "Replace with" for courses the student chooses | Done |
-| CGPA, last term GPA and retake suggestions (F7.1, part of F7.3) | Done, rules to confirm with AUIB |
+| CGPA, last term GPA and retake suggestions; "Plan my grades": the CGPA from expected grades and the grades a target needs (F7.1–F7.3) | Done, rules to confirm with AUIB |
+| Requirement versions: each student follows the version of their major in force when they joined AUIB (F0.4) | Done |
 | Offering seasons: internships planned in summer only | Done |
 | Progress tracking and "what's left" (F4) | Done |
 | Guest mode and Course History paste, data kept in the browser only (F11) | Done |
-| Offering history and per-term offering import (F3.1, F3.3, F0.5) | Waiting for registrar data |
-| AUIB sign-in and saved accounts (F9.1, F9.2), scenario comparison (F6.2), GPA projection (F7.2), reviews (F8) | Next milestones |
+| Per-term course schedules uploaded in the admin page; a term with one plans only its courses, and terms without one are marked "not confirmed" (F0.5, F1.8) | Done |
+| Offering history (F3.1, F3.3) | Waiting for registrar data |
+| AUIB sign-in and saved accounts (F9.1, F9.2, F9.4), scenario comparison (F6.2), course requests (F12), reviews (F8) | Next milestones |
 
 The full list, with the code and tests behind each item, is in
 [docs/requirements-traceability.md](docs/requirements-traceability.md).
@@ -52,6 +56,7 @@ Open http://localhost. On start the API applies database migrations and imports 
 | --- | --- | --- |
 | API and planning engine | [api/](api) | Python 3.13, FastAPI, SQLAlchemy, Alembic, NetworkX |
 | Web app | [web/](web) | Next.js 16, React 19, TypeScript, Tailwind CSS |
+| Design system | [design-system/](design-system/auib-academic-advisor/MASTER.md) | AUIB colours, components, motion and accessibility rules for the web app |
 | Course catalog | [data/catalog/](data/catalog) | Every AUIB course, shared by all programs, in the SIS scraper's format |
 | Program data | [data/programs/](data/programs) | One package per major or minor: requirements and labels |
 | Deployment | [docker-compose.yml](docker-compose.yml), [deploy/](deploy) | Docker, PostgreSQL 17, Caddy |
@@ -64,7 +69,7 @@ pip install -r requirements-dev.txt
 alembic upgrade head                                  # SQLite file by default
 python -m app.cli import-all --accept-warnings        # load data/catalog and data/programs
 uvicorn app.main:create_app --factory --reload        # http://localhost:8000/api/docs
-pytest                                                # 199 tests
+pytest                                                # 247 tests
 ruff check app tests && mypy app
 ```
 

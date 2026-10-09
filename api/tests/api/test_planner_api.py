@@ -215,3 +215,35 @@ def test_plan_includes_gpa_and_retake_suggestions(client: TestClient) -> None:
 
 def test_new_students_have_no_gpa(client: TestClient) -> None:
     assert client.post("/api/v1/planner/plan", json={"program_id": CS}).json()["gpa"] is None
+
+
+def test_gpa_projection_and_target(client: TestClient) -> None:
+    attempts = [
+        {"code": "CSC 101", "status": "completed", "term": "Fall 2025", "grade": "B"},
+        {"code": "MAT 111", "status": "completed", "term": "Fall 2025", "grade": "B"},
+        {"code": "CSC 230", "status": "in_progress", "term": "Fall 2026"},
+        {"code": "CSC 132", "status": "in_progress", "term": "Fall 2026"},
+    ]
+    body = {
+        "program_id": CS,
+        "attempts": attempts,
+        "courses": [{"code": "CSC 230", "grade": "A"}, {"code": "CSC 132"}],
+        "target": 3.25,
+    }
+    result = client.post("/api/v1/planner/gpa", json=body).json()
+    assert result["current"] == 3.0
+    assert result["projected"] == pytest.approx((3 + 3 + 4) / 3, abs=0.005)  # CSC 132 has no grade yet
+    assert result["courses_gpa"] == 4.0
+    # 3.25 over 12 credits needs 39 points; 9 + 9 + 12 are in, so CSC 132 needs 9 / 3 = 3.0, a B.
+    assert result["target"] == {
+        "target": 3.25,
+        "status": "reachable",
+        "average_needed": 3.0,
+        "grade_needed": "B",
+        "open_credits": 3.0,
+        "best_possible": 3.5,
+    }
+    out = client.post("/api/v1/planner/gpa", json={**body, "target": 3.9}).json()["target"]
+    assert out["status"] == "out_of_reach"
+    bad = client.post("/api/v1/planner/gpa", json={**body, "courses": [{"code": "CSC 230", "grade": "E"}]})
+    assert bad.status_code == 422

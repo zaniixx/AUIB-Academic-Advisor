@@ -29,7 +29,7 @@ router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 RuleFilter = Literal["all", "needs_review", "partial", "unparsed", "overridden", "source_changed", "reviewed"]
 
 
-def _rule_out(row: RequisiteRuleRow, title: str) -> s.AdminRuleOut:
+def rule_out(row: RequisiteRuleRow, title: str) -> s.AdminRuleOut:
     parsed = from_json(row.parsed_expr)
     effective = from_json(row.effective_expr)
     override = None
@@ -103,9 +103,7 @@ def list_rules(
         for name, condition in filters.items()
     }
     counts["all"] = session.scalar(select(func.count()).select_from(RequisiteRuleRow)) or 0
-    return s.AdminRuleListOut(
-        total=total, counts=counts, rules=[_rule_out(row, title) for row, title in rows]
-    )
+    return s.AdminRuleListOut(total=total, counts=counts, rules=[rule_out(row, title) for row, title in rows])
 
 
 @router.post("/rules/check", summary="Check a rule written in the rule language without saving it")
@@ -140,7 +138,7 @@ def correct_rule(rule_id: int, body: s.RuleUpdateIn, session: SessionDep, actor:
     )
     bump_revision(session)
     title = session.get(CourseRow, row.course_code)
-    return _rule_out(row, title.title if title else row.course_code)
+    return rule_out(row, title.title if title else row.course_code)
 
 
 @router.post("/rules/{rule_id}/approve", summary="Mark the rule in force as checked")
@@ -157,7 +155,7 @@ def approve_rule(rule_id: int, session: SessionDep, actor: AdminDep) -> s.AdminR
     )
     bump_revision(session)
     title = session.get(CourseRow, row.course_code)
-    return _rule_out(row, title.title if title else row.course_code)
+    return rule_out(row, title.title if title else row.course_code)
 
 
 @router.delete("/rules/{rule_id}/override", summary="Drop a correction and go back to the parsed rule")
@@ -171,7 +169,7 @@ def remove_override(rule_id: int, session: SessionDep, actor: AdminDep) -> s.Adm
     _audit(session, actor, "rule.revert", f"{row.course_code} {row.kind}", {"removed": before})
     bump_revision(session)
     title = session.get(CourseRow, row.course_code)
-    return _rule_out(row, title.title if title else row.course_code)
+    return rule_out(row, title.title if title else row.course_code)
 
 
 @router.get("/imports", summary="Program imports, newest first")

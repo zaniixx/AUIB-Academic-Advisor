@@ -16,8 +16,10 @@ export function errorMessage(error: unknown): string {
 /**
  * Runs ``load`` whenever ``key`` changes and keeps only the latest answer, so a slow
  * earlier request can never overwrite a newer one. A null key means "nothing to load".
+ * With ``keepPrevious`` the last answer stays in ``data`` while a new one loads (``loading``
+ * is true meanwhile), so a page can show "updating" instead of going blank.
  */
-export function useAsync<T>(key: string | null, load: () => Promise<T>) {
+export function useAsync<T>(key: string | null, load: () => Promise<T>, { keepPrevious = false } = {}) {
   const [state, setState] = useState<{ key: string; data?: T; error?: string } | null>(null);
   useEffect(() => {
     if (key === null) return;
@@ -33,5 +35,6 @@ export function useAsync<T>(key: string | null, load: () => Promise<T>) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
   const current = state?.key === key ? state : null;
-  return { data: current?.data, error: current?.error, loading: key !== null && current === null };
+  const data = current ? current.data : keepPrevious ? state?.data : undefined;
+  return { data, error: current?.error, loading: key !== null && current === null };
 }

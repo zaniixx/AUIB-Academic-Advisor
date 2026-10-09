@@ -12,6 +12,7 @@ dependencies = [
   "pydantic>=2.11",
   "pydantic-settings>=2.10",
   "networkx>=3.5",
+  "cryptography>=46",  # AES-256-GCM for encrypted admin backups
 ]
 
 [project.optional-dependencies]

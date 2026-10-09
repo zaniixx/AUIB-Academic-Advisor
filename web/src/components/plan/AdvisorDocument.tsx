@@ -15,6 +15,7 @@ import {
   isLate,
   loadSummary,
   overviewRows,
+  unconfirmedNote,
   pageStyle,
   planNotes,
   requirementRows,
@@ -26,7 +27,7 @@ import {
 import { pluralize, units } from "@/lib/format";
 import { useAsync, useProfile } from "@/lib/hooks";
 import { toStudent, type Profile } from "@/lib/profile";
-import { Alert, Button, ButtonLink, CheckIcon, Spinner } from "@/components/ui";
+import { Alert, AlertIcon, Button, ButtonLink, CheckIcon, Select, Spinner } from "@/components/ui";
 
 // Table cells: roomy on screen, tighter on paper.
 const CELL = "py-2 pe-3 print:py-1";
@@ -79,34 +80,32 @@ function Document({ profile }: { profile: Profile }) {
               <label htmlFor={selectId} className="font-medium">
                 Semester to discuss
               </label>
-              <select
+              <Select
                 id={selectId}
                 value={label ?? ""}
                 onChange={(event) => setChosen(event.target.value)}
-                className="rounded-button border border-border bg-surface px-4 py-2"
               >
                 {terms.map((term) => (
                   <option key={term}>{term}</option>
                 ))}
-              </select>
+              </Select>
             </div>
           )}
           <div className="flex flex-col gap-1 text-sm">
             <label htmlFor={paperSelectId} className="font-medium">
               Paper size
             </label>
-            <select
+            <Select
               id={paperSelectId}
               value={paper.id}
               onChange={(event) => setPaperId(event.target.value)}
-              className="rounded-button border border-border bg-surface px-4 py-2"
             >
               {PAPER_SIZES.map((size) => (
                 <option key={size.id} value={size.id}>
                   {size.label}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
           <Button
             variant="secondary"
@@ -191,6 +190,12 @@ function Sheet({
           <Fact term="Program">{source.program_name}</Fact>
           {plan.minor && <Fact term="Minor">{plan.minor.name}</Fact>}
           <Fact term="Catalog year">{source.catalog_year ?? "Not confirmed yet"}</Fact>
+          {source.versions.length > 1 && (
+            <Fact term="Requirements version">
+              {source.versions.find((version) => version.in_use)?.applies_to.replace(/^./, (c) => c.toUpperCase())}
+              {source.version_choice === "chosen" && " (chosen; registrar approval needed)"}
+            </Fact>
+          )}
           <Fact term="Requirements as of">
             {source.source_date ? `${formatIsoDate(source.source_date)} (SIS)` : "Unknown date"}
           </Fact>
@@ -218,6 +223,12 @@ function Sheet({
 
       <section aria-labelledby="term-title" className="space-y-4 print:space-y-3">
         <SheetHeading id="term-title">1. {label ? `${label}: planned courses` : "Next semester"}</SheetHeading>
+        {detail && !detail.term.schedule_published && (
+          <p className="flex items-start gap-2 text-sm">
+            <AlertIcon className="mt-0.5 h-4 w-4 shrink-0" />
+            {unconfirmedNote(detail.term.term.label)}
+          </p>
+        )}
         {detail ? (
           <TermSection detail={detail} profile={profile} inProgress={inProgress} />
         ) : (
@@ -245,11 +256,13 @@ function Sheet({
 
       <footer className="mt-10 space-y-2 border-t border-paper-rule pt-3 text-xs text-paper-muted print:mt-8 print:text-[7.5pt]">
         <p>
-          <span className="font-semibold">How this plan was made.</span> {plan.assumptions.join(" ")}
+          <span className="font-semibold">How this plan was made.</span>{" "}
+          {source.versions.length > 1 && `${source.version_note} `}
+          {plan.assumptions.join(" ")}
         </p>
         <p>
           Prepared on {today} with the AUIB Academic Advisor, a student-built planning aid that is not an official
-          AUIB service, from the courses the student entered. Units are as counted by the app; the degree audit in SIS
+          AUIB service, from the courses the student entered. Credits are as counted by the app; the degree audit in SIS
           is authoritative.
         </p>
       </footer>
@@ -267,7 +280,7 @@ function TermSection({ detail, profile, inProgress }: { detail: TermDetail; prof
         <thead>
           <tr className="border-b-2 border-paper-ink text-left">
             <Th className="w-[30%]">Course</Th>
-            <Th className="text-right">Units</Th>
+            <Th className="text-right">Credits</Th>
             <Th className="w-[22%]">Counts toward</Th>
             <Th>Notes for the advisor</Th>
           </tr>
@@ -317,7 +330,7 @@ function TermSection({ detail, profile, inProgress }: { detail: TermDetail; prof
             </th>
             <td className={`${CELL} text-right font-semibold tabular-nums`}>{units(detail.term.units)}</td>
             <td colSpan={2} className={`${CELL} pe-0`}>
-              The student&apos;s usual load is {units(usual)} units, at most {units(most)}.
+              The student&apos;s usual load is {units(usual)} credits, at most {units(most)}.
               {detail.term.units > usual && " This term is above the usual load."}
             </td>
           </tr>
@@ -390,7 +403,7 @@ function Overview({
           <tr className="border-b-2 border-paper-ink text-left">
             <Th className="w-[20%]">Term</Th>
             <Th>Courses</Th>
-            <Th className="text-right">Units</Th>
+            <Th className="text-right">Credits</Th>
           </tr>
         </thead>
         <tbody>
@@ -399,6 +412,12 @@ function Overview({
               <th scope="row" className={`${CELL} text-left font-semibold`}>
                 {row.label}
                 {row.current && <span className="block text-xs font-normal text-paper-muted">In progress now</span>}
+                {!row.confirmed && (
+                  <span className="mt-0.5 flex items-center gap-1 text-xs font-normal text-paper-muted">
+                    <AlertIcon className="h-3 w-3 shrink-0" />
+                    Offerings not confirmed
+                  </span>
+                )}
                 {row.label === label && (
                   <span className="block text-xs font-normal text-paper-muted">Detailed in section 1</span>
                 )}
@@ -424,16 +443,16 @@ function Overview({
         </tbody>
       </ScrollTable>
 
-      <RequirementTable title="Requirements once this plan is complete" label="Units by requirement" rows={requirements} />
+      <RequirementTable title="Requirements once this plan is complete" label="Credits by requirement" rows={requirements} />
       {plan.minor && (
         <RequirementTable
           title={`Minor in ${plan.minor.name} once this plan is complete`}
-          label="Units by minor requirement"
+          label="Credits by minor requirement"
           rows={requirementRows(plan.minor.progress_with_plan, "Minor total")}
         />
       )}
       <p className="text-xs text-paper-muted">
-        Units, as counted by this app; a course can count toward the major and the minor. Compare them with the
+        Credits, as counted by this app; a course can count toward the major and the minor. Compare them with the
         degree audit in SIS.
       </p>
 

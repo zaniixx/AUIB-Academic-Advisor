@@ -41,10 +41,11 @@ A student uses the app in their own browser (steps 1 to 3). Their pasted Course 
 goals are saved in that browser only and sent to the server with each request. The server works out
 the plan in memory and keeps nothing about the student.
 
-Catalog data gets in through steps A to D. The data maintainer scrapes the program from SIS on their
-own computer. A script removes the personal data, and the result is committed as a program package.
-The package is validated, then imported into the database. An admin then reviews the prerequisite
-rules in the `/admin` page.
+Catalog data gets in through steps A to D. The data maintainer scrapes programs and courses from SIS
+on their own computer. A script removes the personal data. Courses go into one AUIB-wide course
+catalog shared by every program, and each major or minor becomes a program package (its requirements
+only). The catalog and packages are validated, then imported into the database. An admin then
+reviews the prerequisite rules in the `/admin` page.
 
 **What to check**
 
@@ -112,7 +113,8 @@ Every request passes the same five protections before it reaches a route:
 
 1. The request is logged without its body or query string.
 2. Security headers are added, plus `Cache-Control: no-store` on planning and admin responses.
-3. Bodies over 512 KB are refused; Caddy also refuses bodies over 1 MB.
+3. Bodies over 512 KB are refused; Caddy also refuses bodies over 1 MB. Admin uploads (a course list
+   or a term schedule) may be up to 8 MB, and still need the admin token.
 4. Planning endpoints are rate-limited per client.
 5. The input is validated against bounded fields, and error messages never repeat it.
 
@@ -132,7 +134,10 @@ revision number in the database changes.
   - `test_large_bodies_are_rejected`
   - `test_rate_limit`
   - `test_bad_input_is_rejected_without_echoing_it`
+  - `test_admin_uploads_may_be_larger_than_planning_requests` (in `test_admin_catalog_api.py`)
 - Catalog cache: [api/app/services/catalog_cache.py](../api/app/services/catalog_cache.py).
+- Admin routes for courses, programs, term schedules, backups and restores:
+  [api/app/api/routes/admin_catalog.py](../api/app/api/routes/admin_catalog.py).
 
 ## 4. Planning engine
 
@@ -141,14 +146,17 @@ revision number in the database changes.
 The engine turns a student's course attempts and preferences into a term-by-term plan in about
 20 ms. It works in five steps:
 
-1. Build the student record.
+1. Build the student record, and choose the version of the major (and minor) that applied when the
+   student joined AUIB.
 2. Work out progress per requirement.
-3. Choose the courses still needed.
+3. Choose the courses still needed. A minor's courses are chosen first, so they can fill the major's
+   free-elective and general-education choices; one course can count toward both.
 4. Schedule them term by term.
 5. For each open choice, list the courses that could replace it.
 
-A course is only placed in a season it runs in; CS internships run in summer only. Its prerequisites
-must be done in an earlier term, and its corequisites taken in the same term. The same input always
+A course is only placed in a term it runs in: its season (CS internships run in summer only), or,
+when the registrar's schedule for that term is published, only if it is on that schedule. A course an
+admin has hidden is never placed. Its prerequisites must be done in an earlier term, and its corequisites taken in the same term. The same input always
 gives the same plan. Conditions the app cannot check, such as instructor consent or placement tests,
 are shown to the student and never hide a course. [ADR 0003](decisions/0003-heuristic-planner.md)
 explains why a rule-based planner was chosen over a solver.
@@ -164,6 +172,7 @@ explains why a rule-based planner was chosen over a solver.
   - `test_plans_are_deterministic`
   - `test_internships_are_planned_in_summer`
   - `test_replacement_options_follow_the_rules`
+  - the minor tests in `test_minor.py`
 - Every plan shows the assumptions it was made under: `ASSUMPTIONS` in
   [api/app/api/convert.py](../api/app/api/convert.py).
 
@@ -174,30 +183,46 @@ explains why a rule-based planner was chosen over a solver.
 The diagram shows who does what when a program is added or refreshed. No code changes are needed.
 
 1. The data maintainer scrapes the program from SIS, read-only, on their own computer.
-2. `prepare_program_package.py` drops the personal fields, and the package is committed.
-3. On the server, the package is validated. Errors block the import, and warnings block publishing.
+2. `prepare_program_package.py` drops the personal fields. It adds the program's courses to the shared
+   catalog (`data/catalog/courses.json`) and writes the program package (`program.json` and
+   `requirements.json`). Both are committed.
+3. On the server, the catalog and the package are validated. Errors block the import, and warnings
+   block publishing. On start, the API container imports the catalog and any package not imported
+   yet.
 4. The import can be repeated safely. It keeps admin corrections and flags rules whose SIS text has
    changed.
 5. Each import is recorded, and the catalog revision goes up, so every API worker reloads.
 6. New and changed rules wait in the admin review queue.
 
+Small changes can also be made in the admin page, without a new package: editing, adding (one by one or
+from a sheet) and hiding courses, building or editing majors and minors, and publishing term schedules.
+They are saved the same way, and a later import keeps them: an edited course keeps its edit and is
+flagged when the files change, and a program edited there is only replaced with `--replace-admin-edits`.
+
 **What to check**
 
 - The step-by-step procedure: [data-pipeline.md](data-pipeline.md).
 - Validation rules: [api/app/importer/validate.py](../api/app/importer/validate.py).
+- The shared catalog: `test_catalog_is_shared_and_names_no_program` and
+  `test_validate_checks_the_catalog_and_every_package` in [api/tests/test_cli.py](../api/tests/test_cli.py).
 - Import tests in [api/tests/api/test_admin_api.py](../api/tests/api/test_admin_api.py):
   - `test_reimport_creates_no_duplicates`
   - `test_broken_package_is_rejected_and_changes_nothing`
   - `test_correction_changes_plans_is_audited_and_survives_reimport`
+- Admin changes kept by imports, in
+  [api/tests/api/test_admin_catalog_api.py](../api/tests/api/test_admin_catalog_api.py):
+  `test_an_edit_survives_reimport_and_can_be_undone` and `test_a_program_edited_here_is_kept_by_imports`.
 - Database migrations: [api/migrations/versions/](../api/migrations/versions/).
 
 ## 6. Database tables
 
 ![Database tables](diagrams/06-data-model.png)
 
-The database holds the catalog (programs, requirement groups, courses and requisite rules) and admin
-records (import runs, the audit log and the catalog revision). There is no table for students,
-grades, goals or plans.
+The database holds the catalog (programs, requirement groups, courses, requisite rules and the
+published term schedules with their sections) and admin records (import runs, the audit log and the
+catalog revision). Courses and programs record whether an admin hid or edited them, so imports keep
+that work. Versions of one program share a `family`, and `valid_from` is the first term each applies
+to. There is no table for students, grades, goals or plans.
 
 **What to check**
 
@@ -215,6 +240,8 @@ The diagram shows each trust boundary, what data crosses it and how that data is
 - The raw SIS scrape never leaves the data maintainer's computer.
 - The server logs method, path, status, time and a request ID, never bodies or query strings.
 - Caddy's access log records client IP addresses; how long logs are kept is to be agreed with AUIB IT.
+- Backups taken from the admin page are encrypted (AES-256-GCM, key from the passphrase); the nightly
+  `pg_dump` files still need the `gpg` step before they leave the server.
 
 **What to check**
 
@@ -243,6 +270,10 @@ This sequence follows an admin correcting a prerequisite rule:
 2. The admin can try a rule in the rule language, which returns a plain-English preview without saving.
 3. Saving a correction writes an audit log row and raises the catalog revision.
 4. The other API workers reload the catalog on their next request.
+
+Every other admin change (a course, a program, a term schedule, hiding, a restore) follows the same
+path: token check, change, audit log row, catalog revision + 1. Downloading a backup is recorded in the
+audit log too, and a restore never replaces the audit log.
 
 **What to check**
 

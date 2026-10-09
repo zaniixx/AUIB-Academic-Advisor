@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     # Requests per minute per client address for the planning endpoints.
     rate_limit_per_minute: int = Field(default=60, ge=1)
     max_request_bytes: int = Field(default=512_000, ge=10_000)
+    # Admin uploads (a whole course list or term schedule) may be larger.
+    max_admin_request_bytes: int = Field(default=8_000_000, ge=10_000)
     # Program packages (one folder each) and the course catalog they all share.
     data_dir: Path = DEFAULT_DATA_DIR
     courses_file: Path = DEFAULT_COURSES_FILE

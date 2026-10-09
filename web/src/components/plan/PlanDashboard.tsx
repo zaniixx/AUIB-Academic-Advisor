@@ -1,11 +1,24 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, type ChangeAction, type PreferencesIn, type Recommendations } from "@/lib/api";
 import { useAsync, useProfile } from "@/lib/hooks";
-import { clearProfile, toStudent, withPreferences, type Profile } from "@/lib/profile";
-import { Alert, Button, ButtonLink, Spinner } from "@/components/ui";
+import { clearProfile, toStudent, withPreferences, withRequirements, type Profile } from "@/lib/profile";
+import {
+  CompassIcon,
+  FlagIcon,
+  InfoIcon,
+  ListChecksIcon,
+  MapIcon,
+  PencilIcon,
+  PrinterIcon,
+  RouteIcon,
+  ShieldCheckIcon,
+  SlidersIcon,
+  TrashIcon,
+} from "@/components/icons";
+import { Alert, Button, ButtonLink, EmptyState, Skeleton, TabPanel, Tabs, type TabItem } from "@/components/ui";
 import { SummaryCards } from "./SummaryCards";
 import { SettingsBar } from "./SettingsBar";
 import { TermPlan } from "./TermPlan";
@@ -16,37 +29,80 @@ import { NotesPanel } from "./NotesPanel";
 import { WhatIfDialog, type WhatIfRequest } from "./WhatIfDialog";
 import { DegreeMap } from "./DegreeMap";
 
-const SECTIONS = [
-  ["map", "Degree map"],
-  ["plan", "Term by term"],
-  ["requirements", "Requirements"],
-  ["next-term", "Next term"],
-  ["electives", "Electives for you"],
-  ["notes", "Things to check"],
-] as const;
+const TABS = ["plan", "requirements", "map", "explore", "notes"] as const;
+type Tab = (typeof TABS)[number];
+
+// Links from before the tabs (#next-term, #electives) still land on the right tab.
+const HASH_ALIASES: Record<string, Tab> = { "next-term": "explore", electives: "explore" };
+
+function tabFromHash(): Tab {
+  const hash = window.location.hash.slice(1);
+  if ((TABS as readonly string[]).includes(hash)) return hash as Tab;
+  return HASH_ALIASES[hash] ?? "plan";
+}
 
 export function PlanDashboard() {
   const profile = useProfile();
-  if (profile === undefined) return <Spinner label="Loading your plan" />;
+  if (profile === undefined) return <PlanSkeleton label="Loading your plan" />;
   if (profile === null) {
     return (
-      <div className="mx-auto max-w-xl space-y-4 py-10 text-center">
-        <h1 className="font-heading text-2xl font-bold">No plan yet</h1>
-        <p className="text-text-muted">Set up your plan in about three minutes. No account needed.</p>
-        <ButtonLink href="/start">Start planning</ButtonLink>
-      </div>
+      <EmptyState
+        icon={<RouteIcon className="h-8 w-8" />}
+        title="No plan yet"
+        action={<ButtonLink href="/start" size="lg">Start planning</ButtonLink>}
+      >
+        Set up your plan in about three minutes. No account needed.
+      </EmptyState>
     );
   }
   return <Dashboard profile={profile} />;
+}
+
+/** The plan page's shape while it loads: summary, tabs and a few terms. */
+function PlanSkeleton({ label }: { label: string }) {
+  return (
+    <div role="status" aria-label={label} className="space-y-6">
+      <div className="grid gap-4 lg:grid-cols-[1.6fr_1fr]">
+        <Skeleton className="h-64 rounded-card" />
+        <Skeleton className="h-64 rounded-card" />
+      </div>
+      <Skeleton className="h-12 rounded-full" />
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <Skeleton className="h-72 rounded-card" />
+        <Skeleton className="h-72 rounded-card" />
+        <Skeleton className="h-72 rounded-card" />
+      </div>
+    </div>
+  );
 }
 
 function Dashboard({ profile }: { profile: Profile }) {
   const router = useRouter();
   const student = toStudent(profile);
   const key = JSON.stringify(student);
-  const plan = useAsync(key, () => api.plan(student));
-  const recommendations = useAsync<Recommendations>(key, () => api.recommendations(student));
+  const plan = useAsync(key, () => api.plan(student), { keepPrevious: true });
+  const recommendations = useAsync<Recommendations>(key, () => api.recommendations(student), { keepPrevious: true });
   const [whatIf, setWhatIf] = useState<WhatIfRequest | null>(null);
+  const [tab, setTab] = useState<Tab>(tabFromHash);
+  const [adjusting, setAdjusting] = useState(false);
+  const tabsTop = useRef<HTMLDivElement>(null);
+
+  // A link to #notes (or the browser's back button) switches tabs too.
+  useEffect(() => {
+    const onHash = () => setTab(tabFromHash());
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
+
+  function openTab(next: string) {
+    setTab(next as Tab);
+    window.history.replaceState(null, "", `#${next}`);
+    // When the tab bar is stuck under the header, bring the new panel's start into view.
+    const marker = tabsTop.current;
+    if (marker && marker.getBoundingClientRect().top < 0) {
+      marker.scrollIntoView({ block: "start", behavior: "smooth" });
+    }
+  }
 
   const updatePreferences = (changes: Partial<PreferencesIn>) => withPreferences(profile, changes);
   const preferences = profile.preferences;
@@ -88,76 +144,152 @@ function Dashboard({ profile }: { profile: Profile }) {
     }
   }
 
+  const data = plan.data;
+  const toCheck = data ? data.issues.length + data.unscheduled.length : 0;
+  const tabs: TabItem[] = [
+    { id: "plan", label: "Plan", icon: <RouteIcon className="h-4 w-4" /> },
+    { id: "requirements", label: "Requirements", icon: <ListChecksIcon className="h-4 w-4" /> },
+    { id: "map", label: "Degree map", icon: <MapIcon className="h-4 w-4" /> },
+    { id: "explore", label: "Explore courses", icon: <CompassIcon className="h-4 w-4" /> },
+    { id: "notes", label: toCheck ? `Notes (${toCheck})` : "Notes", icon: <FlagIcon className="h-4 w-4" /> },
+  ];
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="font-heading text-2xl font-bold">Your plan</h1>
-          {plan.data && (
-            <p className="text-sm text-text-muted">
-              {plan.data.catalog.program_name}
-              {plan.data.minor && ` · Minor in ${plan.data.minor.name}`}
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="min-w-0 space-y-1">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">My plan</p>
+          <h1 className="font-heading text-3xl font-bold tracking-tight sm:text-4xl">Your plan</h1>
+          {data && (
+            <p className="text-text-muted">
+              {data.catalog.program_name}
+              {data.minor && ` · Minor in ${data.minor.name}`}
+            </p>
+          )}
+          {data && data.catalog.versions.length > 1 && (
+            <p className="flex max-w-2xl items-start gap-1.5 text-sm text-text-muted">
+              <InfoIcon className="mt-0.5 h-4 w-4 shrink-0 text-status-in-progress" />
+              {data.catalog.version_note}
             </p>
           )}
         </div>
         <div className="flex flex-wrap gap-2 print:hidden">
+          <Button
+            variant="secondary"
+            onClick={() => setAdjusting((open) => !open)}
+            aria-expanded={adjusting}
+            aria-controls="adjust-plan"
+          >
+            <SlidersIcon className="h-4 w-4" />
+            Adjust plan
+          </Button>
           <ButtonLink href="/start" variant="secondary">
+            <PencilIcon className="h-4 w-4" />
             Edit courses and goals
           </ButtonLink>
-          <ButtonLink href="/plan/print" variant="secondary">
+          <ButtonLink href="/plan/print">
+            <PrinterIcon className="h-4 w-4" />
             Print for my advisor
           </ButtonLink>
-          <Button variant="danger" onClick={clearData}>
-            Clear my data
-          </Button>
         </div>
       </div>
 
-      <SettingsBar preferences={preferences} onChange={updatePreferences} />
+      <div id="adjust-plan" hidden={!adjusting}>
+        {adjusting && (
+          <SettingsBar
+            preferences={preferences}
+            onChange={updatePreferences}
+            onClose={() => setAdjusting(false)}
+            requirements={
+              data && data.catalog.versions.length > 1
+                ? {
+                    versions: data.catalog.versions,
+                    entryTerm: profile.entryTerm ?? "",
+                    programVersion: profile.programVersion ?? "",
+                    onChange: (changes) => withRequirements(profile, changes),
+                  }
+                : null
+            }
+          />
+        )}
+      </div>
 
       {plan.error && (
         <Alert tone="error" title="The plan could not be made">
           {plan.error}
         </Alert>
       )}
-      {plan.loading && !plan.data && <Spinner label="Working out your plan" />}
+      {!data && !plan.error && <PlanSkeleton label="Working out your plan" />}
 
-      {plan.data && (
-        <>
-          <Alert tone="info">{plan.data.disclaimer}</Alert>
-          <SummaryCards plan={plan.data} />
-          <nav aria-label="Plan sections" className="print:hidden">
-            <ul className="flex flex-wrap gap-2 text-sm">
-              {SECTIONS.map(([id, label]) => (
-                <li key={id}>
-                  <a href={`#${id}`} className="rounded-full border border-border bg-surface px-3 py-1 hover:bg-background">
-                    {label}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </nav>
-          {plan.loading && <Spinner label="Updating" />}
-          <DegreeMap id="map" data={plan.data.degree_map} />
-          <TermPlan
-            id="plan"
-            plan={plan.data}
-            inProgress={inProgress}
-            locks={preferences.locks ?? []}
-            actions={actions}
-          />
-          <ProgressPanel id="requirements" plan={plan.data} />
-          <EligibleList id="next-term" plan={plan.data} />
-          <RecommendationsPanel
-            id="electives"
-            data={recommendations.data}
-            error={recommendations.error}
-            included={preferences.include ?? []}
-            actions={actions}
-          />
-          <NotesPanel id="notes" plan={plan.data} />
-        </>
+      {data && (
+        <div aria-busy={plan.loading} className={`space-y-6 transition-opacity duration-300 ${plan.loading ? "opacity-60" : ""}`}>
+          <SummaryCards plan={data} student={student} />
+          <p className="flex items-start gap-2 text-sm text-text-muted">
+            <InfoIcon className="mt-0.5 h-4 w-4 text-status-in-progress" />
+            {data.disclaimer}
+          </p>
+
+          <div ref={tabsTop} className="scroll-mt-20" />
+          <div className="sticky top-[4.25rem] z-30 -mx-4 bg-background/90 px-4 py-2 backdrop-blur-md print:hidden">
+            <Tabs items={tabs} active={tab} onChange={openTab} label="Plan sections" />
+          </div>
+
+          <TabPanel id="plan" active={tab === "plan"}>
+            <TermPlan
+              id="plan"
+              plan={data}
+              inProgress={inProgress}
+              locks={preferences.locks ?? []}
+              actions={actions}
+            />
+          </TabPanel>
+          <TabPanel id="requirements" active={tab === "requirements"}>
+            <ProgressPanel id="requirements" plan={data} />
+          </TabPanel>
+          <TabPanel id="map" active={tab === "map"}>
+            <DegreeMap id="map" data={data.degree_map} />
+          </TabPanel>
+          <TabPanel id="explore" active={tab === "explore"}>
+            <div className="space-y-10">
+              <EligibleList id="next-term" plan={data} />
+              <RecommendationsPanel
+                id="electives"
+                data={recommendations.data}
+                error={recommendations.error}
+                included={preferences.include ?? []}
+                actions={actions}
+              />
+            </div>
+          </TabPanel>
+          <TabPanel id="notes" active={tab === "notes"}>
+            <NotesPanel id="notes" plan={data} />
+          </TabPanel>
+        </div>
       )}
+
+      {plan.loading && data && (
+        <div
+          role="status"
+          className="fixed inset-x-0 bottom-5 z-40 mx-auto flex w-fit items-center gap-2 rounded-full bg-ink px-4 py-2.5 text-sm font-medium text-ink-contrast shadow-float animate-fade-up print:hidden"
+        >
+          <span aria-hidden className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+          Updating your plan…
+        </div>
+      )}
+
+      <section
+        aria-label="Your data"
+        className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-dashed border-border-strong p-4 text-sm print:hidden"
+      >
+        <p className="flex items-start gap-2 text-text-muted">
+          <ShieldCheckIcon className="mt-0.5 h-4 w-4 text-status-done" />
+          Your plan is saved only in this browser. On a shared or lab computer, clear it when you are done.
+        </p>
+        <Button variant="danger" size="sm" onClick={clearData}>
+          <TrashIcon className="h-4 w-4" />
+          Clear my data
+        </Button>
+      </section>
 
       {whatIf && (
         <WhatIfDialog

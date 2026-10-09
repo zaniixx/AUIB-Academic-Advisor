@@ -203,9 +203,9 @@ def suggest_for_group(
 
 
 def suggestible(code: str, catalog: Catalog, exclude: set[str]) -> bool:
-    """A real undergraduate course with units that the student has not ruled out."""
+    """A real undergraduate course with units that the student has not ruled out or an admin hidden."""
     course = catalog.courses.get(code)
-    if course is None or code in exclude or course.is_placeholder:
+    if course is None or code in exclude or course.is_placeholder or course.hidden:
         return False
     return (course.level or 0) <= MAX_UNDERGRADUATE_LEVEL and (course.units or 0) > 0
 

@@ -65,9 +65,16 @@ test("a guest pastes their history and gets a plan", async ({ page }) => {
   await page.getByRole("button", { name: "See my plan" }).click();
 
   await expect(page).toHaveURL(/\/plan$/);
-  await expect(page.getByText("Expected graduation", { exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Summary" }).getByText("Expected graduation", { exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Term by term" })).toBeVisible();
   await expect(page.getByText("This term")).toBeVisible();
+  // F1.8: with no published schedule, planned terms carry a quiet mark; its note shows only on demand.
+  const mark = page.getByRole("button", { name: /^Course offerings for Spring \d{4} are not confirmed yet$/ }).first();
+  await expect(page.getByRole("tooltip")).toHaveCount(0);
+  await mark.click();
+  await expect(page.getByRole("tooltip")).toContainText("Check the schedule in SIS before you register.");
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("tooltip")).toHaveCount(0);
   await expectAccessible(page);
   await shots("5-plan", page);
 
@@ -78,13 +85,28 @@ test("a guest pastes their history and gets a plan", async ({ page }) => {
   await expect(gpa.getByText("2.85 Spring 2026")).toBeVisible(); // B and B- in Spring 2026
   await expect(gpa.getByText("MAT 112", { exact: true })).toBeVisible();
 
-  // The degree map: selecting a course explains what it needs and opens.
+  // F7.2 and F7.3: expected grades project the CGPA; a target says what the other courses need.
+  await gpa.getByRole("button", { name: "Plan my grades" }).click();
+  const planner = page.getByRole("dialog");
+  await expect(planner.getByText("Choose a grade for at least one course.")).toBeVisible();
+  await planner.getByLabel("Grade expected in CSC 230").selectOption("A");
+  await expect(planner.getByText(/^Now 3\.45 · these grades alone: 4\.00$/)).toBeVisible();
+  await planner.getByLabel("Target").fill("3.5");
+  await expect(planner.getByText(/^To reach 3\.50, the 3 credits marked "Not sure" need about/)).toBeVisible();
+  await expectAccessible(page);
+  await shots("5d-gpa-planner", page);
+  await planner.getByRole("button", { name: "Close" }).first().click();
+
+  // The degree map is its own tab, and the tab is kept in the address for links and reloads.
+  await page.getByRole("tab", { name: "Degree map" }).click();
+  await expect(page).toHaveURL(/\/plan#map$/);
   await expect(page.getByRole("heading", { name: "Degree map" })).toBeVisible();
   await page.getByRole("button", { name: /^CSC 231 Data Structure, Planned/ }).click();
   await expect(page.getByText(/^Needs first: .*CSC 230/)).toBeVisible();
   await shots("5b-map", page);
 
   // Internships run in summer only.
+  await page.getByRole("tab", { name: "Plan", exact: true }).click();
   const summer = page.locator("li", { has: page.getByRole("heading", { name: /^Summer \d{4}$/ }) }).first();
   await expect(summer).toContainText("CSC 390");
 
@@ -98,6 +120,8 @@ test("a guest pastes their history and gets a plan", async ({ page }) => {
   ).toBeVisible();
   await shots("5c-replaced", page);
 
+  // Each course row opens for more options, including the what-if.
+  await page.getByRole("button", { name: /^More about / }).first().click();
   await page.getByRole("button", { name: "What if I delay it?" }).first().click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByText("Graduation", { exact: true })).toBeVisible();
@@ -114,6 +138,7 @@ test("a guest pastes their history and gets a plan", async ({ page }) => {
     "Even if an advisor reviews, approves or signs this plan, that is not a promise that these classes will be scheduled in upcoming terms.",
   );
   await expect(page.getByLabel("Paper size")).toHaveValue("a4");
+  await expect(page.getByText(/^Course offerings for .* are not published yet/)).toBeVisible();
   // An open choice prints as a blank line to write the chosen course on.
   await expect(page.getByText(/^Open choice for .*: write in the course$/).first()).toBeAttached();
   // Every term at a glance is left out until the student adds it.
@@ -153,11 +178,18 @@ test("a new student adds a minor and sees it in the plan and the advisor documen
 
   await expect(page).toHaveURL(/\/plan$/);
   await expect(page.getByText("Computer Science · Minor in Psychology")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Minor in Psychology" })).toBeVisible();
   // PSY 101 opens the minor; the planner then picks five of the eight listed courses.
   await expect(page.locator("#plan").getByText("PSY 101", { exact: true })).toBeVisible();
+  await page.getByRole("tab", { name: "Requirements" }).click();
+  await expect(page.getByRole("heading", { name: "Minor in Psychology" })).toBeVisible();
   await expectAccessible(page);
   await shots("9-minor", page);
+
+  // Plan settings wait behind "Adjust plan" until the student asks for them.
+  await expect(page.getByRole("form", { name: "Plan settings" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Adjust plan" }).click();
+  await expect(page.getByRole("form", { name: "Plan settings" })).toBeVisible();
+  await expectAccessible(page);
 
   await page.getByRole("link", { name: "Print for my advisor" }).click();
   await expect(page.getByText("Minor", { exact: true })).toBeVisible();

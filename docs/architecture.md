@@ -42,16 +42,19 @@ api/app/
     journey                  the degree map: courses by term with prerequisite links
     gpa                      cumulative and term GPA, retake suggestions
     recommend                interest- and goal-based elective ranking
-  importer/      course catalog and program packages: load, validate, write to the database
-  services/      catalog cache (database -> in-memory catalog)
+  importer/      course catalog and program packages: load, validate, write to the database;
+                 tables (CSV, spreadsheet pastes and .xlsx uploads)
+  services/      catalog cache (database -> in-memory catalog); catalog_edit (admin changes to courses,
+                 programs and term schedules); backup (encrypted export and restore)
   api/           routes, request/response schemas, conversions
   models.py      database tables;  migrations/ holds the Alembic history
   security.py    headers, body-size limit, rate limit, request logging
-  cli.py         validate / import the catalog and packages, export the OpenAPI schema
+  cli.py         validate / import the catalog and packages, export the OpenAPI schema,
+                 encrypted backups (export, inspect, restore)
 ```
 
 The `domain` package has no dependencies on the web or database layers, so every rule can be tested
-with plain data. 155 of the API's 199 tests exercise it directly against the real course catalog and programs.
+with plain data. 168 of the API's 247 tests exercise it directly against the real course catalog and programs.
 
 ### A planning request
 
@@ -77,6 +80,22 @@ audit entry for each. Importing the same files twice changes nothing. See [data-
 A student may add a minor. The planner chooses the minor's courses before the major's open choices, and
 a course counts toward both wherever it can, as AUIB allows.
 
+A program can have several versions (F0.4): rows that share a `family` and each apply to students who
+joined from their `valid_from` term. Each request picks the version with `choose_version`
+(`app/domain/catalog.py`): the newest version that applied when the student joined, taking the term
+from the student's answer, else the first term in their Course History, else next term. The plan
+response says which version applies and why.
+
+### Changes from the admin page
+
+Admins can edit, add and hide courses, build or edit majors and minors, publish term schedules, and
+back up or restore the data (`app/api/routes/admin_catalog.py`, `app/services/catalog_edit.py`,
+`app/services/backup.py`). Each change is audited and raises
+the catalog revision like an import does. Whether a course can be planned in a term is decided in one
+place, `Catalog.offered`: the course must exist, not be hidden, run in that season, and, when the term
+has a published schedule, be on it. Imports never overwrite admin work (see
+[data-pipeline.md](data-pipeline.md#6-changes-in-the-admin-page)).
+
 ## Data model
 
 ```mermaid
@@ -86,6 +105,8 @@ erDiagram
   REQUIREMENT_GROUP ||--o{ GROUP_COURSE : lists
   COURSE ||--o{ GROUP_COURSE : "appears in"
   COURSE ||--o{ REQUISITE_RULE : has
+  TERM_SCHEDULE ||--o{ TERM_OFFERING : lists
+  COURSE ||--o{ TERM_OFFERING : "offered as"
   PROGRAM {
     string id PK
     string name
@@ -94,6 +115,11 @@ erDiagram
     float total_units
     date source_date
     bool published
+    bool hidden
+    string origin "import or admin"
+    bool admin_edited
+    string family "the program this version belongs to"
+    string valid_from "applies to students who joined from this term"
   }
   REQUIREMENT_GROUP {
     int id PK
@@ -108,6 +134,23 @@ erDiagram
     string title
     float units
     text description
+    bool hidden
+    bool admin_edited
+    json imported_values "the files' values, kept beside an edit"
+    bool source_changed
+  }
+  TERM_SCHEDULE {
+    int id PK
+    int year
+    string season
+  }
+  TERM_OFFERING {
+    int id PK
+    string section
+    string days
+    string time
+    string instructor
+    string room
   }
   REQUISITE_RULE {
     int id PK
@@ -120,6 +163,9 @@ erDiagram
     bool source_changed
   }
 ```
+
+Credits are stored in fields named `units` (as the SIS export names them); the app shows them as
+credits.
 
 Supporting tables: `import_runs` (every import with its validation report), `audit_log` (every admin
 action) and `catalog_state` (the catalog revision). Student and plan tables arrive with AUIB sign-in;

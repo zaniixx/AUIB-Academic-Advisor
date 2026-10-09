@@ -5,17 +5,23 @@ catalog is shared by every program and updated in place; it is imported first, a
 each program is then checked against the courses in the database. Requisite rules
 are re-parsed from the descriptions, but an admin's correction is never overwritten;
 if the description it was based on changes, the rule is flagged for re-review.
+
+Work done in the admin page wins over the files: a course edited there keeps its
+values (the imported ones are stored beside it and the course is flagged when they
+change), a hidden course or program stays hidden, and a program edited there is only
+replaced when the import is told to (``replace_admin_edits``).
 """
 
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
+from datetime import date
 from typing import Any
 
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from app.domain.catalog import Group
+from app.domain.catalog import Course, Group, Program
 from app.domain.requisites import parse_description, to_json
 from app.domain.terms import Season
 from app.importer.package import CourseList, ProgramPackage, build_courses, build_program
@@ -66,9 +72,11 @@ def import_courses(session: Session, course_list: CourseList, *, actor: str) -> 
     counts: dict[str, int] = {}
     courses = build_courses(course_list)
     known = frozenset(session.scalars(select(CourseRow.code)))
+    edited = frozenset(session.scalars(select(CourseRow.code).where(CourseRow.admin_edited)))
     _upsert_courses(session, courses, CATALOG_ID, counts)
     subjects = frozenset(code.split(" ")[0] for code in set(courses) | known)
-    _upsert_rules(session, courses, subjects, counts)
+    # An admin-edited course's rules follow the description the admin set, not the file's.
+    sync_rules(session, {code: c for code, c in courses.items() if code not in edited}, subjects, counts)
     if any(not name.endswith("_unchanged") for name in counts):
         bump_revision(session)
     result = ImportResult(CATALOG_ID, "imported", False, report, counts)
@@ -83,11 +91,19 @@ def import_package(
     actor: str,
     publish: bool | None = None,
     accept_warnings: bool = False,
+    replace_admin_edits: bool = False,
 ) -> ImportResult:
     """Validate ``package`` against the courses in the database and import it. The caller commits."""
     session.flush()
     report = validate_package(package, load_catalog(session, current_revision(session)))
     program_id = package.meta.id
+    existing = session.get(ProgramRow, program_id)
+    if existing is not None and existing.admin_edited and not replace_admin_edits:
+        report.add(
+            Severity.ERROR,
+            "program.json: id",
+            "This program was edited in the admin page. Import with --replace-admin-edits to replace it.",
+        )
     if not report.ok:
         result = ImportResult(
             program_id, "rejected", False, report, notes=["Fix the errors and import again."]
@@ -101,7 +117,13 @@ def import_package(
     if wants_publish and not published:
         notes.append("Imported but not published: review the warnings, then import with --accept-warnings.")
 
-    counts = {"groups": _replace_program(session, package, published)}
+    hidden = existing.hidden if existing is not None else False
+    program = build_program(package)
+    counts = {
+        "groups": write_program(
+            session, program, published=published, sis_title=package.meta.sis_title, hidden=hidden
+        )
+    }
     bump_revision(session)
 
     result = ImportResult(program_id, "imported", published, report, counts, notes)
@@ -119,20 +141,36 @@ def bump_revision(session: Session) -> int:
     return state.revision
 
 
+def course_values(course: Course) -> dict[str, Any]:
+    """The editable fields of a course, as stored in the database."""
+    return {
+        "title": course.title,
+        "units": course.units,
+        "description": course.description,
+        "component": course.component,
+        "notices": list(course.notices),
+        "offered_terms": _season_names(course.offered_terms),
+    }
+
+
 def _upsert_courses(session: Session, courses: dict[str, Any], source: str, counts: dict[str, int]) -> None:
     existing = {
         row.code: row for row in session.scalars(select(CourseRow).where(CourseRow.code.in_(courses)))
     }
     for code, course in courses.items():
-        values = {
-            "title": course.title,
-            "units": course.units,
-            "description": course.description,
-            "component": course.component,
-            "notices": list(course.notices),
-            "offered_terms": _season_names(course.offered_terms),
-        }
+        values = course_values(course)
         row = existing.get(code)
+        if row is not None and row.admin_edited:
+            # The admin's values stay; the file's are kept beside them, flagged when they change.
+            if row.imported_values != values:
+                row.source_changed = row.imported_values is not None or any(
+                    getattr(row, key) != value for key, value in values.items()
+                )
+                row.imported_values = values
+                counts["courses_edit_kept"] = counts.get("courses_edit_kept", 0) + 1
+            else:
+                counts["courses_unchanged"] = counts.get("courses_unchanged", 0) + 1
+            continue
         if row is None:
             session.add(CourseRow(code=code, source_program=source, **values))
             counts["courses_created"] = counts.get("courses_created", 0) + 1
@@ -146,9 +184,10 @@ def _upsert_courses(session: Session, courses: dict[str, Any], source: str, coun
     session.flush()
 
 
-def _upsert_rules(
+def sync_rules(
     session: Session, courses: dict[str, Any], subjects: frozenset[str], counts: dict[str, int]
 ) -> None:
+    """Re-parse the rules of ``courses`` from their descriptions, keeping admin corrections."""
     rows: dict[str, dict[str, RequisiteRuleRow]] = {}
     for found in session.scalars(select(RequisiteRuleRow).where(RequisiteRuleRow.course_code.in_(courses))):
         rows.setdefault(found.course_code, {})[found.kind] = found
@@ -193,8 +232,8 @@ def _upsert_rules(
                 row.reviewed = False
                 bump("rules_updated")
         for kind, row in existing.items():
-            if kind in parsed_kinds:
-                continue
+            if kind in parsed_kinds or not row.source_text:
+                continue  # still in the description, or added by an admin (no source sentence)
             if row.overridden:
                 row.source_changed = True
                 bump("rules_override_kept")
@@ -208,27 +247,40 @@ def _season_names(seasons: frozenset[Season] | None) -> list[str] | None:
     return sorted(season.name.lower() for season in seasons) if seasons else None
 
 
-def _replace_program(session: Session, package: ProgramPackage, published: bool) -> int:
-    meta = package.meta
-    program = build_program(package)
+def write_program(
+    session: Session,
+    program: Program,
+    *,
+    published: bool,
+    sis_title: str | None = None,
+    origin: str = "import",
+    admin_edited: bool = False,
+    hidden: bool = False,
+) -> int:
+    """Replace the program's rows (and its requirement tree) with ``program``; returns the group count."""
     # Validation read the program tables. Drop those read-only copies, so the new rows
     # (which may reuse their ids) do not clash with them in the session.
     for loaded in list(session.identity_map.values()):
         if isinstance(loaded, ProgramRow | RequirementGroupRow | GroupCourseRow):
             session.expunge(loaded)
     # A bulk delete lets the database cascade remove the old group tree in one statement.
-    session.execute(delete(ProgramRow).where(ProgramRow.id == meta.id))
+    session.execute(delete(ProgramRow).where(ProgramRow.id == program.id))
     session.expire_all()
     row = ProgramRow(
-        id=meta.id,
-        name=meta.name,
-        kind=meta.kind,
-        sis_title=meta.sis_title,
-        catalog_year=meta.catalog_year,
-        total_units=meta.total_units,
-        source=meta.source,
-        source_date=meta.source_date,
+        id=program.id,
+        name=program.name,
+        kind=program.kind,
+        sis_title=sis_title,
+        catalog_year=program.catalog_year,
+        total_units=program.total_units,
+        source=program.source,
+        source_date=date.fromisoformat(program.source_date) if program.source_date else None,
         published=published,
+        hidden=hidden,
+        origin=origin,
+        admin_edited=admin_edited,
+        family=program.family or None,
+        valid_from=program.valid_from.label if program.valid_from else None,
     )
     session.add(row)
     session.flush()
@@ -237,7 +289,7 @@ def _replace_program(session: Session, package: ProgramPackage, published: bool)
     def add(group: Group, parent_id: int | None) -> None:
         nonlocal position
         group_row = RequirementGroupRow(
-            program_id=meta.id,
+            program_id=program.id,
             parent_id=parent_id,
             key=group.key,
             title=group.title,

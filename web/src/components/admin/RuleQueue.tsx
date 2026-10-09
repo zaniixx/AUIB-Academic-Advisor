@@ -94,7 +94,8 @@ export function RuleQueue({ token, onUnauthorized }: { token: string; onUnauthor
   );
 }
 
-function RuleCard({ rule, token, onChanged }: { rule: AdminRule; token: string; onChanged: () => void }) {
+/** One rule beside its source sentence, with check, correct, approve and (for added rules) delete. */
+export function RuleCard({ rule, token, onChanged }: { rule: AdminRule; token: string; onChanged: () => void }) {
   const [text, setText] = useState(rule.effective_rule);
   const [note, setNote] = useState(rule.override_note ?? "");
   const [check, setCheck] = useState<RuleCheck | null>(null);
@@ -131,7 +132,7 @@ function RuleCard({ rule, token, onChanged }: { rule: AdminRule; token: string; 
       <div className="grid gap-3 text-sm md:grid-cols-2">
         <div>
           <p className="text-xs font-medium uppercase text-text-muted">SIS description says</p>
-          <p className="mt-1">{rule.source_text}</p>
+          <p className="mt-1">{rule.source_text || "Nothing: this rule was added in the admin page."}</p>
           {rule.unparsed_text && <p className="mt-1 text-xs text-status-warning">Not understood: {rule.unparsed_text}</p>}
         </div>
         <div>
@@ -194,17 +195,23 @@ function RuleCard({ rule, token, onChanged }: { rule: AdminRule; token: string; 
             Approve as shown
           </Button>
         ) : null}
-        {rule.override_rule !== null && (
-          <Button variant="danger" disabled={busy} onClick={() => run(() => api.admin.revert(token, rule.id))}>
-            Remove correction
+        {!rule.source_text ? (
+          <Button variant="danger" disabled={busy} onClick={() => run(() => api.admin.deleteRule(token, rule.id))}>
+            Delete this rule
           </Button>
+        ) : (
+          rule.override_rule !== null && (
+            <Button variant="danger" disabled={busy} onClick={() => run(() => api.admin.revert(token, rule.id))}>
+              Remove correction
+            </Button>
+          )
         )}
       </div>
     </Card>
   );
 }
 
-function RuleLanguageHelp() {
+export function RuleLanguageHelp() {
   return (
     <details className="rounded-card border border-border bg-surface p-3 text-sm">
       <summary className="cursor-pointer font-medium">How to write a rule</summary>

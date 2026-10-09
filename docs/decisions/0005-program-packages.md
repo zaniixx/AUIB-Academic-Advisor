@@ -16,7 +16,7 @@ from the SIS scraper today and may come from registrar sheets later.
   any program, and a program may only list courses in it.
 - Nothing in the code is specific to CS. Group roles (`core`, `major_elective`, `general_education`,
   `free_elective`) tell the planner how to treat each group; "take every course" groups are detected
-  from their units.
+  from their credits.
 - Imports are validated first (F0.7). Errors block the import; warnings block publishing unless
   accepted. Every import is recorded with its full report.
 

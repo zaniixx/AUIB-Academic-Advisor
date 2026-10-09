@@ -7,13 +7,14 @@ The planning code reads only these objects. They are built from the database
 from __future__ import annotations
 
 import re
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from enum import StrEnum
+from typing import Literal
 
 from app.domain import codes
 from app.domain.requisites import Expr, ParseStatus, RuleKind
-from app.domain.terms import Season
+from app.domain.terms import Season, Term
 
 DEFAULT_COURSE_UNITS = 3.0
 
@@ -37,6 +38,8 @@ class Course:
     # Seasons the course runs in; None means every Fall and Spring (and summer when the
     # student plans summers). Internships, for example, run in summer only.
     offered_terms: frozenset[Season] | None = None
+    # Hidden by an admin: not shown to students or planned, but completed attempts still count.
+    hidden: bool = False
 
     def offered_in(self, season: Season) -> bool:
         return self.offered_terms is None or season in self.offered_terms
@@ -109,6 +112,20 @@ class Program:
     source: str | None = None
     source_date: str | None = None
     published: bool = True
+    hidden: bool = False
+    # Versions of one program share a family (F0.4). Each applies to students who joined from
+    # ``valid_from`` until the next version's ``valid_from``; None means "from the start".
+    family: str = ""
+    valid_from: Term | None = None
+
+    @property
+    def family_id(self) -> str:
+        return self.family or self.id
+
+    @property
+    def available(self) -> bool:
+        """Offered to students: published and not hidden by an admin."""
+        return self.published and not self.hidden
 
     def groups(self) -> list[Group]:
         return list(self.root.walk())
@@ -126,9 +143,25 @@ class Catalog:
     rules: dict[str, dict[RuleKind, Rule]] = field(default_factory=dict)
     programs: dict[str, Program] = field(default_factory=dict)
     revision: int = 0
+    # Published term schedules (F0.5): the courses offered in each term that has one.
+    schedules: dict[Term, frozenset[str]] = field(default_factory=dict)
 
     def course(self, code: str) -> Course | None:
         return self.courses.get(code)
+
+    def offered(self, code: str, term: Term) -> bool:
+        """Can ``code`` be planned in ``term``? It must exist, not be hidden, run in that
+        season, and, when the term's schedule is published, be on it."""
+        course = self.courses.get(code)
+        if course is None or course.hidden or not course.offered_in(term.season):
+            return False
+        schedule = self.schedules.get(term)
+        return schedule is None or code in schedule
+
+    def visible(self, code: str) -> bool:
+        """A course students can see and choose (not hidden by an admin)."""
+        course = self.courses.get(code)
+        return course is not None and not course.hidden
 
     def units(self, code: str) -> float:
         course = self.courses.get(code)
@@ -156,9 +189,84 @@ class Catalog:
 
     def published_programs(self, kind: str | None = None) -> list[Program]:
         return sorted(
-            (p for p in self.programs.values() if p.published and (kind is None or p.kind == kind)),
+            (p for p in self.programs.values() if p.available and (kind is None or p.kind == kind)),
             key=lambda p: p.name,
         )
+
+    def versions(self, family: str) -> list[Program]:
+        """The available versions of a program, oldest first (a version with no start date first)."""
+        found = [p for p in self.programs.values() if p.available and p.family_id == family]
+        return sorted(found, key=lambda p: (p.valid_from is not None, p.valid_from or EARLIEST_TERM, p.id))
+
+    def families(self, kind: str | None = None) -> list[list[Program]]:
+        """Each offered program as its list of versions, ordered by the newest version's name."""
+        names = {p.family_id for p in self.published_programs(kind)}
+        groups = [self.versions(family) for family in names]
+        return sorted((g for g in groups if g), key=lambda g: g[-1].name)
+
+
+EARLIEST_TERM = Term(1, Season.SPRING)
+
+
+@dataclass(frozen=True)
+class VersionChoice:
+    """Which version of a program a student follows, and why (F0.4)."""
+
+    program: Program
+    versions: tuple[Program, ...]  # every available version of the program, oldest first
+    entry: Term | None  # the term the student joined AUIB
+    how: Literal["only", "joined", "chosen", "earliest"]
+
+
+class VersionError(LookupError):
+    """The program, or the version asked for, is not available."""
+
+
+def choose_version(
+    catalog: Catalog, program_id: str, entry: Term | None, chosen: str | None = None
+) -> VersionChoice:
+    """The version of ``program_id``'s program that applies to a student who joined in ``entry``.
+
+    ``program_id`` may name the program (its family) or any of its versions. A student follows
+    the newest version that applied when they joined; one who joined before every version on
+    file follows the oldest. ``chosen`` (a version id) overrides this when the registrar has
+    approved a move to another version.
+    """
+    named = catalog.programs.get(program_id)
+    family = named.family_id if named is not None else program_id
+    versions = tuple(catalog.versions(family))
+    if not versions:
+        raise VersionError(f"Program {program_id!r} is not available")
+    if chosen:
+        match = next((v for v in versions if v.id == chosen), None)
+        if match is None:
+            raise VersionError(f"{chosen!r} is not a version of this program")
+        return VersionChoice(match, versions, entry, "chosen")
+    if len(versions) == 1:
+        return VersionChoice(versions[0], versions, entry, "only")
+    if entry is None:
+        return VersionChoice(versions[-1], versions, entry, "joined")
+    applied = [v for v in versions if v.valid_from is None or v.valid_from <= entry]
+    if applied:
+        return VersionChoice(applied[-1], versions, entry, "joined")
+    return VersionChoice(versions[0], versions, entry, "earliest")
+
+
+def version_range(version: Program, versions: Sequence[Program]) -> str:
+    """Whom a version applies to, such as "students who joined from Fall 2025 until Summer 2027"."""
+    later = [
+        v.valid_from
+        for v in versions
+        if v.valid_from is not None and (version.valid_from is None or v.valid_from > version.valid_from)
+    ]
+    until = min(later) if later else None
+    if version.valid_from is None and until is None:
+        return "every student"
+    if version.valid_from is None:
+        return f"students who joined before {until}"
+    if until is None:
+        return f"students who joined from {version.valid_from} on"
+    return f"students who joined from {version.valid_from} and before {until}"
 
 
 def level_courses(program: Program, catalog: Catalog) -> Mapping[int, frozenset[str]]:

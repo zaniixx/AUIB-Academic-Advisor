@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { PROFILE_KEY } from "@/lib/profile";
+import { RouteIcon } from "./icons";
 import { ButtonLink } from "./ui";
 
 function subscribe(onChange: () => void) {
@@ -22,7 +23,8 @@ export function ContinueLink() {
   const saved = useSyncExternalStore(subscribe, hasSavedProfile, () => false);
   if (!saved) return null;
   return (
-    <ButtonLink href="/plan" variant="secondary">
+    <ButtonLink href="/plan" variant="secondary" size="lg" className="animate-fade-in">
+      <RouteIcon className="h-5 w-5" />
       Continue my plan
     </ButtonLink>
   );

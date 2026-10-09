@@ -18,7 +18,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum
 
-from app.domain.catalog import OFFERED_TERM_NAMES, Catalog, Course, Group
+from app.domain.catalog import OFFERED_TERM_NAMES, Catalog, Course, Group, Program
 from app.domain.codes import normalize_code
 from app.domain.graph import find_cycles
 from app.domain.requisites import ParseStatus, course_codes
@@ -91,7 +91,7 @@ def validate_courses(course_list: CourseList) -> ValidationReport:
     available = frozenset(courses)
     for code, course in courses.items():
         if course.units is None:
-            report.add(Severity.INFO, f"{CATALOG_FILE}: {code}", "No units given; planning assumes 3")
+            report.add(Severity.INFO, f"{CATALOG_FILE}: {code}", "No credits given; planning assumes 3")
 
     rules = parse_rules(courses)
     statuses = Counter(rule.status for found in rules.values() for rule in found)
@@ -153,20 +153,43 @@ def validate_package(package: ProgramPackage, catalog: Catalog) -> ValidationRep
     for title in meta.groups:
         if not any(entry.title == title for entry in package.entries):
             report.add(Severity.WARNING, "program.json: groups", f"No requirement group is titled {title!r}")
-    if meta.catalog_year is None:
-        report.add(
-            Severity.WARNING, "program.json: catalog_year", "Catalog year not set; confirm with the registrar"
-        )
-    if abs(program.root.units_required - meta.total_units) > 1e-6:
+    validate_program(program, catalog, report)
+    return report
+
+
+@dataclass(frozen=True)
+class Places:
+    """Where findings point: the package files, or the admin page's form."""
+
+    meta: str = "program.json"
+    groups: str = "requirements.json"
+
+
+PACKAGE_FILES = Places()
+ADMIN_FORM = Places(meta="Program", groups="Requirement")
+
+
+def validate_program(
+    program: Program, catalog: Catalog, report: ValidationReport, places: Places = PACKAGE_FILES
+) -> None:
+    """Check a program's requirement tree against ``catalog`` (shared by imports and the admin page)."""
+    if program.catalog_year is None:
         report.add(
             Severity.WARNING,
-            "program.json: total_units",
-            f"total_units is {meta.total_units:g} but the top requirement group needs "
+            f"{places.meta}: catalog_year",
+            "Catalog year not set; confirm with the registrar",
+        )
+    if abs(program.root.units_required - program.total_units) > 1e-6:
+        report.add(
+            Severity.WARNING,
+            f"{places.meta}: total_units",
+            f"total_units is {program.total_units:g} but the top requirement group needs "
             f"{program.root.units_required:g}",
         )
+    _check_version(program, catalog, report, places)
     available = frozenset(catalog.courses)
     for group in program.groups():
-        _check_group(group, available, catalog.courses, report)
+        _check_group(group, available, catalog.courses, report, places)
 
     # Courses this program names directly (not only through the open free-elective pool)
     # are the ones whose problems can affect its plans, so those are warnings here.
@@ -175,8 +198,14 @@ def validate_package(package: ProgramPackage, catalog: Catalog) -> ValidationRep
         & available
     )
     for code in named:
+        if catalog.courses[code].hidden:
+            report.add(
+                Severity.WARNING,
+                f"{CATALOG_FILE}: {code}",
+                "Hidden in the admin page, so it is never planned",
+            )
         if catalog.courses[code].units is None:
-            report.add(Severity.WARNING, f"{CATALOG_FILE}: {code}", "No units given; planning assumes 3")
+            report.add(Severity.WARNING, f"{CATALOG_FILE}: {code}", "No credits given; planning assumes 3")
         for rule in catalog.rules.get(code, {}).values():
             if rule.overridden or rule.reviewed:
                 continue  # an admin has checked or corrected it
@@ -194,13 +223,41 @@ def validate_package(package: ProgramPackage, catalog: Catalog) -> ValidationRep
                 )
 
     report.stats = {"groups": len(program.groups()), "courses_named": len(named)}
-    return report
+
+
+def _check_version(program: Program, catalog: Catalog, report: ValidationReport, places: Places) -> None:
+    """A version must join an existing program of the same kind, and start in a term of its own (F0.4)."""
+    others = [p for p in catalog.programs.values() if p.family_id == program.family_id and p.id != program.id]
+    if program.family and program.family != program.id and not others:
+        report.add(
+            Severity.ERROR,
+            f"{places.meta}: family",
+            f"There is no program {program.family!r} for this to be a version of",
+        )
+    for other in others:
+        if other.kind != program.kind:
+            report.add(
+                Severity.ERROR,
+                f"{places.meta}: family",
+                f"{other.name} is a {other.kind}, so a {program.kind} cannot be a version of it",
+            )
+        if other.valid_from == program.valid_from:
+            start = f"from {program.valid_from}" if program.valid_from else "from the start"
+            report.add(
+                Severity.ERROR,
+                f"{places.meta}: valid_from",
+                f"Another version ({other.id}) already applies {start}; give this version its own first term",
+            )
 
 
 def _check_group(
-    group: Group, available: frozenset[str], courses: Mapping[str, Course], report: ValidationReport
+    group: Group,
+    available: frozenset[str],
+    courses: Mapping[str, Course],
+    report: ValidationReport,
+    places: Places,
 ) -> None:
-    where = f"requirements.json: {group.title}"
+    where = f"{places.groups}: {group.title}"
     if group.units_required <= 0:
         report.add(Severity.ERROR, where, "units_required is missing or zero")
     if group.children:
@@ -209,7 +266,7 @@ def _check_group(
             report.add(
                 Severity.WARNING,
                 where,
-                f"Sub-groups add up to {total:g} units but the group requires {group.units_required:g}",
+                f"Sub-groups add up to {total:g} credits but the group requires {group.units_required:g}",
             )
         return
     if not group.courses:
@@ -225,5 +282,5 @@ def _check_group(
             report.add(
                 Severity.ERROR,
                 where,
-                f"Listed courses add up to {pool:g} units, less than the {group.units_required:g} required",
+                f"Listed courses add up to {pool:g} credits, less than the {group.units_required:g} required",
             )

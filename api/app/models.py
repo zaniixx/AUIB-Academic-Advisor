@@ -3,6 +3,11 @@
 Only catalog data and admin records are stored. Guest course histories and
 plans are never written to the database (F11.5); accounts and saved plans
 arrive with sign-in (F9) in a later migration.
+
+Catalog rows come from two places: the files in the repository (imported) and the
+admin page. An admin's change is never overwritten by a later import: the row is
+marked ``admin_edited``, the import's values are kept aside in ``imported_values``,
+and ``source_changed`` flags that the files now say something different.
 """
 
 from __future__ import annotations
@@ -47,7 +52,13 @@ class CourseRow(Base):
     notices: Mapped[list[str]] = mapped_column(JSONType, default=list)
     # Seasons the course runs in (["summer"] for internships); NULL means every regular term.
     offered_terms: Mapped[list[str] | None] = mapped_column(JSONType, nullable=True)
-    source_program: Mapped[str | None] = mapped_column(String(64))
+    source_program: Mapped[str | None] = mapped_column(String(64))  # "course-catalog" or "admin"
+    # Hidden courses are not shown to students or planned; completed ones still count.
+    hidden: Mapped[bool] = mapped_column(Boolean, default=False)
+    admin_edited: Mapped[bool] = mapped_column(Boolean, default=False)
+    # The latest imported values of an admin-edited course, so the edit can be undone.
+    imported_values: Mapped[dict[str, Any] | None] = mapped_column(JSONType, nullable=True)
+    source_changed: Mapped[bool] = mapped_column(Boolean, default=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
     rules: Mapped[list[RequisiteRuleRow]] = relationship(
@@ -102,6 +113,15 @@ class ProgramRow(Base):
     source: Mapped[str | None] = mapped_column(String(300))
     source_date: Mapped[date | None] = mapped_column(Date)
     published: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Hidden programs are not offered to students, whatever "published" says.
+    hidden: Mapped[bool] = mapped_column(Boolean, default=False)
+    origin: Mapped[str] = mapped_column(String(16), default="import")  # "import" or "admin"
+    # An import does not replace a program edited in the admin page unless asked to.
+    admin_edited: Mapped[bool] = mapped_column(Boolean, default=False)
+    # Versions of one program share a family and each applies to students who joined from
+    # ``valid_from`` (a term such as "Fall 2027"; NULL means from the start) (F0.4).
+    family: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    valid_from: Mapped[str | None] = mapped_column(String(20), nullable=True)
     imported_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     groups: Mapped[list[RequirementGroupRow]] = relationship(
@@ -139,6 +159,40 @@ class GroupCourseRow(Base):
         ForeignKey("requirement_groups.id", ondelete="CASCADE"), primary_key=True
     )
     course_code: Mapped[str] = mapped_column(ForeignKey("courses.code", ondelete="CASCADE"), primary_key=True)
+    position: Mapped[int] = mapped_column(Integer)
+
+
+class TermScheduleRow(Base):
+    """The registrar's course schedule for one term (F0.5). When a term has one, only
+    courses on it are planned in that term."""
+
+    __tablename__ = "term_schedules"
+    __table_args__ = (UniqueConstraint("year", "season", name="uq_schedule_term"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    year: Mapped[int] = mapped_column(Integer)
+    season: Mapped[str] = mapped_column(String(8))  # spring, summer, fall
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+    updated_by: Mapped[str] = mapped_column(String(120))
+
+    offerings: Mapped[list[TermOfferingRow]] = relationship(
+        cascade="all, delete-orphan", passive_deletes=True, order_by="TermOfferingRow.position"
+    )
+
+
+class TermOfferingRow(Base):
+    """One section of a course in a term's schedule."""
+
+    __tablename__ = "term_offerings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    schedule_id: Mapped[int] = mapped_column(ForeignKey("term_schedules.id", ondelete="CASCADE"), index=True)
+    course_code: Mapped[str] = mapped_column(ForeignKey("courses.code", ondelete="CASCADE"), index=True)
+    section: Mapped[str] = mapped_column(String(20), default="")
+    days: Mapped[str] = mapped_column(String(40), default="")
+    time: Mapped[str] = mapped_column(String(40), default="")
+    instructor: Mapped[str] = mapped_column(String(120), default="")
+    room: Mapped[str] = mapped_column(String(60), default="")
     position: Mapped[int] = mapped_column(Integer)
 
 

@@ -13,6 +13,9 @@ export default defineConfig({
   use: {
     baseURL: process.env.E2E_BASE_URL ?? "http://localhost:3000",
     trace: "retain-on-failure",
+    // Animations are switched off (as for a student who asks for less motion), so accessibility
+    // checks and screenshots never catch an element halfway through fading in.
+    contextOptions: { reducedMotion: "reduce" },
   },
   projects: [
     { name: "desktop", use: { ...devices["Desktop Chrome"] } },

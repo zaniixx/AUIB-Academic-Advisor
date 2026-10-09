@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 
 from app.api import schemas as s
-from app.domain.catalog import Catalog, Group, Program, group_requires_all
+from app.domain.catalog import Catalog, Group, Program, VersionChoice, group_requires_all, version_range
 from app.domain.gpa import GPA_ASSUMPTIONS, GpaSummary, gpa_summary
 from app.domain.history import HistoryParseResult
 from app.domain.journey import DegreeMap, degree_map
@@ -15,6 +15,7 @@ from app.domain.recommend import GroupSuggestions, Preferences
 from app.domain.record import Attempt, StudentRecord, build_record
 from app.domain.requisites import DEFAULT_STANDING_CREDITS
 from app.domain.terms import Term
+from app.models import TermOfferingRow
 
 DISCLAIMER = (
     "This plan is a planning aid, not an official degree audit. The registrar's audit in SIS is "
@@ -26,10 +27,22 @@ ASSUMPTIONS = [
     "confirmed these thresholds yet.",
     "Courses run every Fall and Spring unless the catalog says otherwise; internships run in summer only, so "
     "they are planned in a summer term even when you do not plan other summer courses.",
-    "Summer terms are limited to the summer unit cap; summer offerings are not confirmed.",
+    "Summer terms are limited to the summer credit cap; summer offerings are not confirmed.",
     "Grades from A+ to D- pass a course; minimum-grade rules for prerequisites are not modelled yet.",
     "A course counts toward the first requirement group, in SIS order, that still needs it.",
 ]
+
+
+def plan_assumptions(catalog: Catalog) -> list[str]:
+    """The fixed assumptions, plus which terms were checked against a published schedule."""
+    if not catalog.schedules:
+        return ASSUMPTIONS
+    labels = ", ".join(term.label for term in sorted(catalog.schedules))
+    return [
+        *ASSUMPTIONS,
+        f"Courses for {labels} come from the published course schedule; other terms assume each course "
+        "runs in its usual season.",
+    ]
 
 
 def term_out(term: Term | None) -> s.TermOut | None:
@@ -42,6 +55,28 @@ def required_term(term: Term) -> s.TermOut:
     out = term_out(term)
     assert out is not None
     return out
+
+
+def offering_out(row: TermOfferingRow, catalog: Catalog) -> s.OfferingOut:
+    return s.OfferingOut(
+        code=row.course_code,
+        title=catalog.title(row.course_code),
+        section=row.section,
+        days=row.days,
+        time=row.time,
+        instructor=row.instructor,
+        room=row.room,
+    )
+
+
+def term_offerings_out(
+    found: list[tuple[Term, list[TermOfferingRow]]], catalog: Catalog
+) -> list[s.TermOfferingsOut]:
+    """Sections on published schedules, grouped by term."""
+    return [
+        s.TermOfferingsOut(term=required_term(term), sections=[offering_out(row, catalog) for row in rows])
+        for term, rows in found
+    ]
 
 
 def course_ref(code: str, catalog: Catalog) -> s.CourseRef:
@@ -219,7 +254,56 @@ def eligible_out(course: EligibleCourse, catalog: Catalog) -> s.EligibleOut:
     )
 
 
-def catalog_info(program: Program, catalog: Catalog) -> s.CatalogInfoOut:
+def version_out(version: Program, versions: Sequence[Program], in_use: bool = False) -> s.ProgramVersionOut:
+    return s.ProgramVersionOut(
+        id=version.id,
+        name=version.name,
+        catalog_year=version.catalog_year,
+        valid_from=version.valid_from.label if version.valid_from else None,
+        applies_to=version_range(version, versions),
+        in_use=in_use,
+    )
+
+
+def family_summary(versions: Sequence[Program]) -> s.ProgramSummaryOut:
+    """A program as students choose it: its newest version's details, its id, and every version."""
+    newest = versions[-1]
+    return program_summary(newest).model_copy(
+        update={"id": newest.family_id, "versions": [version_out(v, versions) for v in versions]}
+    )
+
+
+ENTRY_WORDS = {
+    "given": "You joined in {entry}",
+    "history": "Your first term at AUIB was {entry}",
+    "start": "You start in {entry}",
+}
+
+
+def version_note(choice: VersionChoice, entry_source: str) -> str:
+    """Which requirements apply to the student, and why, in a sentence (F0.4)."""
+    program = choice.program
+    whom = version_range(program, choice.versions)
+    joined = ENTRY_WORDS[entry_source].format(entry=choice.entry) if choice.entry else "You are starting"
+    if choice.how == "chosen":
+        return (
+            f"You chose the {program.name} requirements for {whom}. Follow a version other than "
+            "your own only if the registrar approved it."
+        )
+    if choice.how == "earliest":
+        return (
+            f"{joined}, before the earliest {program.name} requirements on file, so the oldest ones "
+            f"(for {whom}) are used. Confirm your requirements with the registrar."
+        )
+    if choice.how == "only":
+        return f"These {program.name} requirements apply to {whom}; no other version is on file."
+    return f"{joined}, so you follow the {program.name} requirements for {whom}."
+
+
+def catalog_info(
+    program: Program, catalog: Catalog, choice: VersionChoice | None = None, entry_source: str = "start"
+) -> s.CatalogInfoOut:
+    versions = choice.versions if choice else (program,)
     return s.CatalogInfoOut(
         program_id=program.id,
         program_name=program.name,
@@ -227,6 +311,12 @@ def catalog_info(program: Program, catalog: Catalog) -> s.CatalogInfoOut:
         source=program.source,
         source_date=program.source_date,
         revision=catalog.revision,
+        family_id=program.family_id,
+        valid_from=program.valid_from.label if program.valid_from else None,
+        entry_term=choice.entry.label if choice and choice.entry else None,
+        version_choice=choice.how if choice else "only",
+        version_note=version_note(choice, entry_source) if choice else "",
+        versions=[version_out(v, versions, v.id == program.id) for v in versions],
     )
 
 
@@ -283,6 +373,8 @@ def plan_out(
     in_session: Term,
     minor: Program | None = None,
     minor_current: ProgramProgress | None = None,
+    choice: VersionChoice | None = None,
+    entry_source: str = "start",
 ) -> s.PlanOut:
     minor_out = None
     if minor is not None and minor_current is not None and plan.minor_progress is not None:
@@ -296,6 +388,7 @@ def plan_out(
                 term=required_term(t.term),
                 units=t.units,
                 items=[plan_item_out(item, catalog) for item in t.items],
+                schedule_published=t.term in catalog.schedules,
             )
             for t in plan.terms
         ],
@@ -308,8 +401,8 @@ def plan_out(
         degree_map=degree_map_out(degree_map(plan, record, catalog, program, in_session)),
         gpa=gpa_out(gpa_summary(record, catalog, set(plan.course_terms())), catalog),
         minor=minor_out,
-        catalog=catalog_info(program, catalog),
-        assumptions=ASSUMPTIONS,
+        catalog=catalog_info(program, catalog, choice, entry_source),
+        assumptions=plan_assumptions(catalog),
         disclaimer=DISCLAIMER,
     )
 
@@ -335,6 +428,7 @@ def minor_plan_out(
         total_units=minor.total_units,
         source=minor.source,
         source_date=minor.source_date,
+        valid_from=minor.valid_from.label if minor.valid_from else None,
         progress=s.ProgressOut(
             percent_complete=current.percent_complete,
             completed_units=current.root.completed,

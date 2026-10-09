@@ -1,32 +1,50 @@
 @import "tailwindcss";
 
 /*
- * Design tokens (requirements document, "Visual design"), taken from AUIB's public site
+ * Design tokens. The full design system (layout, type, motion and component rules) is in
+ * design-system/auib-academic-advisor/MASTER.md. Brand values were taken from AUIB's public site
  * auib.edu.iq on 2026-10-08:
  *   maroon  #9C213F  links, highlights, primary buttons, selection
  *   slate   #273237  body text, header bar, outlined buttons
- *   warm    #79726E  link hover, footer bar
+ *   warm    #79726E  footer, quiet accents
  *   font    Ubuntu (the site also ships an Ubuntu Arabic cut)
  * Status colours stay clearly apart from the maroon brand colour and are always shown
  * with an icon and a word. The AUIB logo is not used until AUIB communications approves it.
  */
 :root {
   --brand-primary: #9c213f;
+  --brand-primary-strong: #7f1a33;
   --brand-primary-contrast: #ffffff;
+  --brand-tint: #f8edf0;
+  --brand-tint-strong: #efd3db;
   --brand-ink: #273237;
+  --brand-ink-strong: #1b2427;
   --brand-ink-contrast: #ffffff;
   --brand-accent: #79726e;
-  --brand-footer: #79726e;
+  --brand-footer: #273237;
   --surface: #ffffff;
-  --background: #f4f4f4;
+  --surface-raised: #ffffff;
+  --surface-sunken: #f3f1ef;
+  --background: #f7f6f4;
   --text: #273237;
   --text-muted: #5b6468;
-  --border: #d9d9d9;
+  --border: #e3dfdb;
+  --border-strong: #cfc9c4;
   --status-done: #1d7044;
   --status-in-progress: #1d5fc7;
   --status-planned: #5b4bb7;
   --status-blocked: #c2410c;
   --status-warning: #8a5a00;
+  --shadow-sm: 0 1px 2px rgb(39 50 55 / 0.06);
+  --shadow-md: 0 1px 2px rgb(39 50 55 / 0.05), 0 6px 18px -6px rgb(39 50 55 / 0.14);
+  --shadow-lg: 0 2px 6px rgb(39 50 55 / 0.06), 0 22px 44px -16px rgb(39 50 55 / 0.28);
+  /* Motion: arrive with deceleration, leave faster; exits run at about 65% of the enter time. */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in: cubic-bezier(0.55, 0, 1, 0.45);
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+  --duration-fast: 150ms;
+  --duration-base: 240ms;
+  --duration-slow: 480ms;
   /* The advisor document looks like paper in both themes and in print, so these stay light. */
   --paper: #ffffff;
   --paper-ink: #1f2a2e;
@@ -37,37 +55,54 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --brand-primary: #e8798f;
-    --brand-primary-contrast: #14191c;
-    --brand-ink: #0f1416;
+    --brand-primary: #ec8aa0;
+    --brand-primary-strong: #f3a9b9;
+    --brand-primary-contrast: #1a1014;
+    --brand-tint: #2c1d22;
+    --brand-tint-strong: #42252e;
+    --brand-ink: #10171a;
+    --brand-ink-strong: #0b1012;
     --brand-ink-contrast: #e9ecee;
     --brand-accent: #b5aeaa;
-    --brand-footer: #3a3532;
-    --surface: #1c2327;
-    --background: #14191c;
+    --brand-footer: #10171a;
+    --surface: #1a2125;
+    --surface-raised: #20292e;
+    --surface-sunken: #151b1e;
+    --background: #12181b;
     --text: #e9ecee;
     --text-muted: #a7afb3;
-    --border: #2f383d;
+    --border: #2d363b;
+    --border-strong: #3b464c;
     --status-done: #5bc28a;
     --status-in-progress: #7aa9f2;
     --status-planned: #a99cf0;
     --status-blocked: #f2945c;
     --status-warning: #e8b34f;
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.3);
+    --shadow-md: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 22px -8px rgb(0 0 0 / 0.55);
+    --shadow-lg: 0 2px 6px rgb(0 0 0 / 0.35), 0 24px 48px -16px rgb(0 0 0 / 0.7);
   }
 }
 
 @theme inline {
   --color-primary: var(--brand-primary);
+  --color-primary-strong: var(--brand-primary-strong);
   --color-primary-contrast: var(--brand-primary-contrast);
+  --color-tint: var(--brand-tint);
+  --color-tint-strong: var(--brand-tint-strong);
   --color-ink: var(--brand-ink);
+  --color-ink-strong: var(--brand-ink-strong);
   --color-ink-contrast: var(--brand-ink-contrast);
   --color-accent: var(--brand-accent);
   --color-footer: var(--brand-footer);
   --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-sunken: var(--surface-sunken);
   --color-background: var(--background);
   --color-text: var(--text);
   --color-text-muted: var(--text-muted);
   --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
   --color-status-done: var(--status-done);
   --color-status-in-progress: var(--status-in-progress);
   --color-status-planned: var(--status-planned);
@@ -78,25 +113,117 @@
   --color-paper-muted: var(--paper-muted);
   --color-paper-rule: var(--paper-rule);
   --color-paper-accent: var(--paper-accent);
-  --radius-card: 0.75rem;
+  --radius-card: 1rem;
+  --radius-field: 0.75rem;
   --radius-button: 2rem;
+  --shadow-card: var(--shadow-md);
+  --shadow-soft: var(--shadow-sm);
+  --shadow-float: var(--shadow-lg);
   --font-body: var(--font-ubuntu), "Ubuntu", "Segoe UI", system-ui, sans-serif;
   --font-heading: var(--font-ubuntu), "Ubuntu", "Segoe UI", system-ui, sans-serif;
   --font-arabic: "Ubuntu Arabic", "Noto Sans Arabic", "Segoe UI", Tahoma, sans-serif;
+  --animate-fade-up: fade-up var(--duration-slow) var(--ease-out) backwards;
+  --animate-fade-in: fade-in var(--duration-base) var(--ease-out) backwards;
+  --animate-scale-in: scale-in var(--duration-base) var(--ease-out) backwards;
+  --animate-pop: pop 520ms var(--ease-spring) backwards;
+  --animate-float: float 6s ease-in-out infinite;
+}
+
+/* Entrances: content starts slightly lower and fades in. Each keyframe's end is the element's own
+   resting style, so with reduced motion (animations off) everything simply shows at rest. Entrances
+   fill backwards only: once finished they let go, so hover lifts and fixed children work as usual. */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+@keyframes pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes float {
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes ring-draw {
+  from {
+    stroke-dashoffset: var(--ring-from);
+  }
+}
+
+@keyframes grow-x {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes reveal-down {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
 }
 
 html {
   background: var(--background);
   color: var(--text);
   font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  scroll-padding-top: 5rem; /* the sticky header never hides an anchored heading */
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
 }
 
 html[lang="ar"] {
   font-family: var(--font-arabic);
 }
 
+body {
+  background: var(--background);
+}
+
 a {
   text-underline-offset: 3px;
+}
+
+h1,
+h2,
+h3 {
+  text-wrap: balance;
 }
 
 ::selection {
@@ -107,6 +234,53 @@ a {
 :focus-visible {
   outline: 3px solid var(--brand-primary);
   outline-offset: 2px;
+}
+
+/* Staggered entrances: give each item style={{ "--i": index }}. */
+.stagger > * {
+  animation: fade-up var(--duration-slow) var(--ease-out) backwards;
+  animation-delay: calc(var(--i, 0) * 60ms);
+}
+
+/* A loading placeholder that keeps the final layout in place. */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--surface-sunken);
+  border-radius: 0.5rem;
+}
+
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.55), transparent);
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+@media (prefers-color-scheme: dark) {
+  .skeleton::after {
+    background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.06), transparent);
+  }
+}
+
+/* Disclosure panels open with their content sliding in; the height itself is not animated. */
+details[open] > .disclosure-body {
+  animation: reveal-down var(--duration-base) var(--ease-out) backwards;
+}
+
+details > summary {
+  list-style: none;
+}
+
+details > summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Native selects share one look: room for the arrow, which the browser still draws. */
+select {
+  cursor: pointer;
 }
 
 /* Printing: page margins for every page, and only the document when printing the advisor document. */

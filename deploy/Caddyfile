@@ -13,7 +13,16 @@
 		-Server
 	}
 
-	# The API, under /api. Bodies over 1 MB are refused before they reach it.
+	# Admin uploads (a course list or a term schedule) may be up to 8 MB; the admin API
+	# still checks the admin token and its own limit.
+	handle /api/v1/admin/* {
+		request_body {
+			max_size 8MB
+		}
+		reverse_proxy api:8000
+	}
+
+	# The rest of the API, under /api. Bodies over 1 MB are refused before they reach it.
 	handle /api/* {
 		request_body {
 			max_size 1MB

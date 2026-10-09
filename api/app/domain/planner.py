@@ -208,7 +208,7 @@ def build_plan(
             PlanIssue(
                 "warning",
                 f"The standard {options.regular_terms_to_graduate}-semester finish would be "
-                f"{deadline.label}. At up to {options.max_units:g} units a term the earliest finish is "
+                f"{deadline.label}. At up to {options.max_units:g} credits a term the earliest finish is "
                 f"{plan.graduation_term.label}.",
             ),
         )
@@ -238,8 +238,9 @@ def eligible_next_term(
 ) -> list[EligibleCourse]:
     """Courses that count toward an unmet requirement and can be taken next term (F1.3).
 
-    With ``term``, courses that do not run in that term's season (internships outside
-    summer) are left out. With ``minor``, its unmet requirements count too.
+    With ``term``, courses that cannot run in that term (internships outside summer,
+    courses missing from the term's published schedule, hidden courses) are left out.
+    With ``minor``, its unmet requirements count too.
     """
     have = record.have
     programs = [program] if minor is None else [program, minor]
@@ -264,7 +265,7 @@ def eligible_next_term(
         for code in leaf.courses
         if code in catalog.courses
         and code not in have
-        and (term is None or catalog.courses[code].offered_in(term.season))
+        and (catalog.visible(code) if term is None else catalog.offered(code, term))
         and evaluate(catalog.prerequisite(code), context).satisfied
     }
 
@@ -383,6 +384,7 @@ def _select(
             and code not in chosen
             and code not in options.exclude
             and not catalog.courses[code].is_placeholder
+            and not catalog.courses[code].hidden
         ]
         ranked = rank_courses(candidates, catalog, options.preferences, context, group.courses)
         baseline = longest(chosen)
@@ -432,7 +434,7 @@ def _select(
                 issues.append(
                     PlanIssue(
                         "warning",
-                        f"{leaf.label} still needs {remaining:g} units that no listed course can cover.",
+                        f"{leaf.label} still needs {remaining:g} credits that no listed course can cover.",
                     )
                 )
 
@@ -459,7 +461,7 @@ def _select(
         if group_requires_all(leaf, catalog):
             issues.append(
                 PlanIssue(
-                    "warning", f"{leaf.label} still needs {remaining:g} units that no listed course covers."
+                    "warning", f"{leaf.label} still needs {remaining:g} credits that no listed course covers."
                 )
             )
             continue
@@ -604,8 +606,8 @@ class _Scheduler:
     def _ready(self, code: str, term: Term) -> bool:
         if code in self.locks or term < self.not_before.get(code, term):
             return False
-        course = self.catalog.courses.get(code)
-        if course is not None and not course.offered_in(term.season):
+        # Hidden courses, the wrong season, or missing from the term's published schedule.
+        if code in self.catalog.courses and not self.catalog.offered(code, term):
             return False
         result = evaluate(self.catalog.prerequisite(code), self._context())
         if result.satisfied:
@@ -647,7 +649,7 @@ class _Scheduler:
             draft.units += self.catalog.units(code)
         if draft.units > self.options.max_units + EPSILON:
             limit = f"{self.options.max_units:g}"
-            message = f"{draft.term.label} is over {limit} units because of locked courses."
+            message = f"{draft.term.label} is over {limit} credits because of locked courses."
             self.issues.append(PlanIssue("warning", message))
 
     def _fill_courses(self, draft: _TermDraft, order: list[str], wanted: Callable[[str], bool]) -> None:
@@ -759,7 +761,13 @@ class _Scheduler:
         unscheduled += [_slot_item(slot) for slot in self.pending_slots]
         for code in self.pending:
             missing = evaluate(catalog.prerequisite(code), self._context()).missing
-            reason = f"it needs {', '.join(missing)}" if missing else "it does not fit the unit limits"
+            course = catalog.courses.get(code)
+            if missing:
+                reason = f"it needs {', '.join(missing)}"
+            elif course is not None and course.hidden:
+                reason = "it is not offered at the moment"
+            else:
+                reason = "it does not fit the credit limits or the terms it runs in"
             self.issues.append(PlanIssue("warning", f"{code} could not be scheduled because {reason}.", code))
         for code, notes in sorted(self.advisories.items()):
             if code not in self.pending:
@@ -894,7 +902,7 @@ def _attach_alternatives(
                 course = catalog.courses[code]
                 if (
                     code in taken
-                    or not course.offered_in(planned.term.season)
+                    or not catalog.offered(code, planned.term)
                     or course.credit_units > room + EPSILON
                     or not evaluate(catalog.prerequisite(code), before).satisfied
                     or not all(evaluate(rule, with_others).satisfied for rule in catalog.corequisites(code))

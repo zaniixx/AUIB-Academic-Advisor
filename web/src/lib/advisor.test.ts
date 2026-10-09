@@ -13,6 +13,7 @@ import {
   planNotes,
   requirementRows,
   termDetail,
+  unconfirmedNote,
 } from "./advisor";
 import { DEFAULT_PREFERENCES } from "./profile";
 
@@ -59,6 +60,7 @@ const plan = {
     {
       term: { label: "Spring 2027", year: 2027, season: "Spring" },
       units: 9,
+      schedule_published: true,
       items: [
         item({ code: "CSC 231", title: "Data Structure", reason: "Required: Major core courses", unlocks: 20 }),
         item({
@@ -81,6 +83,7 @@ const plan = {
     {
       term: { label: "Summer 2027", year: 2027, season: "Summer" },
       units: 3,
+      schedule_published: false,
       items: [item({ code: "CSC 390", title: "Internship I in Computer Science", locked: true, reason: "You placed this course" })],
     },
   ],
@@ -196,6 +199,19 @@ describe("the rest of the document", () => {
     expect(rows[0].courses[0]).toMatchObject({ code: "CSC 230", title: "Object-Oriented Computing" });
   });
 
+  it("marks planned terms that no published schedule confirms (F1.8)", () => {
+    const rows = overviewRows(plan, inProgress);
+    expect(rows.map((row) => [row.label, row.confirmed])).toEqual([
+      ["Fall 2026", true],
+      ["Spring 2027", true],
+      ["Summer 2027", false],
+    ]);
+    expect(unconfirmedNote("Summer 2027")).toBe(
+      "Course offerings for Summer 2027 are not published yet, so it is not known whether these courses will " +
+        "run. Check the schedule in SIS before registering.",
+    );
+  });
+
   it("counts what is left of each requirement after the plan", () => {
     expect(requirementRows(plan.progress_with_plan)).toEqual([
       { label: "Major core courses", required: 12, completed: 6, inProgress: 0, planned: 6, left: 0 },
@@ -214,7 +230,7 @@ describe("the rest of the document", () => {
   it("describes the timing, the load and the date plainly", () => {
     expect(isLate(plan)).toBe(true);
     expect(loadSummary(DEFAULT_PREFERENCES)).toBe(
-      "Usual load 15 units a term, at most 18. Summer terms are used only for courses that run in summer only, " +
+      "Usual load 15 credits a term, at most 18. Summer terms are used only for courses that run in summer only, " +
         "such as internships. Pace: aim for the standard finish.",
     );
     expect(formatDate(new Date(2026, 9, 8))).toBe("8 October 2026");

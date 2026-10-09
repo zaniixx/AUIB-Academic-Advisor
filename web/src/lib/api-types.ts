@@ -62,7 +62,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Published programs (F11.2) */
+        /** Published programs, one entry per program with its versions (F11.2, F0.4) */
         get: operations["programs_api_v1_programs_get"];
         put?: never;
         post?: never;
@@ -225,6 +225,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/planner/gpa": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Project the CGPA from expected grades, or the grades a target CGPA needs (F7.2, F7.3) */
+        post: operations["gpa_plan_api_v1_planner_gpa_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/admin/rules": {
         parameters: {
             query?: never;
@@ -270,7 +287,8 @@ export interface paths {
         /** Correct a rule by hand (F0.3); the correction survives re-imports */
         put: operations["correct_rule_api_v1_admin_rules__rule_id__put"];
         post?: never;
-        delete?: never;
+        /** Delete a rule an admin added */
+        delete: operations["delete_rule_api_v1_admin_rules__rule_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -344,10 +362,432 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/courses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Every course, including hidden ones and ones added here */
+        get: operations["list_courses_api_v1_admin_courses_get"];
+        put?: never;
+        /** Add a course by hand */
+        post: operations["create_course_api_v1_admin_courses_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/courses/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A course with its rules, the requirements it counts toward and its sections */
+        get: operations["course_detail_api_v1_admin_courses__code__get"];
+        /** Edit a course; later imports keep the edit */
+        put: operations["update_course_api_v1_admin_courses__code__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/courses/{code}/revert": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Drop the admin's edit and use the values from the course files */
+        post: operations["revert_course_api_v1_admin_courses__code__revert_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/courses/{code}/hidden": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Hide a course from students and plans, or show it again */
+        put: operations["hide_course_api_v1_admin_courses__code__hidden_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/courses/{code}/rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add a prerequisite or corequisite rule that the description does not state */
+        post: operations["add_rule_api_v1_admin_courses__code__rules_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/courses/bulk": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add or update many courses from a CSV, a spreadsheet paste or an .xlsx sheet
+         * @description With dry_run (the default) nothing is saved: the answer previews every row. Saving is all or nothing, and only when no row has a problem. Blank cells keep the current value.
+         */
+        post: operations["bulk_courses_api_v1_admin_courses_bulk_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/programs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Every major and minor, including hidden and unpublished ones */
+        get: operations["list_programs_api_v1_admin_programs_get"];
+        put?: never;
+        /** Add a major or minor by hand */
+        post: operations["create_program_api_v1_admin_programs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/programs/{program_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A program's requirement tree, ready to edit */
+        get: operations["program_detail_api_v1_admin_programs__program_id__get"];
+        /** Replace a program's details and requirement tree */
+        put: operations["update_program_api_v1_admin_programs__program_id__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/programs/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Check a draft program without saving it */
+        post: operations["check_program_api_v1_admin_programs_check_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/programs/{program_id}/hidden": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Hide a major or minor from students, or show it again */
+        put: operations["hide_program_api_v1_admin_programs__program_id__hidden_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/schedules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Published term schedules, newest first */
+        get: operations["list_schedules_api_v1_admin_schedules_get"];
+        put?: never;
+        /**
+         * Publish a term's course schedule from a CSV, a spreadsheet paste or an .xlsx sheet
+         * @description The term's schedule is replaced by the uploaded one. Rows for courses that are not in the catalog are skipped and listed. With dry_run (the default) nothing is saved.
+         */
+        post: operations["upload_schedule_api_v1_admin_schedules_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/schedules/{year}/{season}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A term's schedule, section by section */
+        get: operations["schedule_detail_api_v1_admin_schedules__year___season__get"];
+        put?: never;
+        post?: never;
+        /** Remove a term's schedule; that term is planned by season again */
+        delete: operations["delete_schedule_api_v1_admin_schedules__year___season__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/backup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Download an encrypted backup of the whole database
+         * @description AES-256-GCM, with the key derived from the passphrase (scrypt). The passphrase is not stored anywhere: without it the backup cannot be read or restored.
+         */
+        post: operations["backup_api_v1_admin_backup_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/restore/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Open an uploaded backup and compare it with the data now, without changing anything */
+        post: operations["check_restore_api_v1_admin_restore_check_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Restore the data from an uploaded backup
+         * @description Replaces courses, rules, programs, term schedules and import history with the backup's, in one transaction. The audit log is kept and records the restore. The data from just before the restore is returned as an encrypted backup (same passphrase), so the restore can be undone.
+         */
+        post: operations["restore_api_v1_admin_restore_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AdminCourseListOut */
+        AdminCourseListOut: {
+            /** Total */
+            total: number;
+            /** Counts */
+            counts: {
+                [key: string]: number;
+            };
+            /** Courses */
+            courses: components["schemas"]["AdminCourseSummaryOut"][];
+        };
+        /** AdminCourseOut */
+        AdminCourseOut: {
+            /** Code */
+            code: string;
+            /** Title */
+            title: string;
+            /** Units */
+            units: number | null;
+            /** Hidden */
+            hidden: boolean;
+            /** Admin Edited */
+            admin_edited: boolean;
+            /** Source Changed */
+            source_changed: boolean;
+            /**
+             * Origin
+             * @enum {string}
+             */
+            origin: "import" | "admin";
+            /** Description */
+            description: string;
+            /** Component */
+            component: string | null;
+            /** Notices */
+            notices: string[];
+            /** Offered Terms */
+            offered_terms: string[] | null;
+            /**
+             * Imported Values
+             * @description The values from the course files, kept while an admin edit is in force
+             */
+            imported_values: {
+                [key: string]: unknown;
+            } | null;
+            /** Rules */
+            rules: components["schemas"]["AdminRuleOut"][];
+            /** Counts Toward */
+            counts_toward: string[];
+            /** Offerings */
+            offerings: components["schemas"]["TermOfferingsOut"][];
+        };
+        /** AdminCourseSummaryOut */
+        AdminCourseSummaryOut: {
+            /** Code */
+            code: string;
+            /** Title */
+            title: string;
+            /** Units */
+            units: number | null;
+            /** Hidden */
+            hidden: boolean;
+            /** Admin Edited */
+            admin_edited: boolean;
+            /** Source Changed */
+            source_changed: boolean;
+            /**
+             * Origin
+             * @enum {string}
+             */
+            origin: "import" | "admin";
+        };
+        /** AdminProgramOut */
+        AdminProgramOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Kind */
+            kind: string;
+            /** Catalog Year */
+            catalog_year: string | null;
+            /** Total Units */
+            total_units: number;
+            /** Published */
+            published: boolean;
+            /** Hidden */
+            hidden: boolean;
+            /**
+             * Origin
+             * @enum {string}
+             */
+            origin: "import" | "admin";
+            /** Admin Edited */
+            admin_edited: boolean;
+            /** Groups */
+            groups: number;
+            /**
+             * Family
+             * @description The program this is a version of (its own id for a first version)
+             */
+            family: string;
+            /**
+             * Valid From
+             * @description Applies to students who joined from this term
+             */
+            valid_from: string | null;
+            /** Source */
+            source: string | null;
+            /** Source Date */
+            source_date: string | null;
+            root: components["schemas"]["GroupDraftOut"];
+        };
+        /** AdminProgramSummaryOut */
+        AdminProgramSummaryOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Kind */
+            kind: string;
+            /** Catalog Year */
+            catalog_year: string | null;
+            /** Total Units */
+            total_units: number;
+            /** Published */
+            published: boolean;
+            /** Hidden */
+            hidden: boolean;
+            /**
+             * Origin
+             * @enum {string}
+             */
+            origin: "import" | "admin";
+            /** Admin Edited */
+            admin_edited: boolean;
+            /** Groups */
+            groups: number;
+            /**
+             * Family
+             * @description The program this is a version of (its own id for a first version)
+             */
+            family: string;
+            /**
+             * Valid From
+             * @description Applies to students who joined from this term
+             */
+            valid_from: string | null;
+        };
         /** AdminRuleListOut */
         AdminRuleListOut: {
             /** Total */
@@ -436,9 +876,54 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /** BackupCheckOut */
+        BackupCheckOut: {
+            /** Created At */
+            created_at: string;
+            /** App Version */
+            app_version: string;
+            /** Schema Revision */
+            schema_revision: string | null;
+            /** Restorable */
+            restorable: boolean;
+            /**
+             * Problem
+             * @description Why it cannot be restored here, if it cannot
+             */
+            problem: string | null;
+            /** Tables */
+            tables: components["schemas"]["BackupTableOut"][];
+        };
+        /** BackupFileOut */
+        BackupFileOut: {
+            /** Filename */
+            filename: string;
+            /** Data Base64 */
+            data_base64: string;
+        };
+        /** BackupIn */
+        BackupIn: {
+            /**
+             * Passphrase
+             * @description Needed to read the backup; not stored
+             */
+            passphrase: string;
+        };
+        /** BackupTableOut */
+        BackupTableOut: {
+            /** Name */
+            name: string;
+            /** In Backup */
+            in_backup: number;
+            /** Now */
+            now: number;
+        };
         /** CatalogInfoOut */
         CatalogInfoOut: {
-            /** Program Id */
+            /**
+             * Program Id
+             * @description The version of the major this plan follows
+             */
             program_id: string;
             /** Program Name */
             program_name: string;
@@ -450,6 +935,30 @@ export interface components {
             source_date: string | null;
             /** Revision */
             revision: number;
+            /**
+             * Family Id
+             * @description The program, whichever version
+             */
+            family_id: string;
+            /** Valid From */
+            valid_from: string | null;
+            /**
+             * Entry Term
+             * @description The term the student joined AUIB, as the plan understood it
+             */
+            entry_term: string | null;
+            /**
+             * Version Choice
+             * @enum {string}
+             */
+            version_choice: "only" | "joined" | "chosen" | "earliest";
+            /**
+             * Version Note
+             * @description Which requirements apply to this student and why
+             */
+            version_note: string;
+            /** Versions */
+            versions: components["schemas"]["ProgramVersionOut"][];
         };
         /**
          * ChangeAction
@@ -478,6 +987,85 @@ export interface components {
              * @enum {string}
              */
             state: "completed" | "in_progress" | "planned";
+        };
+        /** CourseBulkOut */
+        CourseBulkOut: {
+            /** Applied */
+            applied: boolean;
+            /** Counts */
+            counts: {
+                [key: string]: number;
+            };
+            /**
+             * Columns
+             * @description Columns that were recognised
+             */
+            columns: string[];
+            /** Ignored Columns */
+            ignored_columns: string[];
+            /**
+             * Rows
+             * @description Every row that creates, changes or has a problem
+             */
+            rows: components["schemas"]["RowOut"][];
+        };
+        /** CourseCreateIn */
+        CourseCreateIn: {
+            /** Title */
+            title: string;
+            /**
+             * Units
+             * @description None: planning assumes 3
+             */
+            units?: number | null;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Component */
+            component?: string | null;
+            /**
+             * Offered Terms
+             * @description Seasons it runs in; null or empty means every Fall and Spring
+             */
+            offered_terms?: ("fall" | "spring" | "summer")[] | null;
+            /** Notices */
+            notices?: string[];
+            /**
+             * Code
+             * @example CSC 231
+             */
+            code: string;
+            /**
+             * Hidden
+             * @default false
+             */
+            hidden: boolean;
+        };
+        /** CourseFieldsIn */
+        CourseFieldsIn: {
+            /** Title */
+            title: string;
+            /**
+             * Units
+             * @description None: planning assumes 3
+             */
+            units?: number | null;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Component */
+            component?: string | null;
+            /**
+             * Offered Terms
+             * @description Seasons it runs in; null or empty means every Fall and Spring
+             */
+            offered_terms?: ("fall" | "spring" | "summer")[] | null;
+            /** Notices */
+            notices?: string[];
         };
         /** CourseListOut */
         CourseListOut: {
@@ -513,6 +1101,11 @@ export interface components {
             groups: {
                 [key: string]: string;
             }[];
+            /**
+             * Offerings
+             * @description Sections on published schedules, this term onward
+             */
+            offerings?: components["schemas"]["TermOfferingsOut"][];
         };
         /** CourseRef */
         CourseRef: {
@@ -549,6 +1142,31 @@ export interface components {
             /** Take With */
             take_with: string[];
         };
+        /** ExpectedGradeIn */
+        ExpectedGradeIn: {
+            /**
+             * Code
+             * @example CSC 231
+             */
+            code: string;
+            /**
+             * Grade
+             * @description The grade expected; empty if unsure
+             */
+            grade?: ("A" | "A-" | "B+" | "B" | "B-" | "C+" | "C" | "C-" | "D+" | "D" | "D-" | "F") | null;
+        };
+        /** FindingOut */
+        FindingOut: {
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "error" | "warning" | "info";
+            /** Where */
+            where: string;
+            /** Message */
+            message: string;
+        };
         /** GatewayOut */
         GatewayOut: {
             course: components["schemas"]["CourseRef"];
@@ -571,6 +1189,124 @@ export interface components {
             retakes: components["schemas"]["RetakeOut"][];
             /** Assumptions */
             assumptions: string[];
+        };
+        /**
+         * GpaPlanIn
+         * @description Courses to project (F7.2) and, optionally, a target CGPA to work back from (F7.3).
+         */
+        GpaPlanIn: {
+            /** Program Id */
+            program_id: string;
+            /** Minor Id */
+            minor_id?: string | null;
+            /** Attempts */
+            attempts?: components["schemas"]["AttemptIn"][];
+            preferences?: components["schemas"]["PreferencesIn"];
+            /**
+             * Entry Term
+             * @description The term the student joined AUIB; worked out from the course history if empty
+             */
+            entry_term?: string | null;
+            /**
+             * Program Version
+             * @description A specific version of the major, when the registrar approved a move to it (F0.4)
+             */
+            program_version?: string | null;
+            /** Courses */
+            courses?: components["schemas"]["ExpectedGradeIn"][];
+            /** Target */
+            target?: number | null;
+        };
+        /** GpaPlanOut */
+        GpaPlanOut: {
+            /** Current */
+            current: number | null;
+            /**
+             * Projected
+             * @description The CGPA with the expected grades; null when none is given
+             */
+            projected: number | null;
+            /**
+             * Courses Gpa
+             * @description The GPA of the courses with an expected grade alone
+             */
+            courses_gpa: number | null;
+            /** Graded Credits */
+            graded_credits: number;
+            target: components["schemas"]["GpaTargetOut"] | null;
+            /** Assumptions */
+            assumptions: string[];
+        };
+        /** GpaTargetOut */
+        GpaTargetOut: {
+            /** Target */
+            target: number;
+            /**
+             * Status
+             * @description met: reached whatever the open courses' grades; out_of_reach: not even with A's
+             * @enum {string}
+             */
+            status: "met" | "reachable" | "out_of_reach" | "no_courses";
+            /**
+             * Average Needed
+             * @description Grade points per credit the open courses must average
+             */
+            average_needed: number | null;
+            /**
+             * Grade Needed
+             * @description The lowest letter grade at or above that average
+             */
+            grade_needed: string | null;
+            /**
+             * Open Credits
+             * @description Credits of the courses without an expected grade
+             */
+            open_credits: number;
+            /**
+             * Best Possible
+             * @description The CGPA with an A in every open course
+             */
+            best_possible: number | null;
+        };
+        /** GroupDraftIn */
+        GroupDraftIn: {
+            /**
+             * Label
+             * @description The name students see
+             */
+            label: string;
+            /**
+             * Title
+             * @description The SIS title, if different
+             */
+            title?: string | null;
+            /** @default other */
+            role: components["schemas"]["GroupRole"];
+            /** Units Required */
+            units_required: number;
+            /**
+             * Courses
+             * @description Course codes; leave empty when it has sub-groups
+             */
+            courses?: string[];
+            /** Children */
+            children?: components["schemas"]["GroupDraftIn"][];
+        };
+        /** GroupDraftOut */
+        GroupDraftOut: {
+            /** Key */
+            key: string;
+            /** Label */
+            label: string;
+            /** Title */
+            title: string;
+            role: components["schemas"]["GroupRole"];
+            /** Units Required */
+            units_required: number;
+            /** Courses */
+            courses: string[];
+            /** Children */
+            children: components["schemas"]["GroupDraftOut"][];
         };
         /** GroupOut */
         GroupOut: {
@@ -614,6 +1350,11 @@ export interface components {
             /** Children */
             children: components["schemas"]["GroupProgressOut"][];
         };
+        /**
+         * GroupRole
+         * @enum {string}
+         */
+        GroupRole: "core" | "general_education" | "major_elective" | "free_elective" | "other";
         /** GroupSuggestionsOut */
         GroupSuggestionsOut: {
             /** Group Key */
@@ -637,6 +1378,11 @@ export interface components {
              * @constant
              */
             status: "ok";
+        };
+        /** HiddenIn */
+        HiddenIn: {
+            /** Hidden */
+            hidden: boolean;
         };
         /** HistoryParseIn */
         HistoryParseIn: {
@@ -825,8 +1571,30 @@ export interface components {
             source: string | null;
             /** Source Date */
             source_date: string | null;
+            /**
+             * Valid From
+             * @description The minor version's first entry term (F0.4)
+             */
+            valid_from?: string | null;
             progress: components["schemas"]["ProgressOut"];
             progress_with_plan: components["schemas"]["GroupProgressOut"];
+        };
+        /** OfferingOut */
+        OfferingOut: {
+            /** Code */
+            code: string;
+            /** Title */
+            title: string;
+            /** Section */
+            section: string;
+            /** Days */
+            days: string;
+            /** Time */
+            time: string;
+            /** Instructor */
+            instructor: string;
+            /** Room */
+            room: string;
         };
         /** OptionOut */
         OptionOut: {
@@ -910,6 +1678,11 @@ export interface components {
             units: number;
             /** Items */
             items: components["schemas"]["PlanItemOut"][];
+            /**
+             * Schedule Published
+             * @description True when the courses were checked against the registrar's published schedule for this term (F1.8); otherwise it is not known yet whether they will be offered
+             */
+            schedule_published: boolean;
         };
         /** PreferencesIn */
         PreferencesIn: {
@@ -950,6 +1723,17 @@ export interface components {
             /** @default balanced */
             workload: components["schemas"]["Workload"];
         };
+        /** ProgramCheckOut */
+        ProgramCheckOut: {
+            /** Ok */
+            ok: boolean;
+            /** Findings */
+            findings: components["schemas"]["FindingOut"][];
+            /** Stats */
+            stats: {
+                [key: string]: number;
+            };
+        };
         /** ProgramDetailOut */
         ProgramDetailOut: {
             /** Id */
@@ -966,7 +1750,68 @@ export interface components {
             source: string | null;
             /** Source Date */
             source_date: string | null;
+            /**
+             * Versions
+             * @description Every version of the program, oldest first (F0.4)
+             */
+            versions?: components["schemas"]["ProgramVersionOut"][];
             root: components["schemas"]["GroupOut"];
+        };
+        /** ProgramDraftIn */
+        ProgramDraftIn: {
+            /**
+             * Id
+             * @example casc-computer-science
+             */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "major" | "minor";
+            /** Catalog Year */
+            catalog_year?: string | null;
+            /** Total Units */
+            total_units: number;
+            /** Source */
+            source?: string | null;
+            /** Source Date */
+            source_date?: string | null;
+            /**
+             * Published
+             * @default false
+             */
+            published: boolean;
+            /**
+             * Accept Warnings
+             * @description Publish even though the check found warnings
+             * @default false
+             */
+            accept_warnings: boolean;
+            /**
+             * Family
+             * @description Make this a version of an existing program: that program's id (F0.4)
+             */
+            family?: string | null;
+            /**
+             * Valid From
+             * @description Applies to students who joined from this term; empty means from the start
+             */
+            valid_from?: string | null;
+            root: components["schemas"]["GroupDraftIn"];
+        };
+        /** ProgramSaveOut */
+        ProgramSaveOut: {
+            /**
+             * Saved
+             * @description False when the check found errors; the findings say what to fix
+             */
+            saved: boolean;
+            program: components["schemas"]["AdminProgramOut"] | null;
+            /** Findings */
+            findings: components["schemas"]["FindingOut"][];
         };
         /** ProgramSummaryOut */
         ProgramSummaryOut: {
@@ -984,6 +1829,36 @@ export interface components {
             source: string | null;
             /** Source Date */
             source_date: string | null;
+            /**
+             * Versions
+             * @description Every version of the program, oldest first (F0.4)
+             */
+            versions?: components["schemas"]["ProgramVersionOut"][];
+        };
+        /** ProgramVersionOut */
+        ProgramVersionOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Catalog Year */
+            catalog_year: string | null;
+            /**
+             * Valid From
+             * @description The first entry term it applies to; null means from the start
+             */
+            valid_from: string | null;
+            /**
+             * Applies To
+             * @description Whom it applies to, e.g. "students who joined from Fall 2027 on"
+             */
+            applies_to: string;
+            /**
+             * In Use
+             * @description The version this plan follows
+             * @default false
+             */
+            in_use: boolean;
         };
         /** ProgressOut */
         ProgressOut: {
@@ -1026,6 +1901,43 @@ export interface components {
             /** Groups */
             groups: components["schemas"]["GroupSuggestionsOut"][];
         };
+        /**
+         * RestoreFileIn
+         * @description An uploaded backup file (base64) and the passphrase or key it was made with.
+         */
+        RestoreFileIn: {
+            /** Backup Base64 */
+            backup_base64: string;
+            /** Passphrase */
+            passphrase: string;
+        };
+        /** RestoreIn */
+        RestoreIn: {
+            /** Backup Base64 */
+            backup_base64: string;
+            /** Passphrase */
+            passphrase: string;
+            /**
+             * Confirm
+             * @description Type RESTORE to confirm replacing the data
+             * @constant
+             */
+            confirm: "RESTORE";
+        };
+        /** RestoreOut */
+        RestoreOut: {
+            /**
+             * Restored
+             * @description Rows restored per table
+             */
+            restored: {
+                [key: string]: number;
+            };
+            /** Audit Log Kept */
+            audit_log_kept: boolean;
+            /** @description The data from just before the restore, encrypted with the same passphrase */
+            previous: components["schemas"]["BackupFileOut"];
+        };
         /** RetakeOut */
         RetakeOut: {
             course: components["schemas"]["CourseRef"];
@@ -1047,6 +1959,23 @@ export interface components {
              */
             in_plan: boolean;
         };
+        /** RowOut */
+        RowOut: {
+            /**
+             * Line
+             * @description Row number as the spreadsheet shows it (the header is row 1)
+             */
+            line: number;
+            /** Code */
+            code: string | null;
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "create" | "update" | "unchanged" | "error" | "skip";
+            /** Messages */
+            messages: string[];
+        };
         /** RuleCheckIn */
         RuleCheckIn: {
             /** Rule */
@@ -1066,6 +1995,21 @@ export interface components {
             position?: number | null;
             /** Unknown Courses */
             unknown_courses?: string[];
+        };
+        /** RuleCreateIn */
+        RuleCreateIn: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "pre" | "co" | "pre_or_co";
+            /**
+             * Rule
+             * @description Rule in the admin rule language
+             */
+            rule: string;
+            /** Note */
+            note?: string | null;
         };
         /** RuleOut */
         RuleOut: {
@@ -1094,6 +2038,76 @@ export interface components {
             /** Note */
             note?: string | null;
         };
+        /** ScheduleOut */
+        ScheduleOut: {
+            term: components["schemas"]["TermOut"];
+            /** Courses */
+            courses: number;
+            /** Sections */
+            sections: number;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Updated By */
+            updated_by: string;
+            /** Offerings */
+            offerings: components["schemas"]["OfferingOut"][];
+        };
+        /** ScheduleSummaryOut */
+        ScheduleSummaryOut: {
+            term: components["schemas"]["TermOut"];
+            /** Courses */
+            courses: number;
+            /** Sections */
+            sections: number;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+            /** Updated By */
+            updated_by: string;
+        };
+        /** ScheduleUploadIn */
+        ScheduleUploadIn: {
+            /** Text */
+            text?: string | null;
+            /** Xlsx Base64 */
+            xlsx_base64?: string | null;
+            /**
+             * Dry Run
+             * @description Only check and preview; nothing is saved
+             * @default true
+             */
+            dry_run: boolean;
+            /**
+             * Term
+             * @example Fall 2027
+             * @example 2027/2028 Fall
+             */
+            term: string;
+        };
+        /** ScheduleUploadOut */
+        ScheduleUploadOut: {
+            /** Applied */
+            applied: boolean;
+            term: components["schemas"]["TermOut"];
+            /** Counts */
+            counts: {
+                [key: string]: number;
+            };
+            /** Columns */
+            columns: string[];
+            /** Ignored Columns */
+            ignored_columns: string[];
+            /**
+             * Rows
+             * @description Rows that were skipped, with the reason
+             */
+            rows: components["schemas"]["RowOut"][];
+        };
         /** ShiftOut */
         ShiftOut: {
             /** Code */
@@ -1115,6 +2129,16 @@ export interface components {
             /** Attempts */
             attempts?: components["schemas"]["AttemptIn"][];
             preferences?: components["schemas"]["PreferencesIn"];
+            /**
+             * Entry Term
+             * @description The term the student joined AUIB; worked out from the course history if empty
+             */
+            entry_term?: string | null;
+            /**
+             * Program Version
+             * @description A specific version of the major, when the registrar approved a move to it (F0.4)
+             */
+            program_version?: string | null;
         };
         /** SuggestionOut */
         SuggestionOut: {
@@ -1128,6 +2152,22 @@ export interface components {
             /** Missing */
             missing: string[];
         };
+        /**
+         * TableIn
+         * @description Either text (CSV, or cells pasted from a spreadsheet) or an .xlsx file in base64.
+         */
+        TableIn: {
+            /** Text */
+            text?: string | null;
+            /** Xlsx Base64 */
+            xlsx_base64?: string | null;
+            /**
+             * Dry Run
+             * @description Only check and preview; nothing is saved
+             * @default true
+             */
+            dry_run: boolean;
+        };
         /** TermGpaOut */
         TermGpaOut: {
             term: components["schemas"]["TermOut"];
@@ -1135,6 +2175,12 @@ export interface components {
             gpa: number;
             /** Units */
             units: number;
+        };
+        /** TermOfferingsOut */
+        TermOfferingsOut: {
+            term: components["schemas"]["TermOut"];
+            /** Sections */
+            sections: components["schemas"]["OfferingOut"][];
         };
         /** TermOut */
         TermOut: {
@@ -1179,6 +2225,16 @@ export interface components {
             /** Attempts */
             attempts?: components["schemas"]["AttemptIn"][];
             preferences?: components["schemas"]["PreferencesIn"];
+            /**
+             * Entry Term
+             * @description The term the student joined AUIB; worked out from the course history if empty
+             */
+            entry_term?: string | null;
+            /**
+             * Program Version
+             * @description A specific version of the major, when the registrar approved a move to it (F0.4)
+             */
+            program_version?: string | null;
             change: components["schemas"]["ChangeIn"];
         };
         /** WhatIfOut */
@@ -1591,6 +2647,39 @@ export interface operations {
             };
         };
     };
+    gpa_plan_api_v1_planner_gpa_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GpaPlanIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GpaPlanOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_rules_api_v1_admin_rules_get: {
         parameters: {
             query?: {
@@ -1681,6 +2770,35 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AdminRuleOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_rule_api_v1_admin_rules__rule_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rule_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {
@@ -1804,6 +2922,674 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AuditOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_courses_api_v1_admin_courses_get: {
+        parameters: {
+            query?: {
+                show?: "all" | "hidden" | "edited" | "admin" | "source_changed";
+                q?: string | null;
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminCourseListOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_course_api_v1_admin_courses_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CourseCreateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminCourseOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    course_detail_api_v1_admin_courses__code__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminCourseOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_course_api_v1_admin_courses__code__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CourseFieldsIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminCourseOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revert_course_api_v1_admin_courses__code__revert_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminCourseOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    hide_course_api_v1_admin_courses__code__hidden_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HiddenIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminCourseSummaryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_rule_api_v1_admin_courses__code__rules_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RuleCreateIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminRuleOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    bulk_courses_api_v1_admin_courses_bulk_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TableIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CourseBulkOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_programs_api_v1_admin_programs_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminProgramSummaryOut"][];
+                };
+            };
+        };
+    };
+    create_program_api_v1_admin_programs_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProgramDraftIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgramSaveOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    program_detail_api_v1_admin_programs__program_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                program_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminProgramOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_program_api_v1_admin_programs__program_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                program_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProgramDraftIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgramSaveOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    check_program_api_v1_admin_programs_check_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProgramDraftIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgramCheckOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    hide_program_api_v1_admin_programs__program_id__hidden_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                program_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HiddenIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminProgramSummaryOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_schedules_api_v1_admin_schedules_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleSummaryOut"][];
+                };
+            };
+        };
+    };
+    upload_schedule_api_v1_admin_schedules_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ScheduleUploadIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleUploadOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    schedule_detail_api_v1_admin_schedules__year___season__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                year: number;
+                season: "spring" | "summer" | "fall";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_schedule_api_v1_admin_schedules__year___season__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                year: number;
+                season: "spring" | "summer" | "fall";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    backup_api_v1_admin_backup_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BackupIn"];
+            };
+        };
+        responses: {
+            /** @description The encrypted backup */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    check_restore_api_v1_admin_restore_check_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RestoreFileIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackupCheckOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    restore_api_v1_admin_restore_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RestoreIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RestoreOut"];
                 };
             };
             /** @description Validation Error */
