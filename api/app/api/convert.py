@@ -121,7 +121,11 @@ def options_from(preferences: s.PreferencesIn, program: Program | None = None) -
 
 def preferences_from(preferences: s.PreferencesIn) -> Preferences:
     return Preferences(
-        interests=tuple(preferences.interests), goal=preferences.goal, workload=preferences.workload
+        interests=tuple(preferences.interests),
+        goal=preferences.goal,
+        workload=preferences.workload,
+        plans=preferences.plans,
+        avoid=tuple(preferences.avoid),
     )
 
 

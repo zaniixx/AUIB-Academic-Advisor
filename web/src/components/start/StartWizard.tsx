@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { api, type MetaOut, type PreferencesIn, type ProgramSummary } from "@/lib/api";
+import { api, type PreferencesIn, type ProgramSummary } from "@/lib/api";
 import { useAsync, useProfile } from "@/lib/hooks";
 import { DEFAULT_PREFERENCES, saveProfile, type Profile } from "@/lib/profile";
 import { Alert, CheckIcon, PageHeader, Skeleton } from "@/components/ui";
@@ -12,15 +12,15 @@ import { ReviewStep } from "./ReviewStep";
 import { GoalsStep } from "./GoalsStep";
 import { fromAttempts, fromHistory, toAttempts, type EditableRow } from "./rows";
 
-const STEPS = ["Program", "Course history", "Check your courses", "Interests and goals"] as const;
+const STEPS = ["Program", "Course history", "Check your courses", "Quick questions"] as const;
 
 export function StartWizard() {
   const saved = useProfile();
-  const data = useAsync("start", () => Promise.all([api.programs("major"), api.programs("minor"), api.meta()]));
+  const data = useAsync("start", () => Promise.all([api.programs("major"), api.programs("minor")]));
   if (data.error) return <Alert tone="error" title="Something went wrong">{data.error}</Alert>;
   if (saved === undefined || !data.data) return <WizardSkeleton />;
-  const [majors, minors, meta] = data.data;
-  return <Wizard majors={majors} minors={minors} meta={meta} saved={saved} />;
+  const [majors, minors] = data.data;
+  return <Wizard majors={majors} minors={minors} saved={saved} />;
 }
 
 /** The wizard's shape while programs load, so nothing jumps when they arrive. */
@@ -84,12 +84,10 @@ function Stepper({ current }: { current: number }) {
 function Wizard({
   majors,
   minors,
-  meta,
   saved,
 }: {
   majors: ProgramSummary[];
   minors: ProgramSummary[];
-  meta: MetaOut;
   saved: Profile | null;
 }) {
   const router = useRouter();
@@ -177,7 +175,7 @@ function Wizard({
         )}
         {step === 3 && (
           <GoalsStep
-            meta={meta}
+            programId={programId}
             preferences={preferences}
             onChange={setPreferences}
             onBack={() => setStep(rows.length ? 2 : 1)}

@@ -34,6 +34,8 @@ export const DEFAULT_PREFERENCES: PreferencesIn = {
   interests: [],
   goal: null,
   workload: "balanced",
+  plans: null,
+  avoid: [],
 };
 
 function storage(): Storage | null {

@@ -113,7 +113,7 @@ Each requirement has an ID for tracking; "Must" items are needed for the release
 
 | ID | Requirement | Priority | Acceptance criteria |
 | --- | --- | --- | --- |
-| F2.1 | Onboarding questionnaire: interests, career goals, preferred workload | Must | Takes under 3 minutes |
+| F2.1 | Onboarding questionnaire: a few quick questions, one at a time, fitted to the student's major: which parts of the major they enjoy (for major electives), what interests them outside it (for core liberal arts and free electives), what they would rather avoid in a course (such as heavy homework or long essays), and their plans after graduating, with the career direction as a follow-up; then the preferred workload | Must | Takes about a minute; every answer is a tap; any question can be skipped; a new major gets fitting questions with no code changes |
 | F2.2 | Rank eligible electives per open requirement group by fit | Must | Each suggestion states why it was suggested |
 | F2.3 | Factor in workload and difficulty from reviews once available | Should | Ranking changes when review data exists |
 | F2.4 | Suggest a balanced term (mix of heavy and light courses) | Could | Planned term's combined workload stays under the student's stated limit |

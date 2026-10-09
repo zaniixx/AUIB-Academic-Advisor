@@ -89,6 +89,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/programs/{program_id}/questions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The quick questions about interests, dislikes and plans for this major (F2.1) */
+        get: operations["questions_api_v1_programs__program_id__questions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/programs/{program_id}/insights": {
         parameters: {
             query?: never;
@@ -1559,6 +1576,10 @@ export interface components {
             interests: components["schemas"]["OptionOut"][];
             /** Goals */
             goals: components["schemas"]["OptionOut"][];
+            /** Plans */
+            plans: components["schemas"]["OptionOut"][];
+            /** Avoid */
+            avoid: components["schemas"]["OptionOut"][];
             /** Workloads */
             workloads: string[];
             /** Paces */
@@ -1756,6 +1777,16 @@ export interface components {
             goal?: string | null;
             /** @default balanced */
             workload: components["schemas"]["Workload"];
+            /**
+             * Plans
+             * @description What the student plans after graduating (F2.1)
+             */
+            plans?: string | null;
+            /**
+             * Avoid
+             * @description Course traits the student would rather avoid, such as essays (F2.1)
+             */
+            avoid?: string[];
         };
         /** ProgramCheckOut */
         ProgramCheckOut: {
@@ -1913,6 +1944,36 @@ export interface components {
             not_counted: components["schemas"]["CourseRef"][];
             /** Whats Left */
             whats_left: components["schemas"]["LeftItemOut"][];
+        };
+        /** QuestionOut */
+        QuestionOut: {
+            /** Id */
+            id: string;
+            /**
+             * Field
+             * @description The preference the answer goes into; two questions can fill interests
+             * @enum {string}
+             */
+            field: "interests" | "avoid" | "plans" | "goal";
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "single" | "multi";
+            /** Title */
+            title: string;
+            /** Hint */
+            hint: string;
+            /** Options */
+            options: components["schemas"]["OptionOut"][];
+            show_if: components["schemas"]["ShowIfOut"] | null;
+        };
+        /** QuestionsOut */
+        QuestionsOut: {
+            /** Program Id */
+            program_id: string;
+            /** Questions */
+            questions: components["schemas"]["QuestionOut"][];
         };
         /** ReadyOut */
         ReadyOut: {
@@ -2156,6 +2217,16 @@ export interface components {
             title: string;
             before: components["schemas"]["TermOut"] | null;
             after: components["schemas"]["TermOut"] | null;
+        };
+        /** ShowIfOut */
+        ShowIfOut: {
+            /** Question */
+            question: string;
+            /**
+             * Answers
+             * @description Ask the question only after one of these answers
+             */
+            answers: string[];
         };
         /**
          * StudentIn
@@ -2427,6 +2498,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProgramDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    questions_api_v1_programs__program_id__questions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                program_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuestionsOut"];
                 };
             };
             /** @description Validation Error */

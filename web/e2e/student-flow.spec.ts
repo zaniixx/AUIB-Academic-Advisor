@@ -61,9 +61,24 @@ test("a guest pastes their history and gets a plan", async ({ page }) => {
   await shots("3-review", page);
   await page.getByRole("button", { name: "Next", exact: true }).click();
 
+  // F2.1: a few quick questions, one at a time, fitted to the major.
+  await expect(page.getByRole("heading", { name: "Which parts of Computer Science do you enjoy most?" })).toBeVisible();
   await page.getByText("AI and machine learning").click();
-  await page.getByText("Data scientist").click();
+  await expectAccessible(page);
   await shots("4-goals", page);
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Outside your major, what sounds interesting?" })).toBeVisible();
+  await page.getByText("History, philosophy and heritage").click();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await page.getByText("Long essays and papers").click();
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  // A single choice moves on by itself; the direction is asked only after "a job" or "graduate school".
+  await page.getByText("Get a job in my field").click();
+  await expect(page.getByRole("heading", { name: "Which direction appeals most?" })).toBeVisible();
+  await page.getByText("Data scientist").click();
+  await expect(page.getByRole("heading", { name: "How busy do you want your terms?" })).toBeVisible();
+  await expectAccessible(page);
+  await shots("4b-pace", page);
   await page.getByRole("button", { name: "See my plan" }).click();
 
   await expect(page).toHaveURL(/\/plan$/);
@@ -207,6 +222,7 @@ test("a new student adds a minor and sees it in the plan and the advisor documen
   await page.getByLabel("Minor (optional)").selectOption({ label: "Psychology" });
   await page.getByRole("button", { name: "Next", exact: true }).click();
   await page.getByRole("button", { name: "I'm a new student, skip" }).click();
+  await page.getByRole("button", { name: "Skip to the end" }).click();
   await page.getByRole("button", { name: "See my plan" }).click();
 
   await expect(page).toHaveURL(/\/plan$/);

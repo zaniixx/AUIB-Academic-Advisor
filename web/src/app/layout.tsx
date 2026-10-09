@@ -26,8 +26,11 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" dir="ltr" className={`h-full ${ubuntu.variable}`}>
-      <body className="flex min-h-full flex-col bg-background text-text antialiased">
+    // Browser extensions often add classes or attributes to <html> and <body> before React loads
+    // (one adds "vc-init" to <body>). suppressHydrationWarning ignores attribute differences on these
+    // two elements only; a mismatch anywhere inside the page is still reported.
+    <html lang="en" dir="ltr" className={`h-full ${ubuntu.variable}`} suppressHydrationWarning>
+      <body className="flex min-h-full flex-col bg-background text-text antialiased" suppressHydrationWarning>
         <a
           href="#main"
           className="sr-only focus:not-sr-only focus:fixed focus:start-3 focus:top-3 focus:z-50 focus:rounded-button focus:bg-surface focus:px-4 focus:py-2 focus:shadow-float"

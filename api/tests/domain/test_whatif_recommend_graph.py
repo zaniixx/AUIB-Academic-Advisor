@@ -99,7 +99,7 @@ def test_interests_rank_matching_courses_first(cs_program: Program, cs_catalog: 
         group, 12, cs_catalog, Preferences(interests=("ai",)), context, set()
     ).suggestions
     assert ranked[0].code == "CSC 333"  # Machine Learning: matches and is takeable now
-    assert "Matches your interest in ai and machine learning" in ranked[0].reasons
+    assert "Matches your interest: AI and machine learning" in ranked[0].reasons
 
 
 def test_gateways_and_longest_chain(cs_program: Program, cs_catalog: Catalog) -> None:

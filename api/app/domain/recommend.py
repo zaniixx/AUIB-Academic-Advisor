@@ -1,10 +1,12 @@
 """Elective recommendations (F2.1, F2.2).
 
 Ranking is deliberately simple and explainable: a course scores points for
-matching the student's interests and career goal (by keywords in its title and
-description), for being takeable next term and for opening other courses the
-student would like. Every suggestion lists the reasons behind its score.
-Review-based workload and difficulty (F2.3) will join the score once reviews exist.
+matching the student's interests, plans after graduation and career direction (by
+keywords in its title and description), for being takeable next term and for
+opening other courses the student would like, and loses points for what the student
+would rather avoid when its description mentions it. Every suggestion lists the
+reasons behind its score. Review-based workload and difficulty (F2.3) will join the
+score once reviews exist.
 """
 
 from __future__ import annotations
@@ -15,61 +17,23 @@ from enum import StrEnum
 
 from app.domain.catalog import Catalog, Group, Program, group_requires_all
 from app.domain.graph import prerequisite_graph
+from app.domain.interests import (
+    GOALS,
+    GOALS_BY_ID,
+    INTERESTS,
+    INTERESTS_BY_ID,
+    PLANS_BY_ID,
+    TRAITS_BY_ID,
+    Goal,
+    Interest,
+    has_trait,
+    interest_matches,
+)
 from app.domain.requisites import EvalContext, evaluate
 
+__all__ = ["GOALS", "INTERESTS", "Goal", "Interest", "interest_matches"]
+
 MAX_UNDERGRADUATE_LEVEL = 400
-
-
-@dataclass(frozen=True)
-class Interest:
-    id: str
-    label: str
-    keywords: tuple[str, ...]
-
-
-INTERESTS: tuple[Interest, ...] = (
-    Interest("ai", "AI and machine learning", ("artificial intelligence", "machine learning", "deep learning",
-             "neural", "pattern recognition", "computational intelligence", "intelligent")),
-    Interest("data", "Data science and databases", ("data", "database", "statistic", "probability",
-             "mining", "analytics")),
-    Interest("software", "Software development", ("software", "programming", "object-oriented", "c++",
-             "python", "c#", ".net", "algorithm")),
-    Interest("web_mobile", "Web and mobile apps", ("web", "mobile", "internet", "user interface")),
-    Interest("security", "Security and networks", ("security", "cyber", "network", "cloud", "cryptograph")),
-    Interest("systems", "Computer systems and hardware", ("operating system", "architecture", "parallel",
-             "distributed", "digital logic", "hardware", "compiler", "embedded")),
-    Interest("vision", "Images and computer vision", ("image", "vision", "graphics", "visual")),
-    Interest("bio", "Bioinformatics and health", ("bioinformatics", "biolog", "health", "genom", "medic")),
-    Interest("business", "Business and entrepreneurship", ("business", "management", "marketing", "finance",
-             "accounting", "entrepreneur", "econom")),
-    Interest("society", "Society, ethics and politics", ("ethic", "politic", "society", "sociolog", "global",
-             "law", "public")),
-    Interest("mind", "Psychology and education", ("psycholog", "learning", "education", "human development",
-             "behavior")),
-    Interest("culture", "History, culture and the arts", ("history", "civilization", "literature", "cinema",
-             "theatre", "heritage", "archaeolog", "anthropolog", "philosoph", "humanities", "linguistic")),
-    Interest("science", "Natural sciences", ("physics", "chemistry", "biology", "environment", "astronomy",
-             "geograph", "climate")),
-    Interest("communication", "Writing and communication", ("writing", "communication", "speaking", "media")),
-)  # fmt: skip
-
-
-@dataclass(frozen=True)
-class Goal:
-    id: str
-    label: str
-    weights: dict[str, float]
-
-
-GOALS: tuple[Goal, ...] = (
-    Goal("software_engineer", "Software engineer", {"software": 1.0, "web_mobile": 0.6, "systems": 0.4}),
-    Goal("data_scientist", "Data scientist", {"data": 1.0, "ai": 0.8}),
-    Goal("ai_engineer", "AI / machine learning engineer", {"ai": 1.0, "data": 0.6, "vision": 0.5}),
-    Goal("security_engineer", "Cybersecurity or network engineer", {"security": 1.0, "systems": 0.6}),
-    Goal("researcher", "Graduate school or research", {"ai": 0.5, "data": 0.5, "systems": 0.5}),
-    Goal("entrepreneur", "Start a company", {"business": 1.0, "web_mobile": 0.6, "software": 0.4}),
-    Goal("undecided", "Not sure yet", {}),
-)
 
 
 class Workload(StrEnum):
@@ -78,11 +42,20 @@ class Workload(StrEnum):
     CHALLENGING = "challenging"
 
 
+# What a course loses when its description mentions something the student would rather avoid.
+AVOID_PENALTY = 0.6
+# A direction or a plan counts for a course only when its title names a topic that helps, or its
+# description mentions several; one passing mention (0.4) is not enough.
+DIRECTION_THRESHOLD = 0.5
+
+
 @dataclass(frozen=True)
 class Preferences:
     interests: tuple[str, ...] = ()
     goal: str | None = None
     workload: Workload = Workload.BALANCED
+    plans: str | None = None  # after graduation: see interests.PLANS
+    avoid: tuple[str, ...] = ()  # see interests.TRAITS
 
 
 @dataclass(frozen=True)
@@ -103,19 +76,6 @@ class GroupSuggestions:
     suggestions: tuple[Suggestion, ...] = field(default_factory=tuple)
 
 
-_INTERESTS_BY_ID = {interest.id: interest for interest in INTERESTS}
-_GOALS_BY_ID = {goal.id: goal for goal in GOALS}
-
-
-def interest_matches(text_title: str, text_description: str, interest: Interest) -> float:
-    title, description = text_title.lower(), text_description.lower()
-    if any(keyword in title for keyword in interest.keywords):
-        return 1.0
-    if any(keyword in description for keyword in interest.keywords):
-        return 0.4
-    return 0.0
-
-
 def rank_courses(
     candidates: Iterable[str],
     catalog: Catalog,
@@ -127,7 +87,7 @@ def rank_courses(
     candidate_list = [c for c in dict.fromkeys(candidates) if c in catalog.courses]
     pool = set(pool_for_unlocks) | set(candidate_list)
     graph = prerequisite_graph(catalog, pool)
-    goal = _GOALS_BY_ID.get(preferences.goal or "")
+    goal = GOALS_BY_ID.get(preferences.goal or "")
     affinity = {code: _affinity(code, catalog, preferences, goal)[0] for code in pool}
 
     suggestions = []
@@ -154,6 +114,11 @@ def rank_courses(
         elif preferences.workload is Workload.CHALLENGING and level >= 300:
             score += 0.3
             reasons.append("Advanced level, which suits a challenging workload")
+        for trait_id in preferences.avoid:
+            trait = TRAITS_BY_ID.get(trait_id)
+            if trait and has_trait(course.title, course.description, course.component, trait):
+                score -= AVOID_PENALTY
+                reasons.append(f"Its description mentions {trait.noun}, which you would rather avoid")
         suggestions.append(
             Suggestion(code, course.title, course.credit_units, round(score, 2), tuple(reasons),
                        check.satisfied, check.missing)
@@ -168,19 +133,29 @@ def _affinity(
     course = catalog.courses[code]
     score, reasons = 0.0, []
     for interest_id in preferences.interests:
-        interest = _INTERESTS_BY_ID.get(interest_id)
+        interest = INTERESTS_BY_ID.get(interest_id)
         if interest and (match := interest_matches(course.title, course.description, interest)):
             score += match
-            reasons.append(f"Matches your interest in {interest.label.lower()}")
+            reasons.append(f"Matches your interest: {interest.label}")
     if goal:
-        goal_score = sum(
-            weight * interest_matches(course.title, course.description, _INTERESTS_BY_ID[interest_id])
-            for interest_id, weight in goal.weights.items()
-        )
-        if goal_score > 0:
+        goal_score = _weighted(course.title, course.description, goal.weights)
+        if goal_score >= DIRECTION_THRESHOLD:
             score += 0.6 * goal_score
-            reasons.append(f"Useful for your goal: {goal.label.lower()}")
+            reasons.append(f"Useful for your direction: {goal.label}")
+    plan = PLANS_BY_ID.get(preferences.plans or "")
+    if plan and plan.weights:
+        plan_score = _weighted(course.title, course.description, plan.weights)
+        if plan_score >= DIRECTION_THRESHOLD:
+            score += 0.5 * plan_score
+            reasons.append(plan.reason)
     return score, reasons
+
+
+def _weighted(title: str, description: str, weights: dict[str, float]) -> float:
+    return sum(
+        weight * interest_matches(title, description, INTERESTS_BY_ID[topic])
+        for topic, weight in weights.items()
+    )
 
 
 def suggest_for_group(

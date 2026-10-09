@@ -8,8 +8,9 @@ from typing import Annotated, Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.domain.codes import normalize_code
+from app.domain.interests import GOALS, INTERESTS, PLANS_BY_ID, TRAITS, TRAITS_BY_ID
 from app.domain.planner import Pace
-from app.domain.recommend import GOALS, INTERESTS, Workload
+from app.domain.recommend import Workload
 from app.domain.record import AttemptStatus
 from app.domain.terms import Term
 from app.domain.whatif import ChangeAction
@@ -80,6 +81,14 @@ class PreferencesIn(StrictModel):
     interests: list[str] = Field(default_factory=list, max_length=len(INTERESTS))
     goal: str | None = Field(default=None, max_length=40)
     workload: Workload = Workload.BALANCED
+    plans: str | None = Field(
+        default=None, max_length=40, description="What the student plans after graduating (F2.1)"
+    )
+    avoid: list[str] = Field(
+        default_factory=list,
+        max_length=len(TRAITS),
+        description="Course traits the student would rather avoid, such as essays (F2.1)",
+    )
 
     _check_start = field_validator("start_term")(_term)
 
@@ -101,6 +110,20 @@ class PreferencesIn(StrictModel):
         unknown = set(values) - _INTEREST_IDS
         if unknown:
             raise ValueError("Unknown interest; see /api/v1/meta for the list")
+        return values
+
+    @field_validator("plans")
+    @classmethod
+    def _plans(cls, value: str | None) -> str | None:
+        if value is not None and value not in PLANS_BY_ID:
+            raise ValueError("Unknown plan; see /api/v1/meta for the list")
+        return value
+
+    @field_validator("avoid")
+    @classmethod
+    def _avoid(cls, values: list[str]) -> list[str]:
+        if set(values) - set(TRAITS_BY_ID):
+            raise ValueError("Unknown course trait; see /api/v1/meta for the list")
         return values
 
     @field_validator("goal")
@@ -199,6 +222,8 @@ class MetaOut(BaseModel):
     catalog_revision: int
     interests: list[OptionOut]
     goals: list[OptionOut]
+    plans: list[OptionOut]
+    avoid: list[OptionOut]
     workloads: list[str]
     paces: list[str]
     standing_credits: dict[str, int]
@@ -240,6 +265,28 @@ class GroupOut(BaseModel):
     requires_all: bool
     courses: list[CourseRef]
     children: list[GroupOut]
+
+
+class ShowIfOut(BaseModel):
+    question: str
+    answers: list[str] = Field(description="Ask the question only after one of these answers")
+
+
+class QuestionOut(BaseModel):
+    id: str
+    field: Literal["interests", "avoid", "plans", "goal"] = Field(
+        description="The preference the answer goes into; two questions can fill interests"
+    )
+    kind: Literal["single", "multi"]
+    title: str
+    hint: str
+    options: list[OptionOut]
+    show_if: ShowIfOut | None
+
+
+class QuestionsOut(BaseModel):
+    program_id: str
+    questions: list[QuestionOut]
 
 
 class ProgramDetailOut(ProgramSummaryOut):

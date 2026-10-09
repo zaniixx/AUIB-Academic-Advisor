@@ -11,7 +11,7 @@ followed by the open items before a university-wide launch.
 | Course catalog: courses, descriptions, requirement groups | SIS, scraped under one student's login | PostgreSQL and `data/programs/` | Until replaced by a newer import |
 | Prerequisite corrections, courses and programs edited in the admin page, term schedules, import history, audit log | Data maintainers | PostgreSQL | Kept as an audit trail |
 | Encrypted backups of the above | An admin (admin page or CLI) | Wherever the admin stores the file | Set by whoever keeps it; unreadable without the passphrase |
-| A student's courses, grades, interests and plan settings | The student, typed or pasted | **The student's browser only** (local storage) | Until the student clears it |
+| A student's courses, grades, answers to the quick questions (interests, what they would rather avoid, plans after graduating) and plan settings | The student, typed or pasted | **The student's browser only** (local storage) | Until the student clears it |
 | The same data while a plan is computed | Sent with each planning request | API memory for the length of the request | Discarded when the response is sent |
 | Pasted Course History text | The student | API memory while it is parsed | Discarded when the response is sent |
 | Request logs: time, method, path, status, duration, request ID | API | Container log output | Set by the host's log rotation |
@@ -47,7 +47,7 @@ generated from AUIB's published curricula (`scripts/curricula`); none of these h
 | Browser | Content Security Policy, `X-Frame-Options: DENY`, `nosniff`, strict referrer policy, permissions policy; planning and admin responses are `Cache-Control: no-store` | `web/next.config.ts`, `app/security.py` |
 | Storage in the browser | Profile in local storage with a "Clear my data" button on the plan and privacy pages; admin token in session storage only | `web/src/lib/profile.ts` |
 | Dependencies | Pinned versions; `pip-audit` and `npm audit` (production dependencies) run in CI; Dependabot opens weekly update PRs | `.github/` |
-| Code quality | Strict type checking (mypy, TypeScript), linting with security rules (Ruff's Bandit set), 272 API tests, browser tests including automated WCAG 2.1 AA checks | CI workflow |
+| Code quality | Strict type checking (mypy, TypeScript), linting with security rules (Ruff's Bandit set), 278 API tests, browser tests including automated WCAG 2.1 AA checks | CI workflow |
 
 At the time of writing, `pip-audit` and `npm audit --omit=dev` report no known vulnerabilities. `npm
 audit` without `--omit=dev` reports a denial-of-service advisory in a glob library used only by the

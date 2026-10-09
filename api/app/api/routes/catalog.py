@@ -10,8 +10,10 @@ from app.api import schemas as s
 from app.api.deps import CatalogDep, SessionDep, TodayDep, published_program
 from app.domain.codes import normalize_code
 from app.domain.graph import gateways, longest_chain, prerequisite_graph, program_courses
+from app.domain.interests import GOALS, INTERESTS, PLANS, TRAITS
 from app.domain.planner import PlanOptions
-from app.domain.recommend import GOALS, INTERESTS, Workload
+from app.domain.questions import questions_for
+from app.domain.recommend import Workload
 from app.domain.requisites import describe, format_rule
 from app.domain.terms import current_term
 from app.services.catalog_edit import course_offerings
@@ -27,6 +29,8 @@ def meta(catalog: CatalogDep) -> s.MetaOut:
         catalog_revision=catalog.revision,
         interests=[s.OptionOut(id=i.id, label=i.label) for i in INTERESTS],
         goals=[s.OptionOut(id=g.id, label=g.label) for g in GOALS],
+        plans=[s.OptionOut(id=p.id, label=p.label) for p in PLANS],
+        avoid=[s.OptionOut(id=t.id, label=t.label) for t in TRAITS],
         workloads=[w.value for w in Workload],
         paces=["on_time", "fastest"],
         standing_credits=convert.standing_credits(),
@@ -53,6 +57,29 @@ def program_detail(program_id: str, catalog: CatalogDep) -> s.ProgramDetailOut:
     program = published_program(catalog, program_id)
     summary = convert.program_summary(program)
     return s.ProgramDetailOut(**summary.model_dump(), root=convert.group_out(program.root, catalog))
+
+
+@router.get(
+    "/programs/{program_id}/questions",
+    summary="The quick questions about interests, dislikes and plans for this major (F2.1)",
+)
+def questions(program_id: str, catalog: CatalogDep) -> s.QuestionsOut:
+    program = published_program(catalog, program_id)
+    return s.QuestionsOut(
+        program_id=program.id,
+        questions=[
+            s.QuestionOut(
+                id=q.id,
+                field=q.field,
+                kind=q.kind,
+                title=q.title,
+                hint=q.hint,
+                options=[s.OptionOut(id=o.id, label=o.label) for o in q.options],
+                show_if=s.ShowIfOut(question=q.show_if[0], answers=list(q.show_if[1])) if q.show_if else None,
+            )
+            for q in questions_for(program, catalog)
+        ],
+    )
 
 
 @router.get(

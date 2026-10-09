@@ -165,6 +165,48 @@
         }
       }
     },
+    "/api/v1/programs/{program_id}/questions": {
+      "get": {
+        "tags": [
+          "catalog"
+        ],
+        "summary": "The quick questions about interests, dislikes and plans for this major (F2.1)",
+        "operationId": "questions_api_v1_programs__program_id__questions_get",
+        "parameters": [
+          {
+            "name": "program_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Program Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuestionsOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/programs/{program_id}/insights": {
       "get": {
         "tags": [
@@ -4685,6 +4727,20 @@
             "type": "array",
             "title": "Goals"
           },
+          "plans": {
+            "items": {
+              "$ref": "#/components/schemas/OptionOut"
+            },
+            "type": "array",
+            "title": "Plans"
+          },
+          "avoid": {
+            "items": {
+              "$ref": "#/components/schemas/OptionOut"
+            },
+            "type": "array",
+            "title": "Avoid"
+          },
           "workloads": {
             "items": {
               "type": "string"
@@ -4729,6 +4785,8 @@
           "catalog_revision",
           "interests",
           "goals",
+          "plans",
+          "avoid",
           "workloads",
           "paces",
           "standing_credits",
@@ -5260,7 +5318,7 @@
               "type": "string"
             },
             "type": "array",
-            "maxItems": 14,
+            "maxItems": 43,
             "title": "Interests"
           },
           "goal": {
@@ -5278,6 +5336,28 @@
           "workload": {
             "$ref": "#/components/schemas/Workload",
             "default": "balanced"
+          },
+          "plans": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Plans",
+            "description": "What the student plans after graduating (F2.1)"
+          },
+          "avoid": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 7,
+            "title": "Avoid",
+            "description": "Course traits the student would rather avoid, such as essays (F2.1)"
           }
         },
         "additionalProperties": false,
@@ -5725,6 +5805,90 @@
           "whats_left"
         ],
         "title": "ProgressOut"
+      },
+      "QuestionOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "field": {
+            "type": "string",
+            "enum": [
+              "interests",
+              "avoid",
+              "plans",
+              "goal"
+            ],
+            "title": "Field",
+            "description": "The preference the answer goes into; two questions can fill interests"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "single",
+              "multi"
+            ],
+            "title": "Kind"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "hint": {
+            "type": "string",
+            "title": "Hint"
+          },
+          "options": {
+            "items": {
+              "$ref": "#/components/schemas/OptionOut"
+            },
+            "type": "array",
+            "title": "Options"
+          },
+          "show_if": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ShowIfOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "field",
+          "kind",
+          "title",
+          "hint",
+          "options",
+          "show_if"
+        ],
+        "title": "QuestionOut"
+      },
+      "QuestionsOut": {
+        "properties": {
+          "program_id": {
+            "type": "string",
+            "title": "Program Id"
+          },
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/QuestionOut"
+            },
+            "type": "array",
+            "title": "Questions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "program_id",
+          "questions"
+        ],
+        "title": "QuestionsOut"
       },
       "ReadyOut": {
         "properties": {
@@ -6339,6 +6503,28 @@
           "after"
         ],
         "title": "ShiftOut"
+      },
+      "ShowIfOut": {
+        "properties": {
+          "question": {
+            "type": "string",
+            "title": "Question"
+          },
+          "answers": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Answers",
+            "description": "Ask the question only after one of these answers"
+          }
+        },
+        "type": "object",
+        "required": [
+          "question",
+          "answers"
+        ],
+        "title": "ShowIfOut"
       },
       "StudentIn": {
         "properties": {

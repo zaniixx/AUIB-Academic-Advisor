@@ -10,6 +10,8 @@ export type MetaOut = Schemas["MetaOut"];
 export type ProgramSummary = Schemas["ProgramSummaryOut"];
 export type ProgramDetail = Schemas["ProgramDetailOut"];
 export type Insights = Schemas["InsightsOut"];
+export type Questions = Schemas["QuestionsOut"];
+export type Question = Schemas["QuestionOut"];
 export type CourseList = Schemas["CourseListOut"];
 export type CourseDetail = Schemas["CourseOut"];
 export type CourseRef = Schemas["CourseRef"];
@@ -141,6 +143,7 @@ export const api = {
     request<ProgramSummary[]>(`/api/v1/programs${kind ? `?kind=${kind}` : ""}`),
   program: (id: string) => request<ProgramDetail>(`/api/v1/programs/${encodeURIComponent(id)}`),
   insights: (id: string) => request<Insights>(`/api/v1/programs/${encodeURIComponent(id)}/insights`),
+  questions: (id: string) => request<Questions>(`/api/v1/programs/${encodeURIComponent(id)}/questions`),
   courses: (q: string, offset = 0, limit = 25) =>
     request<CourseList>(
       `/api/v1/courses?${new URLSearchParams({ q, offset: String(offset), limit: String(limit) })}`,

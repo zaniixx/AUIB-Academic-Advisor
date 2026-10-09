@@ -21,7 +21,7 @@ term-by-term plan. Their courses stay in their browser and are never stored on t
 | Remaining requirements, eligibility, term-by-term plan, locks (F1.1–F1.6) | Done |
 | Drop/delay what-if with graduation impact (F1.5) | Done |
 | Build the plan one term at a time: add recommended courses or Auto-fill the term, then finish it; later terms stay a folded-away suggestion (F1.9) | Done |
-| Interest questionnaire and explained elective recommendations (F2.1, F2.2) | Done |
+| Quick questions fitted to the major (what the student enjoys, what they would rather avoid, plans after graduating) and explained elective recommendations (F2.1, F2.2) | Done |
 | Gateway courses and longest prerequisite chain (F3.2) | Done |
 | Degree map: every course by term with prerequisite arrows (F5.1, F5.2) | Done |
 | Printable plan for the advisor on A4: the next semester in detail, an optional overview of every term, sign-off area (F5.4) | Done |
@@ -71,7 +71,7 @@ pip install -r requirements-dev.txt
 alembic upgrade head                                  # SQLite file by default
 python -m app.cli import-all --accept-warnings        # load data/catalog and data/programs
 uvicorn app.main:create_app --factory --reload        # http://localhost:8000/api/docs
-pytest                                                # 272 tests
+pytest                                                # 278 tests
 ruff check app tests && mypy app
 ```
 

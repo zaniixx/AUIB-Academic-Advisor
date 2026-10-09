@@ -58,3 +58,29 @@ def test_course_search_and_detail_show_rules_beside_their_source(client: TestCli
     assert client.get("/api/v1/courses/XYZ 999").status_code == 404
     assert detail["offered_terms"] is None
     assert client.get("/api/v1/courses/CSC 390").json()["offered_terms"] == ["summer"]
+
+
+def test_questions_for_a_major(client: TestClient) -> None:
+    body = client.get("/api/v1/programs/casc-computer-science/questions").json()
+    ids = [q["id"] for q in body["questions"]]
+    assert ids == ["major_areas", "topics", "avoid", "plans", "goal"]
+    goal = body["questions"][-1]
+    assert goal["show_if"] == {"question": "plans", "answers": ["work", "grad_school"]}
+    assert {"id": "undecided", "label": "Not sure yet"} in goal["options"]
+    assert client.get("/api/v1/programs/no-such-program/questions").status_code == 404
+
+    answers = {
+        "interests": ["ai", "culture"],
+        "avoid": ["essays"],
+        "plans": "grad_school",
+        "goal": "data_scientist",
+    }
+    plan = client.post(
+        "/api/v1/planner/plan", json={"program_id": "casc-computer-science", "preferences": answers}
+    )
+    assert plan.status_code == 200
+    for wrong in ({"avoid": ["mornings"]}, {"plans": "sleep"}):
+        refused = client.post(
+            "/api/v1/planner/plan", json={"program_id": "casc-computer-science", "preferences": wrong}
+        )
+        assert refused.status_code == 422
