@@ -1,9 +1,26 @@
 import type { GroupProgress, PlanOut } from "@/lib/api";
 import { credits, units } from "@/lib/format";
-import { ChevronDownIcon, ListChecksIcon } from "@/components/icons";
+import { ChevronDownIcon, LayersIcon, ListChecksIcon } from "@/components/icons";
 import { Card, CheckIcon, ProgressBar, StatusBadge } from "@/components/ui";
 
 type Progress = PlanOut["progress"];
+type Counted = GroupProgress["courses"][number];
+
+/** F1.7: a course that counts toward another program too, or that another requirement also lists. */
+function flagged(course: Counted): boolean {
+  return course.also_counts_toward.length > 0 || course.also_listed.length > 0;
+}
+
+export function countedNote(course: Counted): string {
+  const parts: string[] = [];
+  if (course.also_counts_toward.length > 0) {
+    parts.push(`${course.code} also counts toward ${course.also_counts_toward.join(", ")}.`);
+  }
+  if (course.also_listed.length > 0) {
+    parts.push(`${course.also_listed.join(", ")} also list${course.also_listed.length === 1 ? "s" : ""} ${course.code}; it counts here only.`);
+  }
+  return parts.join(" ");
+}
 
 /** F1.2 and F4: progress per requirement group and the "what's left" checklist, for the major and any minor. */
 export function ProgressPanel({ id, plan }: { id: string; plan: PlanOut }) {
@@ -107,12 +124,23 @@ function GroupRow({ group, planned }: { group: GroupProgress; planned: Map<strin
                           : "border-status-done/40 text-status-done"
                       }`}
                     >
+                      {flagged(course) && <LayersIcon className="me-1 inline h-3 w-3 align-[-1px]" />}
                       {course.code} {course.state === "in_progress" ? "(now)" : ""}
                     </li>
                   ))}
                 </ul>
               ) : (
                 <p className="text-xs text-text-muted">Nothing counted yet</p>
+              )}
+              {leaf.courses.some(flagged) && (
+                <ul className="mt-1.5 space-y-0.5 text-xs text-text-muted">
+                  {leaf.courses.filter(flagged).map((course) => (
+                    <li key={course.code} className="flex gap-1.5">
+                      <LayersIcon className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                      <span>{countedNote(course)}</span>
+                    </li>
+                  ))}
+                </ul>
               )}
             </li>
           ))}

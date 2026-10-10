@@ -20,6 +20,10 @@ term-by-term plan. Their courses stay in their browser and are never stored on t
 | Encrypted backup and restore in the admin page (AES-256-GCM, passphrase or generated key); the command line restores too, for moving servers | Done |
 | Remaining requirements, eligibility, term-by-term plan, locks (F1.1–F1.6) | Done |
 | Drop/delay what-if with graduation impact (F1.5) | Done |
+| Move a course to another term by dragging it, or from a "Move to another term" dialog: every term says whether the course fits there and what that does to graduation, and a term where it cannot go says why (F6.1) | Done |
+| Save up to 3 plans in the browser and compare them with the current one side by side: graduation, credits left and credits per term (F6.2) | Done |
+| Try another major or minor: where each completed course would count, the credits that would no longer count, and the new graduation term; save it to compare or switch to it (F6.3) | Done, rules to confirm with the registrar |
+| Courses that count toward the major and the minor, or that two requirements list, are flagged with where they count (F1.7) | Done, SIS allocation to confirm |
 | Build the plan one term at a time: add recommended courses or Auto-fill the term, then finish it; later terms stay a folded-away suggestion (F1.9) | Done |
 | Quick questions fitted to the major (what the student enjoys, what they would rather avoid, plans after graduating) and explained elective recommendations (F2.1, F2.2) | Done |
 | Gateway courses and longest prerequisite chain (F3.2) | Done |
@@ -34,7 +38,7 @@ term-by-term plan. Their courses stay in their browser and are never stored on t
 | Guest mode and Course History paste, data kept in the browser only (F11) | Done |
 | Per-term course schedules uploaded in the admin page; a term with one plans only its courses, and terms without one are marked "not confirmed" (F0.5, F1.8) | Done |
 | Offering history (F3.1, F3.3) | Waiting for registrar data |
-| AUIB sign-in and saved accounts (F9.1, F9.2, F9.4), scenario comparison (F6.2), course requests (F12), reviews (F8) | Next milestones |
+| AUIB sign-in and saved accounts (F9.1, F9.2, F9.4), course requests (F12), reviews (F8) | Next milestones |
 
 The full list, with the code and tests behind each item, is in
 [docs/requirements-traceability.md](docs/requirements-traceability.md).
@@ -71,7 +75,7 @@ pip install -r requirements-dev.txt
 alembic upgrade head                                  # SQLite file by default
 python -m app.cli import-all --accept-warnings        # load data/catalog and data/programs
 uvicorn app.main:create_app --factory --reload        # http://localhost:8000/api/docs
-pytest                                                # 278 tests
+pytest                                                # 306 tests
 ruff check app tests && mypy app
 ```
 

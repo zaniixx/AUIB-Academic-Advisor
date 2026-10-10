@@ -11,7 +11,7 @@ followed by the open items before a university-wide launch.
 | Course catalog: courses, descriptions, requirement groups | SIS, scraped under one student's login | PostgreSQL and `data/programs/` | Until replaced by a newer import |
 | Prerequisite corrections, courses and programs edited in the admin page, term schedules, import history, audit log | Data maintainers | PostgreSQL | Kept as an audit trail |
 | Encrypted backups of the above | An admin (admin page or CLI) | Wherever the admin stores the file | Set by whoever keeps it; unreadable without the passphrase |
-| A student's courses, grades, answers to the quick questions (interests, what they would rather avoid, plans after graduating) and plan settings | The student, typed or pasted | **The student's browser only** (local storage) | Until the student clears it |
+| A student's courses, grades, answers to the quick questions (interests, what they would rather avoid, plans after graduating), plan settings and up to 3 saved plans to compare (F6.2) | The student, typed or pasted | **The student's browser only** (local storage) | Until the student clears it |
 | The same data while a plan is computed | Sent with each planning request | API memory for the length of the request | Discarded when the response is sent |
 | Pasted Course History text | The student | API memory while it is parsed | Discarded when the response is sent |
 | Request logs: time, method, path, status, duration, request ID | API | Container log output | Set by the host's log rotation |
@@ -45,9 +45,9 @@ generated from AUIB's published curricula (`scripts/curricula`); none of these h
 | Backups | AES-256-GCM with a 256-bit key derived from the passphrase by scrypt (n=2^15, r=8, p=1), a random salt and nonce per file, and the header authenticated; the passphrase is never stored or logged. Restoring from the admin page needs the admin token, the file's passphrase and a typed confirmation; the data from before the restore is saved and returned first, and the audit log is never rolled back. The server command restores everything and needs `--yes` | `app/services/backup.py`, `app/api/routes/admin_catalog.py`, `app/cli.py` |
 | Abuse | Per-client rate limit on planning endpoints (60 requests a minute by default) | `app/security.py` |
 | Browser | Content Security Policy, `X-Frame-Options: DENY`, `nosniff`, strict referrer policy, permissions policy; planning and admin responses are `Cache-Control: no-store` | `web/next.config.ts`, `app/security.py` |
-| Storage in the browser | Profile in local storage with a "Clear my data" button on the plan and privacy pages; admin token in session storage only | `web/src/lib/profile.ts` |
+| Storage in the browser | Profile and saved plans in local storage, both removed by a "Clear my data" button on the plan and privacy pages; admin token in session storage only | `web/src/lib/profile.ts` |
 | Dependencies | Pinned versions; `pip-audit` and `npm audit` (production dependencies) run in CI; Dependabot opens weekly update PRs | `.github/` |
-| Code quality | Strict type checking (mypy, TypeScript), linting with security rules (Ruff's Bandit set), 278 API tests, browser tests including automated WCAG 2.1 AA checks | CI workflow |
+| Code quality | Strict type checking (mypy, TypeScript), linting with security rules (Ruff's Bandit set), 306 API tests, browser tests including automated WCAG 2.1 AA checks | CI workflow |
 
 At the time of writing, `pip-audit` and `npm audit --omit=dev` report no known vulnerabilities. `npm
 audit` without `--omit=dev` reports a denial-of-service advisory in a glob library used only by the

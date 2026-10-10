@@ -12,7 +12,7 @@ const PROMISES: { icon: ReactNode; title: string; text: ReactNode }[] = [
     title: "Saved only in this browser",
     text: (
       <>
-        Your courses, grades and goals are saved <strong>only in this browser</strong>. There is no account and
+        Your courses, grades, goals and the plans you save to compare are kept <strong>only in this browser</strong>. There is no account and
         nothing is stored on the server.
       </>
     ),

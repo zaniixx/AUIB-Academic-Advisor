@@ -4,7 +4,10 @@ from collections.abc import Callable
 import pytest
 from fastapi.testclient import TestClient
 
+from app.importer.load import import_package
+from app.importer.package import load_package
 from app.security import JsonLogFormatter
+from tests.conftest import PROGRAMS_DIR
 
 CS = "casc-computer-science"
 SECOND_YEAR = [
@@ -270,3 +273,98 @@ def test_gpa_projection_and_target(client: TestClient) -> None:
     assert out["status"] == "out_of_reach"
     bad = client.post("/api/v1/planner/gpa", json={**body, "courses": [{"code": "CSC 230", "grade": "E"}]})
     assert bad.status_code == 422
+
+
+def test_move_options_explain_each_term(client: TestClient) -> None:
+    body = {"program_id": CS, "attempts": SECOND_YEAR, "code": "CSC 313"}
+    found = client.post("/api/v1/planner/move-options", json=body).json()
+    assert found["course"]["code"] == "CSC 313"
+    assert found["term"]["label"] == "Fall 2027"
+    by_term = {option["term"]["label"]: option for option in found["options"]}
+    assert "Fall 2027" not in by_term  # where it is now
+    assert by_term["Spring 2027"]["valid"] is False
+    assert by_term["Spring 2027"]["problems"] == ["CSC 313 needs CSC 231 done before Spring 2027."]
+    later = by_term["Spring 2029"]
+    assert later["valid"] is True and later["terms_later"] == 1
+    assert later["graduation_term"]["label"] == "Fall 2029"
+    assert any(shift["code"] == "CSC 313" for shift in later["shifts"])
+
+
+def test_move_options_refuse_a_course_already_taken(client: TestClient) -> None:
+    body = {"program_id": CS, "attempts": SECOND_YEAR, "code": "CSC 101"}
+    response = client.post("/api/v1/planner/move-options", json=body)
+    assert response.status_code == 422
+    assert "already completed" in response.json()["detail"]
+
+
+def test_compare_scenarios_side_by_side(client: TestClient) -> None:
+    scenarios = [
+        {"name": "My plan", "program_id": CS},
+        {"name": "Summers", "program_id": CS, "preferences": {"pace": "fastest", "include_summer": True}},
+        {"name": "With a minor", "program_id": CS, "minor_id": "minor-psychology"},
+        {"name": "Old major", "program_id": "no-such-major"},
+    ]
+    found = client.post(
+        "/api/v1/planner/compare", json={"attempts": SECOND_YEAR, "scenarios": scenarios}
+    ).json()
+    mine, summers, minor, gone = found["scenarios"]
+    assert mine["plan"]["semesters_vs_first"] is None
+    assert mine["plan"]["graduation_term"]["label"] == "Spring 2029"
+    assert summers["plan"]["semesters_vs_first"] < 0  # summers and full terms finish sooner
+    assert minor["plan"]["minor_name"] == "Psychology"
+    assert mine["plan"]["credits_left"] == 81
+    first_term = mine["plan"]["terms"][0]
+    assert first_term["units"] == sum(c["units"] for c in first_term["courses"]) + 3 * len(
+        first_term["open_choices"]
+    )
+    assert gone["plan"] is None and "not available" in gone["error"]
+
+
+def test_compare_takes_at_most_four_plans(client: TestClient) -> None:
+    scenarios = [{"name": f"Plan {n}", "program_id": CS} for n in range(5)]
+    response = client.post("/api/v1/planner/compare", json={"scenarios": scenarios})
+    assert response.status_code == 422
+
+
+def test_change_of_major_shows_which_credits_transfer(client: TestClient) -> None:
+    with client.app.state.session_factory() as session:  # type: ignore[attr-defined]
+        import_package(
+            session, load_package(PROGRAMS_DIR / "casc-psychology"), actor="test", accept_warnings=True
+        )
+        session.commit()
+    body = {"program_id": CS, "attempts": SECOND_YEAR, "target_program_id": "casc-psychology"}
+    found = client.post("/api/v1/planner/change-program", json=body).json()
+    assert found["current"]["name"] == "Computer Science"
+    assert found["target"]["name"] == "Psychology"
+    assert found["target"]["counted_credits"] < found["current"]["counted_credits"]
+    courses = {course["course"]["code"]: course for course in found["courses"]}
+    assert courses["CSC 230"]["state"] == "in_progress"
+    assert courses["CSC 230"]["now"] == "Major core courses" and courses["CSC 230"]["after"] is None
+    assert found["lost_credits"] >= 6
+    assert "Psychology" in found["version_note"]
+    assert any("registrar" in note for note in found["notes"])
+
+
+def test_change_of_major_checks_the_programs(client: TestClient) -> None:
+    body = {"program_id": CS, "attempts": SECOND_YEAR, "target_program_id": "no-such-major"}
+    assert client.post("/api/v1/planner/change-program", json=body).status_code == 404
+    body["target_program_id"] = "minor-psychology"
+    assert client.post("/api/v1/planner/change-program", json=body).status_code == 422
+
+
+def test_plan_flags_courses_that_count_twice(client: TestClient) -> None:
+    body = {"program_id": CS, "attempts": SECOND_YEAR, "minor_id": "minor-psychology"}
+    plan = client.post("/api/v1/planner/plan", json=body).json()
+    items = [item for term in plan["terms"] for item in term["items"] if item["code"]]
+    shared = [item for item in items if item["also_counts_toward"]]
+    assert shared, "minor courses also count toward the major"
+    assert all(item["counts_toward"] for item in items)
+    assert shared[0]["also_counts_toward"] == ["Psychology minor: 5 of 8 courses"]
+    groups = [plan["progress"]["root"]]
+    counted = []
+    while groups:
+        group = groups.pop()
+        counted += group["courses"]
+        groups += group["children"]
+    psy = next(course for course in counted if course["code"] == "PSY 101")
+    assert psy["also_counts_toward"] == ["Psychology minor: PSY 101 first"]

@@ -190,7 +190,10 @@ def build_plan(
     options: PlanOptions,
     today: date,
     minor: Program | None = None,
+    alternatives: bool = True,
 ) -> Plan:
+    """The plan to graduation. Without ``alternatives`` the "replace with" lists are left empty,
+    which saves time when only the terms and the graduation term are needed."""
     start = options.start_term or first_planning_term(today, options.include_summer)
     in_session = current_term(today)
     selection = _select(program, catalog, record, options, minor)
@@ -219,10 +222,16 @@ def build_plan(
         )
     plan.on_time_term = deadline
     plan.issues[0:0] = selection.issues
-    plan.terms = _attach_alternatives(plan, program, catalog, record, options, selection, minor)
+    if alternatives:
+        plan.terms = _attach_alternatives(plan, program, catalog, record, options, selection, minor)
     if minor is not None:
         plan.minor_progress = _with_planned(minor, catalog, record, plan.course_terms())
     return plan
+
+
+def current_progress(program: Program, catalog: Catalog, record: StudentRecord) -> ProgramProgress:
+    """``program``'s progress from the student's completed and in-progress courses alone."""
+    return allocate(program, catalog, _counted(record, catalog))
 
 
 def _with_planned(

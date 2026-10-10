@@ -35,6 +35,9 @@ function item(overrides: Partial<PlanItem>): PlanItem {
     advisories: [],
     suggestions: [],
     alternatives: [],
+    counts_toward: null,
+    also_listed: [],
+    also_counts_toward: [],
     ...overrides,
   };
 }
@@ -48,7 +51,7 @@ const group = (label: string, codes: string[], units: Partial<Record<"completed"
   in_progress: units.in_progress ?? 0,
   planned: units.planned ?? 0,
   remaining: 0,
-  courses: codes.map((code) => ({ code, title: code, units: 3, state: "planned" as const })),
+  courses: codes.map((code) => ({ code, title: code, units: 3, state: "planned" as const, also_listed: [], also_counts_toward: [] })),
   children: [],
 });
 

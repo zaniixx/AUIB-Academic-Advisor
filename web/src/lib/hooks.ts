@@ -2,11 +2,18 @@
 
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { ApiError } from "./api";
-import { profileSnapshot, subscribeProfile, type Profile } from "./profile";
+import { profileSnapshot, scenariosSnapshot, subscribeProfile, type Profile, type Scenario } from "./profile";
 
 /** The saved profile; undefined while rendering on the server (storage is browser-only). */
 export function useProfile(): Profile | null | undefined {
   return useSyncExternalStore(subscribeProfile, profileSnapshot, () => undefined);
+}
+
+const NO_SCENARIOS: Scenario[] = [];
+
+/** F6.2: the plans saved to compare; none while rendering on the server. */
+export function useScenarios(): Scenario[] {
+  return useSyncExternalStore(subscribeProfile, scenariosSnapshot, () => NO_SCENARIOS);
 }
 
 export function errorMessage(error: unknown): string {

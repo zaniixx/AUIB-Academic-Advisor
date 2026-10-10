@@ -5,7 +5,8 @@ the order SIS lists them, and a course that a full group cannot use moves on to
 the next group that lists it (usually free electives). Courses that fit nowhere
 are reported as not counting toward the degree. How SIS itself allocates a
 course that fits several groups is still an open question for the registrar,
-so the app says plainly that the registrar's audit is authoritative.
+so the app says plainly that the registrar's audit is authoritative, and flags
+each course that more than one requirement lists (F1.7, ``course_flags``).
 """
 
 from __future__ import annotations
@@ -192,6 +193,42 @@ def whats_left(progress: ProgramProgress, catalog: Catalog) -> list[LeftItem]:
                 )
             )
     return items
+
+
+@dataclass(frozen=True)
+class CourseFlags:
+    """Where a course counts when more than one requirement could use it (F1.7)."""
+
+    counts_toward: str | None  # the requirement it counts toward; None when it counts nowhere
+    also_listed: tuple[str, ...]  # other requirements of the same program that list it; it counts once
+    also_counts_toward: tuple[str, ...]  # requirements of the other program it counts toward too
+
+
+def course_flags(progress: ProgramProgress, other: ProgramProgress | None = None) -> dict[str, CourseFlags]:
+    """For every course ``progress`` counts, where it counts and where else it could (F1.7).
+
+    Within one program a course counts toward one requirement only (see ``allocate``), so other
+    requirements that list it are named but not credited. Free-elective pools are left out: any
+    course fits them. ``other`` is the student's other program (a minor for the major, or the
+    major for a minor): a course counts toward both programs at the same time.
+    """
+    flags: dict[str, CourseFlags] = {}
+    for leaf in progress.leaves.values():
+        for counted in leaf.courses:
+            listed = tuple(
+                each.group.label
+                for each in progress.leaves.values()
+                if each is not leaf and not each.group.is_open_pool and counted.code in each.group.courses
+            )
+            elsewhere = other.leaf_for(counted.code) if other is not None else None
+            also = (with_program(elsewhere.group.label, other.program),) if elsewhere and other else ()
+            flags[counted.code] = CourseFlags(leaf.group.label, listed, also)
+    return flags
+
+
+def with_program(label: str, program: Program) -> str:
+    """A requirement's label with its program's name, unless the label already says it."""
+    return label if program.name.lower() in label.lower() else f"{label} ({program.name})"
 
 
 def _placeholder(code: str) -> bool:

@@ -1,6 +1,7 @@
 from app.domain.catalog import Catalog, Program
-from app.domain.progress import CourseState, allocate, whats_left
+from app.domain.progress import CourseState, allocate, course_flags, whats_left
 from app.domain.record import StudentRecord
+from tests.conftest import PSY_ID, TLD_ID
 
 from .students import nearly_done, new_student, second_year
 
@@ -53,3 +54,39 @@ def test_nothing_left_for_completed_groups(cs_program: Program, cs_catalog: Cata
     labels = {item.group_label for item in whats_left(progress, cs_catalog)}
     assert "Communication skills" not in labels
     assert progress.percent_complete > 80
+
+
+# F1.7: courses that more than one requirement could use.
+
+
+def test_a_course_two_requirements_list_counts_once_and_names_the_other(cs_catalog: Catalog) -> None:
+    tld = cs_catalog.programs[TLD_ID]
+    listing = {leaf.label for leaf in tld.leaf_groups() if "TLD 400" in leaf.courses}
+    assert len(listing) == 2
+    progress = allocate(tld, cs_catalog, [("TLD 400", 3.0, CourseState.COMPLETED)])
+    flags = course_flags(progress)["TLD 400"]
+    counted = progress.leaf_for("TLD 400")
+    assert counted is not None and flags.counts_toward == counted.group.label
+    assert set(flags.also_listed) == listing - {counted.group.label}
+    assert flags.also_counts_toward == ()
+
+
+def test_a_course_counting_toward_the_major_and_the_minor_names_both(
+    cs_program: Program, cs_catalog: Catalog
+) -> None:
+    minor = cs_catalog.programs[PSY_ID]
+    major_progress = _progress(cs_program, cs_catalog, second_year())
+    minor_progress = _progress(minor, cs_catalog, second_year())
+    flags = course_flags(major_progress, minor_progress)["PSY 101"]
+    assert flags.counts_toward == "Social science electives"
+    assert flags.also_counts_toward == ("Psychology minor: PSY 101 first",)  # the label names the minor
+    back = course_flags(minor_progress, major_progress)["PSY 101"]
+    assert back.also_counts_toward == ("Social science electives (Computer Science)",)
+
+
+def test_free_elective_pools_and_single_listings_are_not_flagged(
+    cs_program: Program, cs_catalog: Catalog
+) -> None:
+    flags = course_flags(_progress(cs_program, cs_catalog, second_year()))
+    assert all(not found.also_listed and not found.also_counts_toward for found in flags.values())
+    assert flags["CSC 140"].counts_toward == "Major core courses"

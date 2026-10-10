@@ -53,6 +53,7 @@ Incoming students are the launch audience; continuing students are the long-term
 | Continuing student | Plan remaining terms, react to a failed or dropped course | Planning engine, what-if simulator, bottleneck warnings, GPA projector |
 | Student choosing electives | Pick liberal-arts and major electives that fit their goals | Recommendations, course reviews |
 | Academic advisor | Check a student's plan quickly in an advising session | Printed plan document, shareable read-only plan view |
+| Head of department | Decide which courses to open next term and when, before the schedule is set | Department request document: requests, recommended courses, suggested time slots (F12) |
 | Registrar / IT | Confidence that data is accurate and student data is safe | Data source transparency, privacy controls |
 
 ## Scope and priorities
@@ -206,14 +207,19 @@ Anyone can use the planner without an account: pick a major, an optional minor, 
 
 ### F12 — Course requests for next semester (planned, not built)
 
-Signed-in students can ask for a course to be offered next semester, so departments see demand before the schedule is set.
+Signed-in students can ask for a course to be offered next semester, so departments see demand before the schedule is set. Before the schedule is drafted, an admin turns the requests into one document per head of department: what students asked for, which courses the app recommends opening and why, and time slots that keep courses the same students need from clashing. The document advises departments; it schedules nothing.
 
 | ID | Requirement | Priority | Acceptance criteria |
 | --- | --- | --- | --- |
-| F12.1 | A signed-in student requests a course for next semester, with an optional reason (for example "needed to graduate on time") | Should | One request per student per course per term; requires sign-in (F9.4) |
+| F12.1 | A signed-in student requests a course for next semester, with an optional reason (for example "needed to graduate on time"). Every request carries the student's AUIB student ID, taken from their account, so the registrar and departments can verify it | Should | One request per student per course per term; requires sign-in (F9.4); a request without a student ID cannot be saved, and the student cannot type or change the ID |
 | F12.2 | The app suggests requests from the plan: courses the student needs next term that are not on the published schedule | Should | Suggestions come from the planning engine and the term schedule (F0.5) |
-| F12.3 | Admins and departments see requests per course and term, with counts and how many students need the course to graduate on time | Should | Export to CSV; no grades or course histories are shown |
+| F12.3 | Admins and departments see requests per course and term, with counts and how many students need the course to graduate on time | Should | Export to CSV; student IDs are listed; no names, grades or course histories are shown |
 | F12.4 | Students see the status of their requests (received, under review, scheduled, not offered) | Could | A request is never a promise that the course will run |
+| F12.5 | An admin opens and closes the request period for a term, then generates one document per department, addressed to its head, covering the courses that department teaches | Should | One document per department with at least one request or recommended course; downloadable as PDF and printable; a notice at the top says it is advice, not a schedule; regenerating after more requests gives an updated document with its generation date |
+| F12.6 | The document lists the requested courses: each course's request count, the requesting student IDs and the reasons given | Should | Counts match the requests stored for that term; withdrawn requests are not counted |
+| F12.7 | The document recommends which courses to open, ranked by how badly students need them: how many students' graduation is delayed if the course does not run (and by how many terms, from the drop/delay engine, F1.5), how many are in their final year, how many later courses it unlocks and where it sits in their prerequisite chains (F3.2), and whether it is offered once a year or less (F3.1) | Should | Each recommendation states its reasons in plain words (for example "12 students graduate one term late without it; unlocks 5 courses"); it includes courses students need but did not request, counted from signed-in students' saved plans; a course already on the published schedule is marked as such, not recommended again |
+| F12.8 | The document recommends a time slot for each recommended course from AUIB's standard time-slot grid, chosen so that courses many of the same students need in the same term do not meet at the same time; courses already scheduled keep their published times and are planned around | Could | For each course: the suggested slot and how many students would still have a clash with it; moving any one suggested course to another slot does not lower the total number of students with a clash; when no clash-free slot exists, the document says which courses compete and for how many students |
+| F12.9 | The recommendations and slots use only course and plan data; instructor availability, rooms and section capacity are left to the department | Should | The document says plainly that it does not know instructors' or rooms' availability |
 
 ### F13 — Automatic sync with SIS (post-launch, potential)
 
@@ -249,7 +255,9 @@ The app needs two kinds of data: a catalog that changes yearly and an offering s
 | --- | --- | --- | --- |
 | Courses offered this term | Registrar schedule export (spreadsheet) | Bottlenecks, plan generation | To request; the admin page loads it as CSV or .xlsx (F0.5) |
 | Offering history for the last 3–4 years | Registrar | Bottleneck detection | To request |
-| Sections: times, instructor, capacity | Registrar schedule export | What-if simulator, reviews | Nice to have |
+| Sections: times, instructor, capacity | Registrar schedule export | What-if simulator, reviews, time-slot suggestions (F12.8) | Nice to have |
+| Standard time-slot grid (for example Mon/Wed and Sun/Tue/Thu blocks and their times) | Registrar | Time-slot suggestions (F12.8) | To request |
+| Departments, their heads, and which department teaches each course | Registrar / colleges | Department documents (F12.5) | To request; the catalog's academic group is a starting point |
 
 **Student data (per student, entered by the student)**
 
@@ -269,6 +277,9 @@ Completed and in-progress courses, grades, entry year and program. In the protot
 | StudentCourse | student, course, term, grade, status |
 | Plan | student, name, list of (term, course) |
 | Review | course, term, instructor, difficulty, workload, usefulness, comment, moderation status |
+| Department | name, head, courses taught |
+| CourseRequest | student, student ID, course, term, reason, status, created date |
+| TimeSlot | term pattern, days, start and end time |
 
 ## Data acquisition plan
 
@@ -307,7 +318,7 @@ Student grades are the most sensitive data the app holds, so privacy shapes the 
 
 | Area | Requirement |
 | --- | --- |
-| Privacy | Grades and plans are visible only to the student (and an advisor they share a link with). Course reviews are anonymous. Guest data stays in the guest's browser and is never stored on the server. Catalog data is stored separately from personal data. |
+| Privacy | Grades and plans are visible only to the student (and an advisor they share a link with). Course reviews are anonymous. Guest data stays in the guest's browser and is never stored on the server. Catalog data is stored separately from personal data. Student IDs on course requests are seen only by admins and the head of the department that teaches the course. |
 | Data minimisation | Never store SIS passwords. The app never logs into SIS on a student's behalf. |
 | Security | HTTPS everywhere, AUIB-email sign-in, role-based admin access, encrypted database backups, rate limits on guest requests. |
 | Performance | Plan generation and drop impact under 2 seconds for a full degree (about 40 courses). Pages load under 3 seconds on a mobile connection. |
@@ -373,6 +384,8 @@ The biggest risk is data, not code: wrong prerequisites or missing offering hist
 | Review comments become personal attacks on instructors | Medium | High | Moderation before publishing; rate courses, not people; reporting button |
 | Requirements change between catalog years | Medium | Medium | Version requirements by catalog year (F0.4) |
 | AI assistant gives a confident but wrong answer | Medium | High | Build it only after the planning engine is proven; answer from engine results with sources shown (F10.2); disclaimer on every answer |
+| Students or departments read a course request or a recommendation as a promise that the course will run | Medium | Medium | A notice on every request and on every department document; request status "not offered" shown plainly (F12.4) |
+| Department documents under-count demand because guests' plans are not stored | High | Medium | Say in the document how many signed-in plans it counts; encourage requests through sign-in (F12.2) |
 | SIS Course History layout changes, or pastes differ between browsers | Medium | Medium | Student confirms parsed courses before use (F11.4); sample pastes kept as parser tests; manual entry as fallback |
 
 ## Open questions
@@ -387,5 +400,8 @@ The biggest risk is data, not code: wrong prerequisites or missing offering hist
 - [ ] Who hosts the app if the university adopts it: the author or AUIB IT?
 - [ ] If the AI chat assistant goes ahead, which AI provider fits the budget and AUIB's privacy rules?
 - [ ] How does the SIS Course History page show transfer credits, repeated courses and in-progress courses?
+- [ ] What is AUIB's standard time-slot grid, and who are the heads of department to receive the request documents?
+- [ ] When does each department draft the next term's schedule, so the request period closes in time?
+- [ ] May heads of department see requesting students' IDs, or only counts?
 
 * [ ] Does AUIB have published brand guidelines, and may the app use the official logo?

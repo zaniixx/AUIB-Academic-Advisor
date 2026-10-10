@@ -225,6 +225,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/planner/move-options": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Where a planned course can be moved, and what each move does to graduation (F6.1) */
+        post: operations["plan_move_options_api_v1_planner_move_options_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/planner/compare": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Compare the current plan with up to 3 saved scenarios (F6.2) */
+        post: operations["compare_api_v1_planner_compare_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/planner/change-program": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** What changing major or minor would do (F6.3) */
+        post: operations["plan_change_program_api_v1_planner_change_program_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/planner/recommendations": {
         parameters: {
             query?: never;
@@ -1013,6 +1064,24 @@ export interface components {
             code: string;
             action: components["schemas"]["ChangeAction"];
         };
+        /**
+         * CompareIn
+         * @description Plans to compare side by side (F6.2); they share the student's courses.
+         */
+        CompareIn: {
+            /** Attempts */
+            attempts?: components["schemas"]["AttemptIn"][];
+            /**
+             * Scenarios
+             * @description The current plan first, then up to 3 saved scenarios; later terms are compared with the first
+             */
+            scenarios: components["schemas"]["ScenarioIn"][];
+        };
+        /** CompareOut */
+        CompareOut: {
+            /** Scenarios */
+            scenarios: components["schemas"]["ScenarioOut"][];
+        };
         /** CountedCourseOut */
         CountedCourseOut: {
             /** Code */
@@ -1026,6 +1095,16 @@ export interface components {
              * @enum {string}
              */
             state: "completed" | "in_progress" | "planned";
+            /**
+             * Also Listed
+             * @description Other requirements of the same program that list this course (F1.7). A course counts toward one requirement only: the first, in SIS order, that still needs it
+             */
+            also_listed: string[];
+            /**
+             * Also Counts Toward
+             * @description Requirements of the student's other program (minor or major) the course counts toward at the same time, each with the program's name (F1.7)
+             */
+            also_counts_toward: string[];
         };
         /** CourseBulkOut */
         CourseBulkOut: {
@@ -1238,8 +1317,6 @@ export interface components {
             program_id: string;
             /** Minor Id */
             minor_id?: string | null;
-            /** Attempts */
-            attempts?: components["schemas"]["AttemptIn"][];
             preferences?: components["schemas"]["PreferencesIn"];
             /**
              * Entry Term
@@ -1251,6 +1328,8 @@ export interface components {
              * @description A specific version of the major, when the registrar approved a move to it (F0.4)
              */
             program_version?: string | null;
+            /** Attempts */
+            attempts?: components["schemas"]["AttemptIn"][];
             /** Courses */
             courses?: components["schemas"]["ExpectedGradeIn"][];
             /** Target */
@@ -1622,6 +1701,72 @@ export interface components {
             progress: components["schemas"]["ProgressOut"];
             progress_with_plan: components["schemas"]["GroupProgressOut"];
         };
+        /**
+         * MoveIn
+         * @description A planned course the student wants to put in another term (F6.1).
+         */
+        MoveIn: {
+            /** Program Id */
+            program_id: string;
+            /** Minor Id */
+            minor_id?: string | null;
+            preferences?: components["schemas"]["PreferencesIn"];
+            /**
+             * Entry Term
+             * @description The term the student joined AUIB; worked out from the course history if empty
+             */
+            entry_term?: string | null;
+            /**
+             * Program Version
+             * @description A specific version of the major, when the registrar approved a move to it (F0.4)
+             */
+            program_version?: string | null;
+            /** Attempts */
+            attempts?: components["schemas"]["AttemptIn"][];
+            /**
+             * Code
+             * @example CSC 231
+             */
+            code: string;
+        };
+        /**
+         * MoveOptionOut
+         * @description The course checked in one term (F6.1).
+         */
+        MoveOptionOut: {
+            term: components["schemas"]["TermOut"];
+            /** Valid */
+            valid: boolean;
+            /**
+             * Problems
+             * @description Why the course cannot go in this term; empty when it can
+             */
+            problems: string[];
+            /** @description Graduation with the course in this term; null when the course does not run then */
+            graduation_term: components["schemas"]["TermOut"] | null;
+            /**
+             * Terms Later
+             * @description How many terms later graduation moves (negative if earlier)
+             */
+            terms_later: number;
+            /**
+             * Shifts
+             * @description Every course whose term changes, this one included
+             */
+            shifts: components["schemas"]["ShiftOut"][];
+        };
+        /**
+         * MoveOptionsOut
+         * @description Where a planned course can go: every other term of the plan, and the term after it (F6.1).
+         */
+        MoveOptionsOut: {
+            course: components["schemas"]["CourseRef"];
+            /** @description The term the plan has the course in now */
+            term: components["schemas"]["TermOut"];
+            graduation_term: components["schemas"]["TermOut"] | null;
+            /** Options */
+            options: components["schemas"]["MoveOptionOut"][];
+        };
         /** OfferingOut */
         OfferingOut: {
             /** Code */
@@ -1685,6 +1830,21 @@ export interface components {
              * @description Courses that could replace this one in the same term: same requirement, offered then, prerequisites done in earlier terms, corequisites in the same term
              */
             alternatives: components["schemas"]["CourseRef"][];
+            /**
+             * Counts Toward
+             * @description The requirement this course counts toward once the plan is done (F1.7)
+             */
+            counts_toward: string | null;
+            /**
+             * Also Listed
+             * @description Other requirements of the same program that list this course (F1.7). A course counts toward one requirement only: the first, in SIS order, that still needs it
+             */
+            also_listed: string[];
+            /**
+             * Also Counts Toward
+             * @description Requirements of the student's other program (minor or major) the course counts toward at the same time, each with the program's name (F1.7)
+             */
+            also_counts_toward: string[];
         };
         /** PlanOut */
         PlanOut: {
@@ -1788,6 +1948,63 @@ export interface components {
              */
             avoid?: string[];
         };
+        /**
+         * ProgramChangeIn
+         * @description The student's plan and the major (and minor) they are thinking of moving to (F6.3).
+         */
+        ProgramChangeIn: {
+            /** Program Id */
+            program_id: string;
+            /** Minor Id */
+            minor_id?: string | null;
+            preferences?: components["schemas"]["PreferencesIn"];
+            /**
+             * Entry Term
+             * @description The term the student joined AUIB; worked out from the course history if empty
+             */
+            entry_term?: string | null;
+            /**
+             * Program Version
+             * @description A specific version of the major, when the registrar approved a move to it (F0.4)
+             */
+            program_version?: string | null;
+            /** Attempts */
+            attempts?: components["schemas"]["AttemptIn"][];
+            /** Target Program Id */
+            target_program_id: string;
+            /**
+             * Target Minor Id
+             * @description Null: no minor
+             */
+            target_minor_id?: string | null;
+        };
+        /**
+         * ProgramChangeOut
+         * @description What changing major or minor would do (F6.3).
+         */
+        ProgramChangeOut: {
+            current: components["schemas"]["ProgramSideOut"];
+            target: components["schemas"]["ProgramSideOut"];
+            /**
+             * Terms Later
+             * @description How many terms later the new program finishes (negative if earlier)
+             */
+            terms_later: number;
+            /** Courses */
+            courses: components["schemas"]["TransferCourseOut"][];
+            /**
+             * Lost Credits
+             * @description Credits that count now but toward neither new program
+             */
+            lost_credits: number;
+            /**
+             * Version Note
+             * @description Which requirements of the new major are used, and why
+             */
+            version_note: string;
+            /** Notes */
+            notes: string[];
+        };
         /** ProgramCheckOut */
         ProgramCheckOut: {
             /** Ok */
@@ -1883,6 +2100,30 @@ export interface components {
             program: components["schemas"]["AdminProgramOut"] | null;
             /** Findings */
             findings: components["schemas"]["FindingOut"][];
+        };
+        /** ProgramSideOut */
+        ProgramSideOut: {
+            /** Program Id */
+            program_id: string;
+            /** Name */
+            name: string;
+            /** Minor Name */
+            minor_name: string | null;
+            /** Catalog Year */
+            catalog_year: string | null;
+            /** Total Credits */
+            total_credits: number;
+            /**
+             * Counted Credits
+             * @description Completed and in-progress credits that count toward it
+             */
+            counted_credits: number;
+            /** Credits Left */
+            credits_left: number;
+            /** Percent Complete */
+            percent_complete: number;
+            graduation_term: components["schemas"]["TermOut"] | null;
+            on_time_term: components["schemas"]["TermOut"] | null;
         };
         /** ProgramSummaryOut */
         ProgramSummaryOut: {
@@ -2139,6 +2380,89 @@ export interface components {
             /** Note */
             note?: string | null;
         };
+        /**
+         * ScenarioIn
+         * @description A plan the student saved to compare (F6.2): its programs and choices, under a name.
+         */
+        ScenarioIn: {
+            /** Program Id */
+            program_id: string;
+            /** Minor Id */
+            minor_id?: string | null;
+            preferences?: components["schemas"]["PreferencesIn"];
+            /**
+             * Entry Term
+             * @description The term the student joined AUIB; worked out from the course history if empty
+             */
+            entry_term?: string | null;
+            /**
+             * Program Version
+             * @description A specific version of the major, when the registrar approved a move to it (F0.4)
+             */
+            program_version?: string | null;
+            /** Name */
+            name: string;
+        };
+        /** ScenarioOut */
+        ScenarioOut: {
+            /** Name */
+            name: string;
+            plan: components["schemas"]["ScenarioPlanOut"] | null;
+            /**
+             * Error
+             * @description Why the scenario could not be planned, such as a program no longer offered
+             */
+            error: string | null;
+        };
+        /** ScenarioPlanOut */
+        ScenarioPlanOut: {
+            /** Program Name */
+            program_name: string;
+            /** Minor Name */
+            minor_name: string | null;
+            /** Catalog Year */
+            catalog_year: string | null;
+            graduation_term: components["schemas"]["TermOut"] | null;
+            on_time_term: components["schemas"]["TermOut"] | null;
+            /**
+             * Semesters Vs First
+             * @description How many Fall/Spring semesters later than the first scenario it finishes (negative if earlier); null for the first scenario
+             */
+            semesters_vs_first: number | null;
+            /** Percent Complete */
+            percent_complete: number;
+            /**
+             * Counted Credits
+             * @description Completed and in-progress credits that count toward the major
+             */
+            counted_credits: number;
+            /** Credits Left */
+            credits_left: number;
+            /** Planned Credits */
+            planned_credits: number;
+            /**
+             * Warnings
+             * @description Problems the plan reports, such as courses it could not schedule
+             */
+            warnings: number;
+            /** Terms */
+            terms: components["schemas"]["ScenarioTermOut"][];
+        };
+        /** ScenarioTermOut */
+        ScenarioTermOut: {
+            term: components["schemas"]["TermOut"];
+            /** Units */
+            units: number;
+            /** Built */
+            built: boolean;
+            /** Courses */
+            courses: components["schemas"]["CourseRef"][];
+            /**
+             * Open Choices
+             * @description Requirements with a course still to choose in this term
+             */
+            open_choices: string[];
+        };
         /** ScheduleOut */
         ScheduleOut: {
             term: components["schemas"]["TermOut"];
@@ -2237,8 +2561,6 @@ export interface components {
             program_id: string;
             /** Minor Id */
             minor_id?: string | null;
-            /** Attempts */
-            attempts?: components["schemas"]["AttemptIn"][];
             preferences?: components["schemas"]["PreferencesIn"];
             /**
              * Entry Term
@@ -2250,6 +2572,8 @@ export interface components {
              * @description A specific version of the major, when the registrar approved a move to it (F0.4)
              */
             program_version?: string | null;
+            /** Attempts */
+            attempts?: components["schemas"]["AttemptIn"][];
         };
         /** SuggestionOut */
         SuggestionOut: {
@@ -2321,6 +2645,30 @@ export interface components {
              */
             season: "Spring" | "Summer" | "Fall";
         };
+        /** TransferCourseOut */
+        TransferCourseOut: {
+            course: components["schemas"]["CourseRef"];
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "completed" | "in_progress";
+            /**
+             * Now
+             * @description The requirement it counts toward now; null when it counts toward none
+             */
+            now: string | null;
+            /**
+             * After
+             * @description The requirement it would count toward in the new major
+             */
+            after: string | null;
+            /**
+             * After Minor
+             * @description The requirement it would count toward in the new minor
+             */
+            after_minor: string | null;
+        };
         /** UnreadLineOut */
         UnreadLineOut: {
             /** Line */
@@ -2349,8 +2697,6 @@ export interface components {
             program_id: string;
             /** Minor Id */
             minor_id?: string | null;
-            /** Attempts */
-            attempts?: components["schemas"]["AttemptIn"][];
             preferences?: components["schemas"]["PreferencesIn"];
             /**
              * Entry Term
@@ -2362,6 +2708,8 @@ export interface components {
              * @description A specific version of the major, when the registrar approved a move to it (F0.4)
              */
             program_version?: string | null;
+            /** Attempts */
+            attempts?: components["schemas"]["AttemptIn"][];
             change: components["schemas"]["ChangeIn"];
         };
         /** WhatIfOut */
@@ -2759,6 +3107,105 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WhatIfOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    plan_move_options_api_v1_planner_move_options_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MoveIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MoveOptionsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    compare_api_v1_planner_compare_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompareIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CompareOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    plan_change_program_api_v1_planner_change_program_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProgramChangeIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgramChangeOut"];
                 };
             };
             /** @description Validation Error */

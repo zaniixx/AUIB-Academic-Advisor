@@ -94,3 +94,16 @@ def current_term(today: date) -> Term:
 def first_planning_term(today: date, include_summer: bool) -> Term:
     """The first term a new plan schedules: the one after the term in session."""
     return current_term(today).next(include_summer)
+
+
+def terms_between(first: Term | None, second: Term | None, include_summer: bool) -> int:
+    """How many terms ``second`` is after ``first`` (negative when before); 0 when either is unknown."""
+    if first is None or second is None or first == second:
+        return 0
+    sign = 1 if second > first else -1
+    low, high = (first, second) if sign > 0 else (second, first)
+    count = 0
+    while low < high:
+        low = low.next(include_summer)
+        count += 1
+    return sign * count

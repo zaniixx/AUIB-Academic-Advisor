@@ -558,6 +558,129 @@
         }
       }
     },
+    "/api/v1/planner/move-options": {
+      "post": {
+        "tags": [
+          "planner"
+        ],
+        "summary": "Where a planned course can be moved, and what each move does to graduation (F6.1)",
+        "operationId": "plan_move_options_api_v1_planner_move_options_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MoveIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MoveOptionsOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/planner/compare": {
+      "post": {
+        "tags": [
+          "planner"
+        ],
+        "summary": "Compare the current plan with up to 3 saved scenarios (F6.2)",
+        "operationId": "compare_api_v1_planner_compare_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompareIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompareOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/planner/change-program": {
+      "post": {
+        "tags": [
+          "planner"
+        ],
+        "summary": "What changing major or minor would do (F6.3)",
+        "operationId": "plan_change_program_api_v1_planner_change_program_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProgramChangeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgramChangeOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/planner/recommendations": {
       "post": {
         "tags": [
@@ -3120,6 +3243,51 @@
         ],
         "title": "ChangeIn"
       },
+      "CompareIn": {
+        "properties": {
+          "attempts": {
+            "items": {
+              "$ref": "#/components/schemas/AttemptIn"
+            },
+            "type": "array",
+            "maxItems": 300,
+            "title": "Attempts"
+          },
+          "scenarios": {
+            "items": {
+              "$ref": "#/components/schemas/ScenarioIn"
+            },
+            "type": "array",
+            "maxItems": 4,
+            "minItems": 1,
+            "title": "Scenarios",
+            "description": "The current plan first, then up to 3 saved scenarios; later terms are compared with the first"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "scenarios"
+        ],
+        "title": "CompareIn",
+        "description": "Plans to compare side by side (F6.2); they share the student's courses."
+      },
+      "CompareOut": {
+        "properties": {
+          "scenarios": {
+            "items": {
+              "$ref": "#/components/schemas/ScenarioOut"
+            },
+            "type": "array",
+            "title": "Scenarios"
+          }
+        },
+        "type": "object",
+        "required": [
+          "scenarios"
+        ],
+        "title": "CompareOut"
+      },
       "CountedCourseOut": {
         "properties": {
           "code": {
@@ -3142,6 +3310,22 @@
               "planned"
             ],
             "title": "State"
+          },
+          "also_listed": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Also Listed",
+            "description": "Other requirements of the same program that list this course (F1.7). A course counts toward one requirement only: the first, in SIS order, that still needs it"
+          },
+          "also_counts_toward": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Also Counts Toward",
+            "description": "Requirements of the student's other program (minor or major) the course counts toward at the same time, each with the program's name (F1.7)"
           }
         },
         "type": "object",
@@ -3149,7 +3333,9 @@
           "code",
           "title",
           "units",
-          "state"
+          "state",
+          "also_listed",
+          "also_counts_toward"
         ],
         "title": "CountedCourseOut"
       },
@@ -3754,14 +3940,6 @@
             ],
             "title": "Minor Id"
           },
-          "attempts": {
-            "items": {
-              "$ref": "#/components/schemas/AttemptIn"
-            },
-            "type": "array",
-            "maxItems": 300,
-            "title": "Attempts"
-          },
           "preferences": {
             "$ref": "#/components/schemas/PreferencesIn"
           },
@@ -3795,6 +3973,14 @@
             ],
             "title": "Program Version",
             "description": "A specific version of the major, when the registrar approved a move to it (F0.4)"
+          },
+          "attempts": {
+            "items": {
+              "$ref": "#/components/schemas/AttemptIn"
+            },
+            "type": "array",
+            "maxItems": 300,
+            "title": "Attempts"
           },
           "courses": {
             "items": {
@@ -4864,6 +5050,178 @@
         "title": "MinorPlanOut",
         "description": "The minor the student chose: its requirements now and once the plan is done.\n\nA course can count toward the major and the minor at the same time."
       },
+      "MoveIn": {
+        "properties": {
+          "program_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 2,
+            "title": "Program Id"
+          },
+          "minor_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minor Id"
+          },
+          "preferences": {
+            "$ref": "#/components/schemas/PreferencesIn"
+          },
+          "entry_term": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40,
+                "minLength": 6,
+                "examples": [
+                  "Fall 2027",
+                  "2027/2028 Fall"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entry Term",
+            "description": "The term the student joined AUIB; worked out from the course history if empty"
+          },
+          "program_version": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Program Version",
+            "description": "A specific version of the major, when the registrar approved a move to it (F0.4)"
+          },
+          "attempts": {
+            "items": {
+              "$ref": "#/components/schemas/AttemptIn"
+            },
+            "type": "array",
+            "maxItems": 300,
+            "title": "Attempts"
+          },
+          "code": {
+            "type": "string",
+            "maxLength": 16,
+            "minLength": 5,
+            "title": "Code",
+            "examples": [
+              "CSC 231"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "program_id",
+          "code"
+        ],
+        "title": "MoveIn",
+        "description": "A planned course the student wants to put in another term (F6.1)."
+      },
+      "MoveOptionOut": {
+        "properties": {
+          "term": {
+            "$ref": "#/components/schemas/TermOut"
+          },
+          "valid": {
+            "type": "boolean",
+            "title": "Valid"
+          },
+          "problems": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Problems",
+            "description": "Why the course cannot go in this term; empty when it can"
+          },
+          "graduation_term": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TermOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Graduation with the course in this term; null when the course does not run then"
+          },
+          "terms_later": {
+            "type": "integer",
+            "title": "Terms Later",
+            "description": "How many terms later graduation moves (negative if earlier)"
+          },
+          "shifts": {
+            "items": {
+              "$ref": "#/components/schemas/ShiftOut"
+            },
+            "type": "array",
+            "title": "Shifts",
+            "description": "Every course whose term changes, this one included"
+          }
+        },
+        "type": "object",
+        "required": [
+          "term",
+          "valid",
+          "problems",
+          "graduation_term",
+          "terms_later",
+          "shifts"
+        ],
+        "title": "MoveOptionOut",
+        "description": "The course checked in one term (F6.1)."
+      },
+      "MoveOptionsOut": {
+        "properties": {
+          "course": {
+            "$ref": "#/components/schemas/CourseRef"
+          },
+          "term": {
+            "$ref": "#/components/schemas/TermOut",
+            "description": "The term the plan has the course in now"
+          },
+          "graduation_term": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TermOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "options": {
+            "items": {
+              "$ref": "#/components/schemas/MoveOptionOut"
+            },
+            "type": "array",
+            "title": "Options"
+          }
+        },
+        "type": "object",
+        "required": [
+          "course",
+          "term",
+          "graduation_term",
+          "options"
+        ],
+        "title": "MoveOptionsOut",
+        "description": "Where a planned course can go: every other term of the plan, and the term after it (F6.1)."
+      },
       "OfferingOut": {
         "properties": {
           "code": {
@@ -5021,6 +5379,34 @@
             "type": "array",
             "title": "Alternatives",
             "description": "Courses that could replace this one in the same term: same requirement, offered then, prerequisites done in earlier terms, corequisites in the same term"
+          },
+          "counts_toward": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Counts Toward",
+            "description": "The requirement this course counts toward once the plan is done (F1.7)"
+          },
+          "also_listed": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Also Listed",
+            "description": "Other requirements of the same program that list this course (F1.7). A course counts toward one requirement only: the first, in SIS order, that still needs it"
+          },
+          "also_counts_toward": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Also Counts Toward",
+            "description": "Requirements of the student's other program (minor or major) the course counts toward at the same time, each with the program's name (F1.7)"
           }
         },
         "type": "object",
@@ -5037,7 +5423,10 @@
           "unlocks",
           "advisories",
           "suggestions",
-          "alternatives"
+          "alternatives",
+          "counts_toward",
+          "also_listed",
+          "also_counts_toward"
         ],
         "title": "PlanItemOut"
       },
@@ -5364,6 +5753,148 @@
         "type": "object",
         "title": "PreferencesIn"
       },
+      "ProgramChangeIn": {
+        "properties": {
+          "program_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 2,
+            "title": "Program Id"
+          },
+          "minor_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minor Id"
+          },
+          "preferences": {
+            "$ref": "#/components/schemas/PreferencesIn"
+          },
+          "entry_term": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40,
+                "minLength": 6,
+                "examples": [
+                  "Fall 2027",
+                  "2027/2028 Fall"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entry Term",
+            "description": "The term the student joined AUIB; worked out from the course history if empty"
+          },
+          "program_version": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Program Version",
+            "description": "A specific version of the major, when the registrar approved a move to it (F0.4)"
+          },
+          "attempts": {
+            "items": {
+              "$ref": "#/components/schemas/AttemptIn"
+            },
+            "type": "array",
+            "maxItems": 300,
+            "title": "Attempts"
+          },
+          "target_program_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 2,
+            "title": "Target Program Id"
+          },
+          "target_minor_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Minor Id",
+            "description": "Null: no minor"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "program_id",
+          "target_program_id"
+        ],
+        "title": "ProgramChangeIn",
+        "description": "The student's plan and the major (and minor) they are thinking of moving to (F6.3)."
+      },
+      "ProgramChangeOut": {
+        "properties": {
+          "current": {
+            "$ref": "#/components/schemas/ProgramSideOut"
+          },
+          "target": {
+            "$ref": "#/components/schemas/ProgramSideOut"
+          },
+          "terms_later": {
+            "type": "integer",
+            "title": "Terms Later",
+            "description": "How many terms later the new program finishes (negative if earlier)"
+          },
+          "courses": {
+            "items": {
+              "$ref": "#/components/schemas/TransferCourseOut"
+            },
+            "type": "array",
+            "title": "Courses"
+          },
+          "lost_credits": {
+            "type": "number",
+            "title": "Lost Credits",
+            "description": "Credits that count now but toward neither new program"
+          },
+          "version_note": {
+            "type": "string",
+            "title": "Version Note",
+            "description": "Which requirements of the new major are used, and why"
+          },
+          "notes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Notes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "current",
+          "target",
+          "terms_later",
+          "courses",
+          "lost_credits",
+          "version_note",
+          "notes"
+        ],
+        "title": "ProgramChangeOut",
+        "description": "What changing major or minor would do (F6.3)."
+      },
       "ProgramCheckOut": {
         "properties": {
           "ok": {
@@ -5635,6 +6166,91 @@
           "findings"
         ],
         "title": "ProgramSaveOut"
+      },
+      "ProgramSideOut": {
+        "properties": {
+          "program_id": {
+            "type": "string",
+            "title": "Program Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "minor_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minor Name"
+          },
+          "catalog_year": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Catalog Year"
+          },
+          "total_credits": {
+            "type": "number",
+            "title": "Total Credits"
+          },
+          "counted_credits": {
+            "type": "number",
+            "title": "Counted Credits",
+            "description": "Completed and in-progress credits that count toward it"
+          },
+          "credits_left": {
+            "type": "number",
+            "title": "Credits Left"
+          },
+          "percent_complete": {
+            "type": "number",
+            "title": "Percent Complete"
+          },
+          "graduation_term": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TermOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "on_time_term": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TermOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "program_id",
+          "name",
+          "minor_name",
+          "catalog_year",
+          "total_credits",
+          "counted_credits",
+          "credits_left",
+          "percent_complete",
+          "graduation_term",
+          "on_time_term"
+        ],
+        "title": "ProgramSideOut"
       },
       "ProgramSummaryOut": {
         "properties": {
@@ -6290,6 +6906,259 @@
         ],
         "title": "RuleUpdateIn"
       },
+      "ScenarioIn": {
+        "properties": {
+          "program_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 2,
+            "title": "Program Id"
+          },
+          "minor_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minor Id"
+          },
+          "preferences": {
+            "$ref": "#/components/schemas/PreferencesIn"
+          },
+          "entry_term": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 40,
+                "minLength": 6,
+                "examples": [
+                  "Fall 2027",
+                  "2027/2028 Fall"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entry Term",
+            "description": "The term the student joined AUIB; worked out from the course history if empty"
+          },
+          "program_version": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 64
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Program Version",
+            "description": "A specific version of the major, when the registrar approved a move to it (F0.4)"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Name"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "program_id",
+          "name"
+        ],
+        "title": "ScenarioIn",
+        "description": "A plan the student saved to compare (F6.2): its programs and choices, under a name."
+      },
+      "ScenarioOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "plan": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScenarioPlanOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error",
+            "description": "Why the scenario could not be planned, such as a program no longer offered"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "plan",
+          "error"
+        ],
+        "title": "ScenarioOut"
+      },
+      "ScenarioPlanOut": {
+        "properties": {
+          "program_name": {
+            "type": "string",
+            "title": "Program Name"
+          },
+          "minor_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minor Name"
+          },
+          "catalog_year": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Catalog Year"
+          },
+          "graduation_term": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TermOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "on_time_term": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TermOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "semesters_vs_first": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Semesters Vs First",
+            "description": "How many Fall/Spring semesters later than the first scenario it finishes (negative if earlier); null for the first scenario"
+          },
+          "percent_complete": {
+            "type": "number",
+            "title": "Percent Complete"
+          },
+          "counted_credits": {
+            "type": "number",
+            "title": "Counted Credits",
+            "description": "Completed and in-progress credits that count toward the major"
+          },
+          "credits_left": {
+            "type": "number",
+            "title": "Credits Left"
+          },
+          "planned_credits": {
+            "type": "number",
+            "title": "Planned Credits"
+          },
+          "warnings": {
+            "type": "integer",
+            "title": "Warnings",
+            "description": "Problems the plan reports, such as courses it could not schedule"
+          },
+          "terms": {
+            "items": {
+              "$ref": "#/components/schemas/ScenarioTermOut"
+            },
+            "type": "array",
+            "title": "Terms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "program_name",
+          "minor_name",
+          "catalog_year",
+          "graduation_term",
+          "on_time_term",
+          "semesters_vs_first",
+          "percent_complete",
+          "counted_credits",
+          "credits_left",
+          "planned_credits",
+          "warnings",
+          "terms"
+        ],
+        "title": "ScenarioPlanOut"
+      },
+      "ScenarioTermOut": {
+        "properties": {
+          "term": {
+            "$ref": "#/components/schemas/TermOut"
+          },
+          "units": {
+            "type": "number",
+            "title": "Units"
+          },
+          "built": {
+            "type": "boolean",
+            "title": "Built"
+          },
+          "courses": {
+            "items": {
+              "$ref": "#/components/schemas/CourseRef"
+            },
+            "type": "array",
+            "title": "Courses"
+          },
+          "open_choices": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Open Choices",
+            "description": "Requirements with a course still to choose in this term"
+          }
+        },
+        "type": "object",
+        "required": [
+          "term",
+          "units",
+          "built",
+          "courses",
+          "open_choices"
+        ],
+        "title": "ScenarioTermOut"
+      },
       "ScheduleOut": {
         "properties": {
           "term": {
@@ -6546,14 +7415,6 @@
             ],
             "title": "Minor Id"
           },
-          "attempts": {
-            "items": {
-              "$ref": "#/components/schemas/AttemptIn"
-            },
-            "type": "array",
-            "maxItems": 300,
-            "title": "Attempts"
-          },
           "preferences": {
             "$ref": "#/components/schemas/PreferencesIn"
           },
@@ -6587,6 +7448,14 @@
             ],
             "title": "Program Version",
             "description": "A specific version of the major, when the registrar approved a move to it (F0.4)"
+          },
+          "attempts": {
+            "items": {
+              "$ref": "#/components/schemas/AttemptIn"
+            },
+            "type": "array",
+            "maxItems": 300,
+            "title": "Attempts"
           }
         },
         "additionalProperties": false,
@@ -6798,6 +7667,66 @@
         ],
         "title": "TermOut"
       },
+      "TransferCourseOut": {
+        "properties": {
+          "course": {
+            "$ref": "#/components/schemas/CourseRef"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "completed",
+              "in_progress"
+            ],
+            "title": "State"
+          },
+          "now": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Now",
+            "description": "The requirement it counts toward now; null when it counts toward none"
+          },
+          "after": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "After",
+            "description": "The requirement it would count toward in the new major"
+          },
+          "after_minor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "After Minor",
+            "description": "The requirement it would count toward in the new minor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "course",
+          "state",
+          "now",
+          "after",
+          "after_minor"
+        ],
+        "title": "TransferCourseOut"
+      },
       "UnreadLineOut": {
         "properties": {
           "line": {
@@ -6881,14 +7810,6 @@
             ],
             "title": "Minor Id"
           },
-          "attempts": {
-            "items": {
-              "$ref": "#/components/schemas/AttemptIn"
-            },
-            "type": "array",
-            "maxItems": 300,
-            "title": "Attempts"
-          },
           "preferences": {
             "$ref": "#/components/schemas/PreferencesIn"
           },
@@ -6922,6 +7843,14 @@
             ],
             "title": "Program Version",
             "description": "A specific version of the major, when the registrar approved a move to it (F0.4)"
+          },
+          "attempts": {
+            "items": {
+              "$ref": "#/components/schemas/AttemptIn"
+            },
+            "type": "array",
+            "maxItems": 300,
+            "title": "Attempts"
           },
           "change": {
             "$ref": "#/components/schemas/ChangeIn"

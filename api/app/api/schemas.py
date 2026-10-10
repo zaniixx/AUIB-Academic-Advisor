@@ -134,12 +134,11 @@ class PreferencesIn(StrictModel):
         return value
 
 
-class StudentIn(StrictModel):
-    """Everything the planner needs. Nothing here is stored (F11.5)."""
+class PlanChoicesIn(StrictModel):
+    """The student's programs and plan choices: everything the planner needs but their courses."""
 
     program_id: str = Field(min_length=2, max_length=64)
     minor_id: str | None = Field(default=None, max_length=64)
-    attempts: list[AttemptIn] = Field(default_factory=list, max_length=300)
     preferences: PreferencesIn = Field(default_factory=PreferencesIn)
     entry_term: TermText | None = Field(
         default=None,
@@ -152,6 +151,45 @@ class StudentIn(StrictModel):
     )
 
     _check_entry = field_validator("entry_term")(_term)
+
+
+class StudentIn(PlanChoicesIn):
+    """Everything the planner needs. Nothing here is stored (F11.5)."""
+
+    attempts: list[AttemptIn] = Field(default_factory=list, max_length=300)
+
+
+class ScenarioIn(PlanChoicesIn):
+    """A plan the student saved to compare (F6.2): its programs and choices, under a name."""
+
+    name: str = Field(min_length=1, max_length=60)
+
+
+class CompareIn(StrictModel):
+    """Plans to compare side by side (F6.2); they share the student's courses."""
+
+    attempts: list[AttemptIn] = Field(default_factory=list, max_length=300)
+    scenarios: list[ScenarioIn] = Field(
+        min_length=1,
+        max_length=4,
+        description="The current plan first, then up to 3 saved scenarios; later terms are compared with "
+        "the first",
+    )
+
+
+class ProgramChangeIn(StudentIn):
+    """The student's plan and the major (and minor) they are thinking of moving to (F6.3)."""
+
+    target_program_id: str = Field(min_length=2, max_length=64)
+    target_minor_id: str | None = Field(default=None, max_length=64, description="Null: no minor")
+
+
+class MoveIn(StudentIn):
+    """A planned course the student wants to put in another term (F6.1)."""
+
+    code: CourseCode
+
+    _check_code = field_validator("code")(_code)
 
 
 GradeLetter = Literal["A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D+", "D", "D-", "F"]
@@ -374,11 +412,23 @@ class HistoryParseOut(BaseModel):
     duplicates_removed: int
 
 
+_ALSO_LISTED = (
+    "Other requirements of the same program that list this course (F1.7). A course counts toward one "
+    "requirement only: the first, in SIS order, that still needs it"
+)
+_ALSO_COUNTS = (
+    "Requirements of the student's other program (minor or major) the course counts toward at the same "
+    "time, each with the program's name (F1.7)"
+)
+
+
 class CountedCourseOut(BaseModel):
     code: str
     title: str
     units: float
     state: Literal["completed", "in_progress", "planned"]
+    also_listed: list[str] = Field(description=_ALSO_LISTED)
+    also_counts_toward: list[str] = Field(description=_ALSO_COUNTS)
 
 
 class GroupProgressOut(BaseModel):
@@ -438,6 +488,11 @@ class PlanItemOut(BaseModel):
         description="Courses that could replace this one in the same term: same requirement, offered then, "
         "prerequisites done in earlier terms, corequisites in the same term"
     )
+    counts_toward: str | None = Field(
+        description="The requirement this course counts toward once the plan is done (F1.7)"
+    )
+    also_listed: list[str] = Field(description=_ALSO_LISTED)
+    also_counts_toward: list[str] = Field(description=_ALSO_COUNTS)
 
 
 class PlannedTermOut(BaseModel):
@@ -592,6 +647,105 @@ class WhatIfOut(BaseModel):
     after_graduation: TermOut | None
     shifts: list[ShiftOut]
     plan: PlanOut
+
+
+class MoveOptionOut(BaseModel):
+    """The course checked in one term (F6.1)."""
+
+    term: TermOut
+    valid: bool
+    problems: list[str] = Field(description="Why the course cannot go in this term; empty when it can")
+    graduation_term: TermOut | None = Field(
+        description="Graduation with the course in this term; null when the course does not run then"
+    )
+    terms_later: int = Field(description="How many terms later graduation moves (negative if earlier)")
+    shifts: list[ShiftOut] = Field(description="Every course whose term changes, this one included")
+
+
+class MoveOptionsOut(BaseModel):
+    """Where a planned course can go: every other term of the plan, and the term after it (F6.1)."""
+
+    course: CourseRef
+    term: TermOut = Field(description="The term the plan has the course in now")
+    graduation_term: TermOut | None
+    options: list[MoveOptionOut]
+
+
+class ScenarioTermOut(BaseModel):
+    term: TermOut
+    units: float
+    built: bool
+    courses: list[CourseRef]
+    open_choices: list[str] = Field(description="Requirements with a course still to choose in this term")
+
+
+class ScenarioPlanOut(BaseModel):
+    program_name: str
+    minor_name: str | None
+    catalog_year: str | None
+    graduation_term: TermOut | None
+    on_time_term: TermOut | None
+    semesters_vs_first: int | None = Field(
+        description="How many Fall/Spring semesters later than the first scenario it finishes (negative if "
+        "earlier); null for the first scenario"
+    )
+    percent_complete: float
+    counted_credits: float = Field(
+        description="Completed and in-progress credits that count toward the major"
+    )
+    credits_left: float
+    planned_credits: float
+    warnings: int = Field(description="Problems the plan reports, such as courses it could not schedule")
+    terms: list[ScenarioTermOut]
+
+
+class ScenarioOut(BaseModel):
+    name: str
+    plan: ScenarioPlanOut | None
+    error: str | None = Field(
+        description="Why the scenario could not be planned, such as a program no longer offered"
+    )
+
+
+class CompareOut(BaseModel):
+    scenarios: list[ScenarioOut]
+
+
+class TransferCourseOut(BaseModel):
+    course: CourseRef
+    state: Literal["completed", "in_progress"]
+    now: str | None = Field(
+        description="The requirement it counts toward now; null when it counts toward none"
+    )
+    after: str | None = Field(description="The requirement it would count toward in the new major")
+    after_minor: str | None = Field(description="The requirement it would count toward in the new minor")
+
+
+class ProgramSideOut(BaseModel):
+    program_id: str
+    name: str
+    minor_name: str | None
+    catalog_year: str | None
+    total_credits: float
+    counted_credits: float = Field(description="Completed and in-progress credits that count toward it")
+    credits_left: float
+    percent_complete: float
+    graduation_term: TermOut | None
+    on_time_term: TermOut | None
+
+
+class ProgramChangeOut(BaseModel):
+    """What changing major or minor would do (F6.3)."""
+
+    current: ProgramSideOut
+    target: ProgramSideOut
+    terms_later: int = Field(
+        description="How many terms later the new program finishes (negative if earlier)"
+    )
+    courses: list[TransferCourseOut]
+    lost_credits: float = Field(description="Credits that count now but toward neither new program")
+    version_note: str = Field(description="Which requirements of the new major are used, and why")
+    notes: list[str]
 
 
 class SuggestionOut(BaseModel):

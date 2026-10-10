@@ -4,8 +4,9 @@ import Link from "next/link";
 import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import type { ChangeAction, CourseRef, GroupProgress, PlanItem, PlannedTerm } from "@/lib/api";
 import { credits, units } from "@/lib/format";
-import { ChevronDownIcon, ClockIcon, CloseIcon, LightbulbIcon, SwapIcon } from "@/components/icons";
+import { CalendarIcon, ChevronDownIcon, ClockIcon, CloseIcon, LayersIcon, LightbulbIcon, SwapIcon } from "@/components/icons";
 import { AlertIcon, Badge, Button, CheckIcon, LockIcon, StatusBadge } from "@/components/ui";
+import { DropHint, dropClasses, useDraggable, useDropTarget, useMoveDialog } from "./MoveCourse";
 
 export interface PlanActions {
   lock: (code: string, term: string) => void;
@@ -21,6 +22,8 @@ export interface PlanActions {
   finish: (term: string, empty?: boolean) => void;
   /** F1.9: open a term the student built so they can change it. */
   reopen: (term: string) => void;
+  /** F6.1: put ``code`` in ``to`` instead of ``from`` (dragged there, or from the move dialog). */
+  move: (code: string, from: string, to: string) => void;
 }
 
 /** How a course row behaves: in a term the student built, the one being built, or a later suggestion. */
@@ -83,12 +86,14 @@ export function TermCard({
   const label = term.term.label;
   const summer = term.term.season === "Summer";
   const built = mode === "built";
+  const target = useDropTarget(label);
   return (
     <li
+      {...target.props}
       style={{ "--i": Math.min(index, 8) } as CSSProperties}
-      className={`min-w-0 overflow-hidden rounded-card border bg-surface shadow-soft ${
+      className={`min-w-0 overflow-hidden rounded-card border bg-surface shadow-soft transition ${
         built ? "border-status-done/35" : summer ? "border-dashed border-accent" : "border-dashed border-border-strong"
-      }`}
+      } ${dropClasses(target.state, target.over)}`}
     >
       <TermHeader
         eyebrow={
@@ -121,6 +126,7 @@ export function TermCard({
           ) : undefined
         }
       />
+      <DropHint state={target.state} option={target.option} />
       <ul className="space-y-1.5 p-3">
         {term.items.map((item) =>
           item.kind === "slot" ? (
@@ -251,11 +257,16 @@ export function CourseItem({
   const gateway = item.unlocks >= 3;
   const check = item.advisories.length > 0;
   const kept = locked && mode === "suggested";
+  const twice = item.also_counts_toward.length > 0;
+  const listed = item.also_listed.length > 0;
+  const drag = useDraggable(code, term);
+  const openMove = useMoveDialog();
   return (
     <li
+      {...drag}
       className={`rounded-xl border bg-surface transition-colors ${open ? "border-border-strong" : "border-border"} ${
         mode === "building" ? "animate-fade-up" : ""
-      }`}
+      } ${drag.draggable ? "cursor-grab active:cursor-grabbing" : ""}`}
     >
       <div className="flex items-start gap-2 py-2 ps-3 pe-1.5">
         <span
@@ -269,7 +280,7 @@ export function CourseItem({
             </Link>{" "}
             <span>{item.title}</span>
           </p>
-          {(kept || gateway || check) && (
+          {(kept || gateway || check || twice || listed) && (
             <div className="mt-1 flex flex-wrap gap-1">
               {kept && (
                 <Badge tone="brand">
@@ -277,6 +288,13 @@ export function CourseItem({
                   Kept here
                 </Badge>
               )}
+              {twice && (
+                <Badge tone="brand">
+                  <LayersIcon className="h-3.5 w-3.5" />
+                  Counts twice
+                </Badge>
+              )}
+              {listed && <Badge>Fits {item.also_listed.length + 1} requirements</Badge>}
               {gateway && <Badge>Opens {item.unlocks} later courses</Badge>}
               {check && <StatusBadge status="warning" label="Check requirement" />}
             </div>
@@ -325,6 +343,12 @@ export function CourseItem({
                 <span>{item.reason}</span>
               </p>
             )}
+            {(twice || listed) && (
+              <p className="flex gap-1.5 text-text-muted">
+                <LayersIcon className="h-4 w-4 shrink-0" />
+                <span>{countsNote(item)}</span>
+              </p>
+            )}
             {item.advisories.map((note) => (
               <p key={note} className="flex gap-1.5 text-status-warning">
                 <AlertIcon className="mt-0.5 h-3.5 w-3.5" />
@@ -349,6 +373,12 @@ export function CourseItem({
                     Keep in {term}
                   </Button>
                 ))}
+              {openMove && (
+                <Button variant="secondary" size="sm" onClick={() => openMove(code, term)}>
+                  <CalendarIcon className="h-3.5 w-3.5" />
+                  Move to another term
+                </Button>
+              )}
               <Button variant="secondary" size="sm" onClick={() => actions.whatIf(code, "delay")}>
                 <ClockIcon className="h-3.5 w-3.5" />
                 What if I delay it?
@@ -359,6 +389,25 @@ export function CourseItem({
       </div>
     </li>
   );
+}
+
+/**
+ * F1.7: where a course counts when more than one requirement could use it. Within a program a
+ * course counts once; toward a major and a minor it counts for both.
+ */
+export function countsNote(item: Pick<PlanItem, "counts_toward" | "also_listed" | "also_counts_toward">): string {
+  const parts: string[] = [];
+  if (item.counts_toward) {
+    const also = item.also_counts_toward.length > 0 ? ` and ${item.also_counts_toward.join(", ")}` : "";
+    parts.push(`Counts toward ${item.counts_toward}${also}.`);
+  }
+  if (item.also_listed.length > 0) {
+    parts.push(
+      `${item.also_listed.join(", ")} also list${item.also_listed.length === 1 ? "s" : ""} it, but a course counts ` +
+        "toward one requirement only: the first, in SIS order, that still needs it. The registrar's audit decides.",
+    );
+  }
+  return parts.join(" ");
 }
 
 export function SlotItem({ item, term, actions }: { item: PlanItem; term: string; actions: PlanActions }) {

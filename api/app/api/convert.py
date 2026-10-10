@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Mapping, Sequence
+from dataclasses import replace
 
 from app.api import schemas as s
 from app.domain.catalog import Catalog, Group, Program, VersionChoice, group_requires_all, version_range
@@ -10,11 +11,22 @@ from app.domain.gpa import GPA_ASSUMPTIONS, GpaSummary, gpa_summary
 from app.domain.history import HistoryParseResult
 from app.domain.journey import DegreeMap, degree_map
 from app.domain.planner import EligibleCourse, Lock, Plan, PlanItem, PlannedTerm, PlanOptions
-from app.domain.progress import CountedCourse, GroupProgress, ProgramProgress, whats_left
+from app.domain.progress import (
+    CountedCourse,
+    CourseFlags,
+    CourseState,
+    GroupProgress,
+    ProgramProgress,
+    course_flags,
+    whats_left,
+    with_program,
+)
 from app.domain.recommend import GroupSuggestions, Preferences
 from app.domain.record import Attempt, StudentRecord, build_record
 from app.domain.requisites import DEFAULT_STANDING_CREDITS
+from app.domain.switch import ProgramChange, counted_units, units_left
 from app.domain.terms import Term
+from app.domain.whatif import MoveChoices, Shift
 from app.models import TermOfferingRow
 
 DISCLAIMER = (
@@ -177,19 +189,26 @@ def history_out(result: HistoryParseResult) -> s.HistoryParseOut:
     )
 
 
-def _counted(course: CountedCourse, catalog: Catalog) -> s.CountedCourseOut:
+def _counted(course: CountedCourse, catalog: Catalog, flags: Mapping[str, CourseFlags]) -> s.CountedCourseOut:
+    found = flags.get(course.code)
     return s.CountedCourseOut(
         code=course.code,
         title=catalog.title(course.code),
         units=course.units,
         state=course.state.value,
+        also_listed=list(found.also_listed) if found else [],
+        also_counts_toward=list(found.also_counts_toward) if found else [],
     )
 
 
 def group_progress_out(
-    progress: GroupProgress, catalog: Catalog, slot_units: dict[str, float]
+    progress: GroupProgress,
+    catalog: Catalog,
+    slot_units: dict[str, float],
+    flags: Mapping[str, CourseFlags] | None = None,
 ) -> s.GroupProgressOut:
-    children = [group_progress_out(child, catalog, slot_units) for child in progress.children]
+    flags = flags or {}
+    children = [group_progress_out(child, catalog, slot_units, flags) for child in progress.children]
     if progress.children:
         planned = min(
             progress.required - progress.completed - progress.in_progress, sum(c.planned for c in children)
@@ -206,12 +225,15 @@ def group_progress_out(
         in_progress=progress.in_progress,
         planned=planned,
         remaining=max(0.0, progress.required - progress.completed - progress.in_progress - planned),
-        courses=[_counted(c, catalog) for c in progress.courses],
+        courses=[_counted(c, catalog, flags) for c in progress.courses],
         children=children,
     )
 
 
-def progress_out(progress: ProgramProgress, record: StudentRecord, catalog: Catalog) -> s.ProgressOut:
+def progress_out(
+    progress: ProgramProgress, record: StudentRecord, catalog: Catalog, other: ProgramProgress | None = None
+) -> s.ProgressOut:
+    """Progress and what is left; ``other`` is the student's other program, for courses counting twice."""
     left = []
     for item in whats_left(progress, catalog):
         left.append(
@@ -228,13 +250,16 @@ def progress_out(progress: ProgramProgress, record: StudentRecord, catalog: Cata
         percent_complete=progress.percent_complete,
         completed_units=record.completed_units(catalog),
         in_progress_units=record.in_progress_units(catalog),
-        root=group_progress_out(progress.root, catalog, {}),
+        root=group_progress_out(progress.root, catalog, {}, course_flags(progress, other)),
         not_counted=[course_ref(c.code, catalog) for c in progress.not_counted],
         whats_left=left,
     )
 
 
-def plan_item_out(item: PlanItem, catalog: Catalog) -> s.PlanItemOut:
+def plan_item_out(
+    item: PlanItem, catalog: Catalog, flags: Mapping[str, CourseFlags] | None = None
+) -> s.PlanItemOut:
+    found = (flags or {}).get(item.code or "")
     return s.PlanItemOut(
         kind=item.kind.value,
         key=item.key,
@@ -249,6 +274,9 @@ def plan_item_out(item: PlanItem, catalog: Catalog) -> s.PlanItemOut:
         advisories=list(item.advisories),
         suggestions=[course_ref(code, catalog) for code in item.suggestions],
         alternatives=[course_ref(code, catalog) for code in item.alternatives],
+        counts_toward=found.counts_toward if found else None,
+        also_listed=list(found.also_listed) if found else [],
+        also_counts_toward=list(found.also_counts_toward) if found else [],
     )
 
 
@@ -404,7 +432,8 @@ def plan_out(
 ) -> s.PlanOut:
     minor_out = None
     if minor is not None and minor_current is not None and plan.minor_progress is not None:
-        minor_out = minor_plan_out(minor, minor_current, plan.minor_progress, catalog)
+        minor_out = minor_plan_out(minor, minor_current, plan.minor_progress, catalog, current, plan.progress)
+    flags = plan_flags(plan)
     return s.PlanOut(
         start_term=required_term(plan.start_term),
         graduation_term=term_out(plan.graduation_term),
@@ -413,17 +442,17 @@ def plan_out(
             s.PlannedTermOut(
                 term=required_term(t.term),
                 units=t.units,
-                items=[plan_item_out(item, catalog) for item in t.items],
+                items=[plan_item_out(item, catalog, flags) for item in t.items],
                 schedule_published=t.term in catalog.schedules,
                 built=t.built,
             )
             for t in plan.terms
         ],
         issues=[s.IssueOut(severity=i.severity, message=i.message, code=i.code) for i in plan.issues],
-        unscheduled=[plan_item_out(item, catalog) for item in plan.unscheduled],
+        unscheduled=[plan_item_out(item, catalog, flags) for item in plan.unscheduled],
         critical_chain=[course_ref(code, catalog) for code in plan.critical_chain],
-        progress=progress_out(current, record, catalog),
-        progress_with_plan=group_progress_out(plan.progress.root, catalog, plan.slot_units),
+        progress=progress_out(current, record, catalog, minor_current),
+        progress_with_plan=group_progress_out(plan.progress.root, catalog, plan.slot_units, flags),
         eligible_next_term=[eligible_out(course, catalog) for course in eligible],
         building=building,
         degree_map=degree_map_out(degree_map(plan, record, catalog, program, in_session)),
@@ -435,8 +464,24 @@ def plan_out(
     )
 
 
+def plan_flags(plan: Plan) -> dict[str, CourseFlags]:
+    """Where each planned course counts (F1.7): toward the major, or else toward the minor."""
+    flags = course_flags(plan.progress, plan.minor_progress)
+    if plan.minor_progress is not None:
+        minor = plan.minor_progress.program
+        for code, found in course_flags(plan.minor_progress).items():
+            if code not in flags and found.counts_toward:
+                flags[code] = replace(found, counts_toward=with_program(found.counts_toward, minor))
+    return flags
+
+
 def minor_plan_out(
-    minor: Program, current: ProgramProgress, with_plan: ProgramProgress, catalog: Catalog
+    minor: Program,
+    current: ProgramProgress,
+    with_plan: ProgramProgress,
+    catalog: Catalog,
+    major_current: ProgramProgress | None = None,
+    major_with_plan: ProgramProgress | None = None,
 ) -> s.MinorPlanOut:
     """The minor's own progress: units count only where they count toward the minor."""
     left = [
@@ -461,11 +506,13 @@ def minor_plan_out(
             percent_complete=current.percent_complete,
             completed_units=current.root.completed,
             in_progress_units=current.root.in_progress,
-            root=group_progress_out(current.root, catalog, {}),
+            root=group_progress_out(current.root, catalog, {}, course_flags(current, major_current)),
             not_counted=[],  # most courses do not count toward a minor; that is not worth listing
             whats_left=left,
         ),
-        progress_with_plan=group_progress_out(with_plan.root, catalog, {}),
+        progress_with_plan=group_progress_out(
+            with_plan.root, catalog, {}, course_flags(with_plan, major_with_plan)
+        ),
     )
 
 
@@ -489,3 +536,119 @@ def suggestions_out(found: GroupSuggestions, catalog: Catalog) -> s.GroupSuggest
 
 def standing_credits() -> dict[str, int]:
     return {standing.value: credits for standing, credits in DEFAULT_STANDING_CREDITS.items()}
+
+
+def shift_out(shift: Shift) -> s.ShiftOut:
+    return s.ShiftOut(
+        code=shift.code, title=shift.title, before=term_out(shift.before), after=term_out(shift.after)
+    )
+
+
+def move_choices_out(choices: MoveChoices, code: str, catalog: Catalog) -> s.MoveOptionsOut:
+    return s.MoveOptionsOut(
+        course=course_ref(code, catalog),
+        term=required_term(choices.source),
+        graduation_term=term_out(choices.plan.graduation_term),
+        options=[
+            s.MoveOptionOut(
+                term=required_term(move.term),
+                valid=move.valid,
+                problems=list(move.problems),
+                graduation_term=term_out(move.graduation_term),
+                terms_later=move.terms_later,
+                shifts=[shift_out(shift) for shift in move.shifts],
+            )
+            for move in choices.moves
+        ],
+    )
+
+
+def scenario_plan_out(
+    plan: Plan,
+    program: Program,
+    minor: Program | None,
+    current: ProgramProgress,
+    catalog: Catalog,
+    semesters_vs_first: int | None,
+) -> s.ScenarioPlanOut:
+    """A saved plan in brief, for comparing side by side (F6.2)."""
+    return s.ScenarioPlanOut(
+        program_name=program.name,
+        minor_name=minor.name if minor else None,
+        catalog_year=program.catalog_year,
+        graduation_term=term_out(plan.graduation_term),
+        on_time_term=term_out(plan.on_time_term),
+        semesters_vs_first=semesters_vs_first,
+        percent_complete=current.percent_complete,
+        counted_credits=counted_units(current),
+        credits_left=units_left(current),
+        planned_credits=sum(t.units for t in plan.terms),
+        warnings=sum(1 for issue in plan.issues if issue.severity == "warning"),
+        terms=[
+            s.ScenarioTermOut(
+                term=required_term(t.term),
+                units=t.units,
+                built=t.built,
+                courses=[course_ref(item.code, catalog) for item in t.items if item.code],
+                open_choices=[item.group_label or item.title for item in t.items if item.code is None],
+            )
+            for t in plan.terms
+        ],
+    )
+
+
+def program_side_out(
+    program: Program, minor: Program | None, progress: ProgramProgress, plan: Plan
+) -> s.ProgramSideOut:
+    return s.ProgramSideOut(
+        program_id=program.family_id,
+        name=program.name,
+        minor_name=minor.name if minor else None,
+        catalog_year=program.catalog_year,
+        total_credits=progress.root.required,
+        counted_credits=counted_units(progress),
+        credits_left=units_left(progress),
+        percent_complete=progress.percent_complete,
+        graduation_term=term_out(plan.graduation_term),
+        on_time_term=term_out(plan.on_time_term),
+    )
+
+
+CHANGE_NOTES = [
+    "Your completed and in-progress courses are counted toward the new major the same way as toward your "
+    "own: each counts toward the first requirement, in SIS order, that still needs it.",
+    "The new plan starts fresh: the courses you placed and the terms you built stay with your current plan. "
+    "Your credit load, pace, summer and interest settings carry over.",
+    "The registrar decides which requirements apply after a change of major and how your courses count. "
+    "Talk to your advisor before you apply.",
+]
+
+
+def program_change_out(
+    change: ProgramChange,
+    current: Program,
+    current_minor: Program | None,
+    target: Program,
+    target_minor: Program | None,
+    catalog: Catalog,
+    version: str,
+) -> s.ProgramChangeOut:
+    """What changing major or minor would do (F6.3)."""
+    return s.ProgramChangeOut(
+        current=program_side_out(current, current_minor, change.current, change.current_plan),
+        target=program_side_out(target, target_minor, change.target, change.target_plan),
+        terms_later=change.terms_later,
+        courses=[
+            s.TransferCourseOut(
+                course=course_ref(course.code, catalog),
+                state="completed" if course.state is CourseState.COMPLETED else "in_progress",
+                now=course.now,
+                after=course.after,
+                after_minor=course.after_minor,
+            )
+            for course in change.courses
+        ],
+        lost_credits=sum(course.units for course in change.lost),
+        version_note=version,
+        notes=CHANGE_NOTES,
+    )

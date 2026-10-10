@@ -30,6 +30,13 @@ export type GroupProgress = Schemas["GroupProgressOut"];
 export type TermOut = Schemas["TermOut"];
 export type WhatIfOut = Schemas["WhatIfOut"];
 export type ChangeAction = Schemas["ChangeIn"]["action"];
+export type MoveOptions = Schemas["MoveOptionsOut"];
+export type MoveOption = Schemas["MoveOptionOut"];
+export type ScenarioIn = Schemas["ScenarioIn"];
+export type Comparison = Schemas["CompareOut"];
+export type ScenarioPlan = Schemas["ScenarioPlanOut"];
+export type ProgramChange = Schemas["ProgramChangeOut"];
+export type ProgramSide = Schemas["ProgramSideOut"];
 export type Recommendations = Schemas["RecommendationsOut"];
 export type AttemptStatus = Schemas["AttemptStatus"];
 export type AdminRule = Schemas["AdminRuleOut"];
@@ -153,6 +160,16 @@ export const api = {
   plan: (student: StudentIn) => post<PlanOut>("/api/v1/planner/plan", student),
   whatIf: (student: StudentIn, code: string, action: ChangeAction) =>
     post<WhatIfOut>("/api/v1/planner/what-if", { ...student, change: { code, action } }),
+  moveOptions: (student: StudentIn, code: string) =>
+    post<MoveOptions>("/api/v1/planner/move-options", { ...student, code }),
+  compare: (attempts: AttemptIn[], scenarios: ScenarioIn[]) =>
+    post<Comparison>("/api/v1/planner/compare", { attempts, scenarios }),
+  changeProgram: (student: StudentIn, targetProgramId: string, targetMinorId: string | null) =>
+    post<ProgramChange>("/api/v1/planner/change-program", {
+      ...student,
+      target_program_id: targetProgramId,
+      target_minor_id: targetMinorId,
+    }),
   recommendations: (student: StudentIn) => post<Recommendations>("/api/v1/planner/recommendations", student),
   gpaPlan: (student: StudentIn, courses: ExpectedGrade[], target: number | null) =>
     post<GpaPlan>("/api/v1/planner/gpa", { ...student, courses, target }),

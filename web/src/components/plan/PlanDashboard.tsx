@@ -9,6 +9,7 @@ import {
   CompassIcon,
   FlagIcon,
   InfoIcon,
+  LayersIcon,
   ListChecksIcon,
   MapIcon,
   PencilIcon,
@@ -28,8 +29,10 @@ import { RecommendationsPanel } from "./RecommendationsPanel";
 import { NotesPanel } from "./NotesPanel";
 import { WhatIfDialog, type WhatIfRequest } from "./WhatIfDialog";
 import { DegreeMap } from "./DegreeMap";
+import { MoveProvider } from "./MoveCourse";
+import { ComparePanel } from "./ComparePanel";
 
-const TABS = ["plan", "requirements", "map", "explore", "notes"] as const;
+const TABS = ["plan", "requirements", "map", "explore", "compare", "notes"] as const;
 type Tab = (typeof TABS)[number];
 
 // Links from before the tabs (#next-term, #electives) still land on the right tab.
@@ -155,6 +158,16 @@ function Dashboard({ profile }: { profile: Profile }) {
         exclude: [...new Set([...(preferences.exclude ?? []).filter((c) => c !== next), ...(previous ? [previous] : [])])],
       }),
     whatIf: (code: string, action: ChangeAction) => setWhatIf({ code, action }),
+    move: (code: string, from: string, to: string) => {
+      const locks = [...(preferences.locks ?? []).filter((lock) => lock.code !== code), { code, term: to }];
+      // As with removing a course: a term the student built that loses its last course opens again.
+      const emptied = built.includes(from) && !locks.some((lock) => lock.term === from);
+      updatePreferences({
+        locks,
+        exclude: (preferences.exclude ?? []).filter((c) => c !== code),
+        ...(emptied ? { built_terms: built.filter((term) => term !== from) } : {}),
+      });
+    },
   };
 
   function clearData() {
@@ -171,6 +184,7 @@ function Dashboard({ profile }: { profile: Profile }) {
     { id: "requirements", label: "Requirements", icon: <ListChecksIcon className="h-4 w-4" /> },
     { id: "map", label: "Degree map", icon: <MapIcon className="h-4 w-4" /> },
     { id: "explore", label: "Explore courses", icon: <CompassIcon className="h-4 w-4" /> },
+    { id: "compare", label: "Compare", icon: <LayersIcon className="h-4 w-4" /> },
     { id: "notes", label: toCheck ? `Notes (${toCheck})` : "Notes", icon: <FlagIcon className="h-4 w-4" /> },
   ];
 
@@ -255,14 +269,16 @@ function Dashboard({ profile }: { profile: Profile }) {
           </div>
 
           <TabPanel id="plan" active={tab === "plan"}>
-            <TermPlan
-              id="plan"
-              plan={data}
-              inProgress={inProgress}
-              locks={preferences.locks ?? []}
-              preferences={preferences}
-              actions={actions}
-            />
+            <MoveProvider student={student} onMove={actions.move}>
+              <TermPlan
+                id="plan"
+                plan={data}
+                inProgress={inProgress}
+                locks={preferences.locks ?? []}
+                preferences={preferences}
+                actions={actions}
+              />
+            </MoveProvider>
           </TabPanel>
           <TabPanel id="requirements" active={tab === "requirements"}>
             <ProgressPanel id="requirements" plan={data} />
@@ -281,6 +297,9 @@ function Dashboard({ profile }: { profile: Profile }) {
                 actions={actions}
               />
             </div>
+          </TabPanel>
+          <TabPanel id="compare" active={tab === "compare"}>
+            <ComparePanel id="compare" profile={profile} plan={data} />
           </TabPanel>
           <TabPanel id="notes" active={tab === "notes"}>
             <NotesPanel id="notes" plan={data} />

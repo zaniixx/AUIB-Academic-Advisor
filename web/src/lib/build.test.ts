@@ -20,6 +20,9 @@ function item(overrides: Partial<PlanItem>): PlanItem {
     advisories: [],
     suggestions: [],
     alternatives: [],
+    counts_toward: null,
+    also_listed: [],
+    also_counts_toward: [],
     ...overrides,
   };
 }

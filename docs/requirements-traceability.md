@@ -1,7 +1,7 @@
 # Requirements traceability
 
 Status of every requirement in the [project requirements document](../AUIB%20Academic%20Advisor%20—%20Project%20Requirements%20Document.md)
-as of 2026-10-08. "Verify" means the feature is built and tested with synthetic data, but its acceptance
+as of 2026-10-10. "Verify" means the feature is built and tested with synthetic data, but its acceptance
 criterion needs real students, advisors or registrar data.
 
 | Status | Meaning |
@@ -28,7 +28,7 @@ criterion needs real students, advisors or registrar data.
 | F1.4 | Term-by-term plan within a credit limit | Done | `api/app/domain/planner.py` | `test_plans_respect_prerequisites_loads_and_requirements` (4 students × 4 settings) |
 | F1.5 | Drop/delay impact under 2 seconds | Done | `api/app/domain/whatif.py` | `test_delaying_a_chain_course_delays_graduation`; a plan takes about 30 ms |
 | F1.6 | Lock decided courses or terms | Done | Locks per course and term | `test_locked_courses_stay_put` |
-| F1.7 | Flag courses that satisfy more than one requirement | Partial | Allocation shows where each course counts | No explicit "also counts toward" flag yet |
+| F1.7 | Flag courses that satisfy more than one requirement | Verify | `course_flags` in `api/app/domain/progress.py`: where each course counts, the other requirements of its program that list it (it counts once), and the other program it counts toward too; "Counts twice" and "Fits N requirements" on plan courses, a note per course on the Requirements tab | `test_a_course_two_requirements_list_counts_once_and_names_the_other`, `test_plan_flags_courses_that_count_twice`, end-to-end test; compare with SIS's allocation for test students |
 | F1.8 | Mark planned terms not checked against a published schedule | Done | `schedule_published` on each planned term; a quiet amber mark on the term card whose explanation shows on hover, keyboard focus or a tap; a note in the printed document and a mark per term in its overview | `test_a_term_schedule_decides_what_is_planned_that_term`, `advisor.test.ts`, end-to-end test |
 | F1.9 | Build the plan one term at a time from recommendations, or Auto-fill | Done | `built_terms` preference: a built term holds only the student's courses (`_Scheduler._fill` in `api/app/domain/planner.py`); `building` in the plan response, with `term_choices`; the term builder on the plan page (`web/src/components/plan/TermBuilder.tsx`): Add, Auto-fill, other courses, Done, "No courses this term" and Change; later terms folded away; the printed document says which terms the student chose | `test_a_built_term_holds_only_the_students_courses`, `test_a_term_built_with_no_courses_is_left_empty`, `test_choices_for_the_term_being_built_count_the_terms_before_it`, `test_a_summer_the_student_did_not_plan_offers_only_summer_courses`, `test_a_student_builds_their_plan_term_by_term`, `build.test.ts`, end-to-end test |
 | F2.1 | Onboarding questionnaire | Done | `/start`, step 4: one question at a time from `GET /api/v1/programs/{id}/questions`, built from the major's electives and courses (`api/app/domain/questions.py`); answers fill `interests`, `avoid`, `plans` and `goal`, which `recommend.py` scores with a reason each | `test_questions.py` (5), `test_questions_for_a_major`, `questions.test.ts`, end-to-end test |
@@ -56,9 +56,9 @@ criterion needs real students, advisors or registrar data.
 | F5.2 | Colour by status | Done | Map nodes and plan items show status by colour, icon and word |
 | F5.3 | Read-only view for an advisor | Partial | The printable document (F5.4) can be saved as a PDF; shareable links need accounts |
 | F5.4 | Printable document for the advisor | Done | `/plan/print`: `web/src/components/plan/AdvisorDocument.tsx`, `web/src/lib/advisor.ts`; Paper size (A4, the default), optional overview of every term (off by default), write-in lines for open choices; `advisor.test.ts`, end-to-end test (also checks print mode at 380px and on desktop) |
-| F6.1 | Drag courses between terms | Partial | "Keep in term" locks, what-if delays and "Replace with" (below); no drag and drop |
-| F6.2 | Compare up to 3 scenarios | Not started | |
-| F6.3 | Simulate a change of major or minor | Not started | Needs more programs |
+| F6.1 | Drag courses between terms | Done | `move_options` and `move_course` in `api/app/domain/whatif.py`, `POST /api/v1/planner/move-options`, `web/src/components/plan/MoveCourse.tsx`: when a drag starts every term is checked, so each shows whether the course fits and the new graduation term; a drop where it cannot go explains why (season, schedule, prerequisites, corequisites, credit limit, a placed course left without what it needs); a "Move to another term" dialog does the same without dragging | `tests/domain/test_move.py`, `test_move_options_explain_each_term`, `e2e/plan-changes.spec.ts` |
+| F6.2 | Compare up to 3 scenarios | Done | Saved plans in the browser (`web/src/lib/profile.ts`), `POST /api/v1/planner/compare`, the Compare tab (`web/src/components/plan/ComparePanel.tsx`): graduation, difference from the current plan, credits left and credits per term side by side; a saved plan can become the plan | `test_compare_scenarios_side_by_side`, `compare.test.ts`, `profile.test.ts`, end-to-end test |
+| F6.3 | Simulate a change of major or minor | Verify | `api/app/domain/switch.py`, `POST /api/v1/planner/change-program`, the Compare tab: where each completed and in-progress course counts now and after the change, credits that would no longer count, and both graduation terms; the new major is planned fresh with the student's settings | `tests/domain/test_switch.py`, `test_change_of_major_shows_which_credits_transfer`, end-to-end test; which requirements apply after a change is for the registrar to confirm |
 | F7.1 | Term and cumulative GPA | Verify | GPA card (`api/app/domain/gpa.py`, `test_gpa.py`); uses a standard 4.0 scale and grade replacement until AUIB confirms its rules; compare with SIS |
 | F7.2 | Project GPA from expected grades | Done | GPA card, "Plan my grades": an expected grade per in-progress (and, optionally, next-term) course gives the projected CGPA; `project_gpa` in `api/app/domain/gpa.py`, `POST /api/v1/planner/gpa` | `test_expected_grades_project_the_cgpa`, `test_a_projected_retake_replaces_the_old_grade`, `test_gpa_projection_and_target`, end-to-end test |
 | F7.3 | Grades needed for a target GPA | Done | "Plan my grades": a target CGPA gives the average grade the courses marked "Not sure" need, or says it is already met or out of reach (with the best possible CGPA); retake suggestions stay on the card | `test_grades_needed_for_a_target`, `test_a_target_can_be_out_of_reach_or_already_met`, `test_gpa_projection_and_target`, end-to-end test |
@@ -68,7 +68,7 @@ criterion needs real students, advisors or registrar data.
 | F9.3 | Admin role; actions logged | Done | `test_correction_changes_plans_is_audited_and_survives_reimport` |
 | F10 | AI chat assistant | Not started (post-release) | The planner's API endpoints are ready to be used as the assistant's tools |
 | F9.4 | Login page; plans saved to the account; admins sign in | Not started | Needs AUIB single sign-on (F9.1) |
-| F12 | Course requests for next semester | Not started | Builds on sign-in (F9.4) and term schedules (F0.5) |
+| F12 | Course requests for next semester, with student IDs, and per-department documents with recommended courses and time slots | Not started | Builds on sign-in (F9.4), term schedules (F0.5), the drop/delay engine (F1.5) and gateway detection (F3.2); time slots need AUIB's time-slot grid |
 | F13 | Automatic sync with SIS (post-launch) | Not started (post-launch) | Needs an official SIS API from AUIB IT |
 
 ## Clarifications of 2026-10-08

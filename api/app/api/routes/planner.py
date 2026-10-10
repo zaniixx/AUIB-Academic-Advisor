@@ -14,13 +14,22 @@ from app.api.deps import CatalogDep, TodayDep
 from app.domain.catalog import Catalog, Program, VersionChoice, VersionError, choose_version
 from app.domain.gpa import GPA_ASSUMPTIONS, gpa_summary, grades_for_target, project_gpa
 from app.domain.history import parse_course_history
-from app.domain.planner import Plan, PlanOptions, build_plan, building_term, eligible_next_term, term_choices
-from app.domain.progress import CourseState, ProgramProgress, allocate
+from app.domain.planner import (
+    Plan,
+    PlanOptions,
+    build_plan,
+    building_term,
+    current_progress,
+    eligible_next_term,
+    term_choices,
+)
+from app.domain.progress import ProgramProgress
 from app.domain.recommend import open_groups, suggest_for_group
 from app.domain.record import StudentRecord
 from app.domain.requisites import EvalContext
-from app.domain.terms import Term, current_term, first_planning_term
-from app.domain.whatif import Change, WhatIfError, what_if
+from app.domain.switch import change_program
+from app.domain.terms import Term, current_term, first_planning_term, terms_between
+from app.domain.whatif import Change, WhatIfError, move_options, what_if
 
 router = APIRouter(prefix="/api/v1", tags=["planner"])
 
@@ -35,7 +44,7 @@ class Chosen:
     entry_source: str  # "given" (the student said), "history" (first term in it) or "start"
 
 
-def _entry(student: s.StudentIn, record: StudentRecord, today: date) -> tuple[Term, str]:
+def _entry(student: s.PlanChoicesIn, record: StudentRecord, today: date) -> tuple[Term, str]:
     """When the student joined AUIB: as they said, else their first term on record, else next term."""
     if student.entry_term and (given := Term.parse(student.entry_term)):
         return given, "given"
@@ -44,7 +53,7 @@ def _entry(student: s.StudentIn, record: StudentRecord, today: date) -> tuple[Te
     return first_planning_term(today, include_summer=False), "start"
 
 
-def _programs(catalog: Catalog, student: s.StudentIn, record: StudentRecord, today: date) -> Chosen:
+def _programs(catalog: Catalog, student: s.PlanChoicesIn, record: StudentRecord, today: date) -> Chosen:
     """The student's major and, if they chose one, their minor, in the versions that apply to them."""
     entry, source = _entry(student, record, today)
     try:
@@ -71,9 +80,7 @@ def _building(
 
 
 def _current_progress(program: Program, catalog: Catalog, record: StudentRecord) -> ProgramProgress:
-    courses = [(c, record.units_of(c, catalog), CourseState.COMPLETED) for c in sorted(record.completed)]
-    courses += [(c, record.units_of(c, catalog), CourseState.IN_PROGRESS) for c in sorted(record.in_progress)]
-    return allocate(program, catalog, courses)
+    return current_progress(program, catalog, record)
 
 
 @router.post("/history/parse", summary="Read a pasted SIS Course History page (F11.3)")
@@ -138,15 +145,7 @@ def plan_what_if(body: s.WhatIfIn, catalog: CatalogDep, today: TodayDep) -> s.Wh
         terms_later=result.terms_later,
         before_graduation=convert.term_out(result.before.graduation_term),
         after_graduation=convert.term_out(result.after.graduation_term),
-        shifts=[
-            s.ShiftOut(
-                code=shift.code,
-                title=shift.title,
-                before=convert.term_out(shift.before),
-                after=convert.term_out(shift.after),
-            )
-            for shift in result.shifts
-        ],
+        shifts=[convert.shift_out(shift) for shift in result.shifts],
         plan=convert.plan_out(
             result.after,
             program,
@@ -160,6 +159,75 @@ def plan_what_if(body: s.WhatIfIn, catalog: CatalogDep, today: TodayDep) -> s.Wh
             chosen.version,
             chosen.entry_source,
         ),
+    )
+
+
+@router.post(
+    "/planner/move-options",
+    summary="Where a planned course can be moved, and what each move does to graduation (F6.1)",
+)
+def plan_move_options(body: s.MoveIn, catalog: CatalogDep, today: TodayDep) -> s.MoveOptionsOut:
+    record = convert.record_from(body.attempts)
+    chosen = _programs(catalog, body, record, today)
+    options = convert.options_from(body.preferences, chosen.program)
+    try:
+        found = move_options(chosen.program, catalog, record, options, body.code, today, chosen.minor)
+    except WhatIfError as error:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, str(error)) from error
+    return convert.move_choices_out(found, body.code, catalog)
+
+
+@router.post("/planner/compare", summary="Compare the current plan with up to 3 saved scenarios (F6.2)")
+def compare(body: s.CompareIn, catalog: CatalogDep, today: TodayDep) -> s.CompareOut:
+    record = convert.record_from(body.attempts)
+    first: Plan | None = None
+    results: list[s.ScenarioOut] = []
+    for index, scenario in enumerate(body.scenarios):
+        try:
+            chosen = _programs(catalog, scenario, record, today)
+        except HTTPException as error:
+            # A scenario saved for a program that is no longer offered should not hide the others.
+            results.append(s.ScenarioOut(name=scenario.name, plan=None, error=str(error.detail)))
+            continue
+        options = convert.options_from(scenario.preferences, chosen.program)
+        plan = build_plan(chosen.program, catalog, record, options, today, chosen.minor, alternatives=False)
+        if index == 0:
+            first = plan
+        versus = (
+            terms_between(first.graduation_term, plan.graduation_term, include_summer=False)
+            if first is not None and index > 0
+            else None
+        )
+        current = _current_progress(chosen.program, catalog, record)
+        summary = convert.scenario_plan_out(plan, chosen.program, chosen.minor, current, catalog, versus)
+        results.append(s.ScenarioOut(name=scenario.name, plan=summary, error=None))
+    return s.CompareOut(scenarios=results)
+
+
+@router.post("/planner/change-program", summary="What changing major or minor would do (F6.3)")
+def plan_change_program(body: s.ProgramChangeIn, catalog: CatalogDep, today: TodayDep) -> s.ProgramChangeOut:
+    record = convert.record_from(body.attempts)
+    chosen = _programs(catalog, body, record, today)
+    target_choice = body.model_copy(
+        update={
+            "program_id": body.target_program_id,
+            "minor_id": body.target_minor_id,
+            "program_version": None,
+        }
+    )
+    target = _programs(catalog, target_choice, record, today)
+    options = convert.options_from(body.preferences, chosen.program)
+    result = change_program(
+        chosen.program, target.program, catalog, record, options, today, chosen.minor, target.minor
+    )
+    return convert.program_change_out(
+        result,
+        chosen.program,
+        chosen.minor,
+        target.program,
+        target.minor,
+        catalog,
+        convert.version_note(target.version, target.entry_source),
     )
 
 

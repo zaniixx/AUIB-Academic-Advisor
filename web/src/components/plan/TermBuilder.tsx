@@ -9,6 +9,7 @@ import { ArrowRightIcon, PlusIcon, SearchIcon, SparklesIcon } from "@/components
 import { AlertIcon, Badge, Button, Disclosure, FIELD, StatusBadge } from "@/components/ui";
 import { ShowMore } from "./ShowMore";
 import { ChooseCourse, CourseItem, UnconfirmedMark, type PlanActions } from "./TermParts";
+import { DropHint, dropClasses, useDraggable, useDropTarget } from "./MoveCourse";
 
 /**
  * F1.9: the student builds one term at a time. They add courses from the app's recommendations
@@ -37,6 +38,7 @@ export function TermBuilder({
   const auto = autoFillCodes(recommended);
   const over = chosen > limit;
   const titleId = useId();
+  const target = useDropTarget(label);
 
   // When the student finishes a term, bring the next one into view.
   const panel = useRef<HTMLElement>(null);
@@ -51,8 +53,9 @@ export function TermBuilder({
   return (
     <section
       ref={panel}
+      {...target.props}
       aria-labelledby={titleId}
-      className="scroll-mt-36 overflow-hidden rounded-card border border-primary/40 bg-surface shadow-card ring-4 ring-tint print:hidden"
+      className={`scroll-mt-36 overflow-hidden rounded-card border border-primary/40 bg-surface shadow-card ring-4 ring-tint transition print:hidden ${dropClasses(target.state, target.over)}`}
     >
       <header className="flex flex-wrap items-center justify-between gap-4 bg-tint px-5 py-4">
         <div className="min-w-0">
@@ -69,6 +72,7 @@ export function TermBuilder({
           <CreditMeter chosen={chosen} usual={usual} limit={limit} />
         </div>
       </header>
+      <DropHint state={target.state} option={target.option} />
 
       <div className="grid gap-6 p-5 lg:grid-cols-2">
         <div className="space-y-2">
@@ -204,8 +208,14 @@ function Recommendation({
 }) {
   const code = item.code ?? "";
   const fits = item.units <= room;
+  const drag = useDraggable(code, term);
   return (
-    <li className="flex items-start gap-3 rounded-xl border border-dashed border-border-strong bg-surface px-3 py-2.5 text-sm">
+    <li
+      {...drag}
+      className={`flex items-start gap-3 rounded-xl border border-dashed border-border-strong bg-surface px-3 py-2.5 text-sm ${
+        drag.draggable ? "cursor-grab active:cursor-grabbing" : ""
+      }`}
+    >
       <div className="min-w-0 flex-1">
         <p>
           <Link href={`/courses/${encodeURIComponent(code)}`} className="font-semibold text-primary hover:underline">
