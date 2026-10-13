@@ -1,0 +1,27 @@
+# Heroku builds Dockerfile.heroku with the repository root as the build context. Send only what
+# the image needs. Everything else stays out, above all sis_data/ (a logged-in SIS session and a
+# student's progress) and .env (passwords and tokens).
+#
+# The Docker Compose images use their own lists: api/Dockerfile.dockerignore and web/.dockerignore.
+*
+!Dockerfile.heroku
+!api/requirements.txt
+!api/alembic.ini
+!api/migrations/
+!api/app/
+# Not used by Dockerfile.heroku; listed so the Compose API image also builds with Docker's older builder.
+!api/docker-entrypoint.sh
+!data/catalog/
+!data/programs/
+!deploy/heroku/
+!web/
+web/node_modules
+web/.next
+web/e2e
+web/coverage
+web/*.tsbuildinfo
+web/.env*
+web/Dockerfile
+web/.dockerignore
+**/__pycache__/
+**/*.pyc
