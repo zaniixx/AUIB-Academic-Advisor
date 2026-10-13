@@ -2,7 +2,8 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    # Prod is what Heroku deploys, once these checks pass (docs/operations.md, "Heroku").
+    branches: [main, Prod]
   pull_request:
 
 permissions:

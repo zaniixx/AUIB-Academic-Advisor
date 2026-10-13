@@ -1,6 +1,6 @@
 # Heroku builds and runs the app from Dockerfile.heroku (the "container" stack).
-# Set up once: docs/operations.md, "Heroku". Then every `git push heroku main` builds, migrates
-# the database in the release phase, and starts the new release.
+# Set up once: docs/operations.md, "Heroku". Heroku deploys the GitHub branch Prod automatically
+# once CI passes: it builds, migrates the database in the release phase, and starts the new release.
 
 setup:
   addons:

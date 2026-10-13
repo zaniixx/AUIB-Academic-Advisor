@@ -122,30 +122,51 @@ running dyno as a non-root user, as Heroku runs it (the `heroku` job in `.github
 
 ### First deployment on Heroku
 
-You need the [Heroku CLI](https://devcenter.heroku.com/articles/heroku-cli) and an account with
-billing set up (a Basic dyno and Heroku Postgres Essential cost a few dollars a month). From the
-repository, with your work committed:
+Heroku deploys automatically from the GitHub branch `Prod`, after CI has passed on it. Changes reach
+`Prod` by a pull request from `main`, so they are reviewed and tested before students see them.
 
-```sh
-heroku login
-heroku create auib-advisor --stack container --region eu   # or --region us
-heroku addons:create heroku-postgresql:essential-0 -a auib-advisor
-heroku config:set -a auib-advisor \
-  ADVISOR_ADMIN_TOKEN="$(openssl rand -hex 32)" \
-  ADVISOR_AUTO_IMPORT_ACCEPT_WARNINGS=true \
-  ADVISOR_DB_POOL_SIZE=3 ADVISOR_DB_MAX_OVERFLOW=2
-git push heroku main
-heroku open -a auib-advisor
-```
+You need a Heroku account with billing set up (a Basic dyno and Heroku Postgres Essential cost a few
+dollars a month) and the [Heroku CLI](https://devcenter.heroku.com/articles/heroku-cli) for one
+command the dashboard cannot do.
 
-`heroku create` adds a `heroku` git remote. The first push builds the image (several minutes), then
-the release phase migrates the new database and imports the catalog and every program package. Check
-with `heroku releases -a auib-advisor` (the release should say "Deploy", not "failed") and
-`https://<app>.herokuapp.com/api/ready`. Keep the admin token: `heroku config:get ADVISOR_ADMIN_TOKEN
--a auib-advisor`.
+1. **Create the app.** In the Heroku dashboard: New, Create new app; pick a name and the Europe or
+   United States region.
+2. **Use the container stack** (CLI only). Without it, Heroku ignores `heroku.yml` and the build
+   fails:
 
-To deploy from GitHub instead of the command line, connect the app to the repository in the Heroku
-dashboard (Deploy tab) and turn on automatic deploys for `main`; Heroku still uses `heroku.yml`.
+   ```sh
+   heroku login
+   heroku stack:set container -a <app>
+   ```
+
+3. **Add the database.** Resources tab: add Heroku Postgres, plan Essential 0. It sets `DATABASE_URL`.
+4. **Set the config vars.** Settings tab, Reveal Config Vars:
+
+   | Key | Value |
+   | --- | --- |
+   | `ADVISOR_ADMIN_TOKEN` | A random token, for example from `openssl rand -hex 32` in Git Bash. Keep it: it signs in to `/admin` |
+   | `ADVISOR_AUTO_IMPORT_ACCEPT_WARNINGS` | `true` |
+   | `ADVISOR_DB_POOL_SIZE` | `3` |
+   | `ADVISOR_DB_MAX_OVERFLOW` | `2` |
+
+5. **Connect GitHub.** Deploy tab, Deployment method GitHub: connect your GitHub account, find the
+   repository and press Connect.
+6. **Turn on automatic deploys.** In Automatic deploys, choose the branch `Prod`, tick "Wait for CI to
+   pass before deploy" and press Enable Automatic Deploys. CI runs on every push to `Prod`
+   (`.github/workflows/ci.yml`), and Heroku deploys only when every check has passed.
+7. **Deploy for the first time.** On GitHub, open a pull request from `main` into `Prod` and merge it
+   once its checks pass. The push to `Prod` runs CI, and Heroku then builds the image (several
+   minutes), runs the release phase (migrations, then the catalog and every program package) and
+   starts the dyno. To deploy what `Prod` holds now without a new push, use Manual deploy, branch
+   `Prod`, Deploy Branch.
+8. **Check it.** The Activity tab shows the build and the release; the release must not say "failed".
+   Open `https://<app>.herokuapp.com/api/ready`, which answers `{"status": "ready", ...}`, then the app.
+   On the Resources tab, make sure the web dyno is Basic (Eco dynos sleep when idle).
+
+From then on, every merge into `Prod` deploys by itself. To go back to the previous release, use
+Roll back on the Activity tab (it does not undo database migrations).
+
+To deploy from the command line instead, `heroku git:remote -a <app>` and `git push heroku main`.
 
 A custom domain such as `advisor.auib.edu.iq`:
 
@@ -172,7 +193,7 @@ which only the Compose set-up uses. Heroku-specific ones:
 
 | Task | Command (add `-a <app>`) |
 | --- | --- |
-| Update to a new version | `git push heroku main`: build, release phase (migrations and new packages), restart |
+| Update to a new version | Merge a pull request from `main` into `Prod`: CI, then build, release phase (migrations and new packages) and restart |
 | Import changed catalog or program data | `heroku run python -m app.cli import-all --accept-warnings` |
 | Validate the catalog and packages | `heroku run python -m app.cli validate` |
 | Back up the database | `heroku pg:backups:schedule DATABASE_URL --at "02:00 Asia/Baghdad"` once; `heroku pg:backups:capture` for one now |

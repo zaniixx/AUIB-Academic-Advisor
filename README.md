@@ -56,8 +56,8 @@ Open http://localhost. On start the API applies database migrations and imports 
 (`data/catalog/`) and every program package in `data/programs/` that is not imported yet. To serve a real domain with automatic HTTPS, set `SITE_ADDRESS` in `.env`
 (see [docs/operations.md](docs/operations.md)).
 
-To host it on Heroku instead, the repository has a `heroku.yml`: create a container-stack app with
-Heroku Postgres, set the admin token and `git push heroku main`. The steps are in
+On Heroku, the app deploys automatically from the `Prod` branch once CI passes: a container-stack app
+with Heroku Postgres, connected to this repository. The set-up steps are in
 [docs/operations.md, Heroku](docs/operations.md#heroku).
 
 ## Develop
