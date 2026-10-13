@@ -1,0 +1,58 @@
+# Heroku: Caddy is the dyno's front door on $PORT. Heroku's router has already handled HTTPS
+# (its own certificate, or Automated Certificate Management for a custom domain), so Caddy serves
+# plain HTTP inside the dyno and sends visitors who came over plain HTTP to HTTPS.
+#
+# Routing and limits match deploy/Caddyfile, used with Docker Compose; the API and the web server
+# run in the same dyno on 127.0.0.1.
+
+{
+	admin off
+	persist_config off
+	auto_https off
+}
+
+:{$PORT} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		-Server
+	}
+
+	# Heroku's router says how the visitor connected.
+	@plain_http header X-Forwarded-Proto http
+	redir @plain_http https://{host}{uri} 308
+
+	# Admin uploads (a course list or a term schedule) may be up to 8 MB; the admin API
+	# still checks the admin token and its own limit.
+	handle /api/v1/admin/* {
+		request_body {
+			max_size 8MB
+		}
+		reverse_proxy 127.0.0.1:8000 {
+			# Pass on the addresses Heroku's router recorded, unchanged (see start.sh).
+			header_up X-Forwarded-For {header.X-Forwarded-For}
+		}
+	}
+
+	# The rest of the API, under /api. Bodies over 1 MB are refused before they reach it.
+	handle /api/* {
+		request_body {
+			max_size 1MB
+		}
+		reverse_proxy 127.0.0.1:8000 {
+			header_up X-Forwarded-For {header.X-Forwarded-For}
+		}
+	}
+
+	# Everything else is the web app.
+	handle {
+		reverse_proxy 127.0.0.1:3000
+	}
+
+	log {
+		output stdout
+		format json
+	}
+}

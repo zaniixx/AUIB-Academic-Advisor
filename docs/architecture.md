@@ -27,6 +27,10 @@ flowchart LR
   import history and the audit log.
 - **PostgreSQL** sits on an internal Docker network with no route in or out.
 
+On Heroku the same three services run in one dyno: Caddy on Heroku's port, with the API and the web
+server on localhost behind it, and Heroku Postgres as the database ([ADR 0006](decisions/0006-heroku.md),
+[operations.md](operations.md#heroku)).
+
 ## Inside the API
 
 ```

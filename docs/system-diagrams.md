@@ -79,6 +79,30 @@ database backup.
 - Backups and restores: [scripts/backup-db.sh](../scripts/backup-db.sh),
   [scripts/restore-db.sh](../scripts/restore-db.sh) and [operations.md](operations.md).
 
+### On Heroku
+
+![Deployment on Heroku](diagrams/01b-heroku.png)
+
+On Heroku the same three services run in one web dyno, built from `Dockerfile.heroku`
+([ADR 0006](decisions/0006-heroku.md)). Heroku's router provides HTTPS and sends traffic to Caddy on
+the dyno's port; Caddy sends `/api/*` to the API and everything else to the web server, which both
+listen on 127.0.0.1 only. The database is the Heroku Postgres add-on, reached over TLS. Before each
+release goes live, Heroku's release phase migrates the database and imports any new program package.
+
+**What to check**
+
+- One entry point: `--host 127.0.0.1` for the API and `HOSTNAME=127.0.0.1` for the web server in
+  [deploy/heroku/start.sh](../deploy/heroku/start.sh); only Caddy listens on `$PORT`.
+- Client addresses for the rate limit: `--forwarded-allow-ips` in `start.sh` and `header_up
+  X-Forwarded-For` in [deploy/heroku/Caddyfile](../deploy/heroku/Caddyfile); a visitor's own
+  `X-Forwarded-For` cannot change the address the API counts.
+- TLS to the database: `sqlalchemy_url` in [api/app/settings.py](../api/app/settings.py), tested in
+  [api/tests/test_settings.py](../api/tests/test_settings.py).
+- What the build may see: [.dockerignore](../.dockerignore) lets in only the API, the web app, the
+  data and `deploy/heroku/`, never `sis_data/` or `.env`.
+- Release phase and set-up: [heroku.yml](../heroku.yml), [deploy/heroku/release.sh](../deploy/heroku/release.sh)
+  and [operations.md, Heroku](operations.md#heroku).
+
 ## 2. Web app
 
 ![Web app pages, browser storage and API calls](diagrams/02-web-app.png)

@@ -1,0 +1,73 @@
+# The whole app in one container, for Heroku (heroku.yml builds it; see docs/operations.md, "Heroku").
+#
+# Heroku sends web traffic to one process per app, so this image runs three: Caddy listens on $PORT
+# and sends /api to the API and everything else to the Next.js server, which both listen on
+# localhost only. The database is Heroku Postgres; migrations run in Heroku's release phase.
+#
+# To try it locally, from the repository root:
+#   docker build -f Dockerfile.heroku -t auib-advisor-heroku .
+#   docker run --rm -p 8080:8080 -e PORT=8080 -e DATABASE_URL=postgres://user:password@host:5432/name \
+#     auib-advisor-heroku
+#
+# Only the files listed in .dockerignore reach the build; sis_data/ and .env never do.
+
+FROM node:24-trixie-slim AS web
+WORKDIR /web
+ENV NEXT_TELEMETRY_DISABLED=1 \
+    API_ORIGIN=http://127.0.0.1:8000
+COPY web/package.json web/package-lock.json ./
+RUN npm ci --no-audit --no-fund
+COPY web/ ./
+RUN npm run build
+
+FROM python:3.13-slim-trixie AS api
+ENV PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+COPY api/requirements.txt /tmp/requirements.txt
+RUN python -m venv /opt/venv && /opt/venv/bin/pip install --require-virtualenv -r /tmp/requirements.txt
+
+FROM caddy:2 AS caddy
+
+FROM python:3.13-slim-trixie AS runtime
+LABEL org.opencontainers.image.title="AUIB Academic Advisor (Heroku)"
+# Node.js needs the C++ runtime library; nothing else is installed.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libstdc++6 \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd --system --gid 10001 app \
+    && useradd --system --uid 10001 --gid app --home-dir /app --shell /usr/sbin/nologin app
+COPY --from=web /usr/local/bin/node /usr/local/bin/node
+COPY --from=caddy /usr/bin/caddy /usr/local/bin/caddy
+COPY --from=api /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH" \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    NODE_ENV=production \
+    NEXT_TELEMETRY_DISABLED=1 \
+    ADVISOR_ENVIRONMENT=production \
+    ADVISOR_API_DOCS=false \
+    ADVISOR_DATA_DIR=/app/data/programs \
+    ADVISOR_COURSES_FILE=/app/data/catalog/courses.json \
+    XDG_CONFIG_HOME=/tmp/caddy-config \
+    XDG_DATA_HOME=/tmp/caddy-data
+
+WORKDIR /app
+COPY api/alembic.ini api/alembic.ini
+COPY api/migrations api/migrations
+COPY api/app api/app
+COPY data/catalog data/catalog
+COPY data/programs data/programs
+COPY --from=web /web/.next/standalone web/
+COPY --from=web /web/.next/static web/.next/static
+COPY --from=web /web/public web/public
+COPY deploy/heroku deploy/heroku
+# Heroku does not run containers as root. The web server writes its cache, so that folder is
+# writable whatever user Heroku picks; everything else stays read-only.
+RUN chmod 755 deploy/heroku/start.sh deploy/heroku/release.sh \
+    && mkdir -p web/.next/cache \
+    && chmod 1777 web/.next/cache
+
+# One-off commands (heroku run python -m app.cli ...) start here, next to the migrations.
+WORKDIR /app/api
+USER app
+CMD ["/app/deploy/heroku/start.sh"]

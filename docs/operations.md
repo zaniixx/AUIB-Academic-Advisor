@@ -2,7 +2,7 @@
 
 Everything runs from `docker compose`. A server needs Docker with Compose, this repository and a `.env`
 file. Moving to a new server needs the same three things plus a database backup, and takes well under
-the two-hour portability target.
+the two-hour portability target. The app also runs on Heroku; see [Heroku](#heroku).
 
 ## First deployment
 
@@ -36,6 +36,7 @@ start, and new programs such as a minor after an update).
 | `ADVISOR_MAX_ADMIN_REQUEST_BYTES` | `8000000` | Largest admin upload (a course list or term schedule); other requests stay at 512 KB |
 | `ADVISOR_BACKUP_PASSPHRASE` | empty | Only for the backup commands, so they can run unattended; otherwise they ask for it |
 | `ADVISOR_WORKERS` | `2` | API worker processes |
+| `ADVISOR_DB_POOL_SIZE`, `ADVISOR_DB_MAX_OVERFLOW` | `5`, `10` | Database connections per API worker: kept open, and extra at busy moments |
 | `ADVISOR_LOG_LEVEL` | `INFO` | API log level |
 | `APP_VERSION` | `latest` | Image tag |
 
@@ -99,6 +100,126 @@ version, then update. The file format is described in `api/app/services/backup.p
 2. On the new server: copy the repository, `.env` and the backup file.
 3. `docker compose up -d --build`, then `sh scripts/restore-db.sh backups/<file>.dump`.
 4. Point DNS at the new server. Caddy obtains a certificate on its own.
+
+## Heroku
+
+The app also runs on Heroku, as one container per app on Heroku's container stack
+([ADR 0006](decisions/0006-heroku.md)). Heroku builds the image from the repository on each push, so
+the Compose set-up above stays as it is.
+
+| File | What it does |
+| --- | --- |
+| [heroku.yml](../heroku.yml) | Builds `Dockerfile.heroku`, runs `release.sh` in the release phase and `start.sh` in the web dyno |
+| [Dockerfile.heroku](../Dockerfile.heroku) | One image with the API, the web server and Caddy |
+| [deploy/heroku/start.sh](../deploy/heroku/start.sh) | Starts the API and the web server on 127.0.0.1 and Caddy on `$PORT`; if one stops, the dyno exits and Heroku restarts it |
+| [deploy/heroku/release.sh](../deploy/heroku/release.sh) | Before each release goes live: database migrations, then the catalog and any new program packages |
+| [deploy/heroku/Caddyfile](../deploy/heroku/Caddyfile) | The routing, body limits and headers of `deploy/Caddyfile`, plus a redirect from HTTP to HTTPS |
+| [app.json](../app.json) | The add-on and config vars, for the "Deploy to Heroku" button and review apps |
+| [.dockerignore](../.dockerignore) | What the build may see: never `sis_data/` or `.env` |
+
+CI builds this image on every push, runs its release phase against PostgreSQL and smoke-tests the
+running dyno as a non-root user, as Heroku runs it (the `heroku` job in `.github/workflows/ci.yml`).
+
+### First deployment on Heroku
+
+Heroku deploys automatically from the GitHub branch `Prod`, after CI has passed on it. Changes reach
+`Prod` by a pull request from `main`, so they are reviewed and tested before students see them.
+
+You need a Heroku account with billing set up (a Basic dyno and Heroku Postgres Essential cost a few
+dollars a month) and the [Heroku CLI](https://devcenter.heroku.com/articles/heroku-cli) for one
+command the dashboard cannot do.
+
+1. **Create the app.** In the Heroku dashboard: New, Create new app; pick a name and the Europe or
+   United States region.
+2. **Use the container stack** (CLI only). Without it, Heroku ignores `heroku.yml` and the build
+   fails:
+
+   ```sh
+   heroku login
+   heroku stack:set container -a <app>
+   ```
+
+3. **Add the database.** Resources tab: add Heroku Postgres, plan Essential 0. It sets `DATABASE_URL`.
+4. **Set the config vars.** Settings tab, Reveal Config Vars:
+
+   | Key | Value |
+   | --- | --- |
+   | `ADVISOR_ADMIN_TOKEN` | A random token, for example from `openssl rand -hex 32` in Git Bash. Keep it: it signs in to `/admin` |
+   | `ADVISOR_AUTO_IMPORT_ACCEPT_WARNINGS` | `true` |
+   | `ADVISOR_DB_POOL_SIZE` | `3` |
+   | `ADVISOR_DB_MAX_OVERFLOW` | `2` |
+
+5. **Connect GitHub.** Deploy tab, Deployment method GitHub: connect your GitHub account, find the
+   repository and press Connect.
+6. **Turn on automatic deploys.** In Automatic deploys, choose the branch `Prod`, tick "Wait for CI to
+   pass before deploy" and press Enable Automatic Deploys. CI runs on every push to `Prod`
+   (`.github/workflows/ci.yml`), and Heroku deploys only when every check has passed.
+7. **Deploy for the first time.** On GitHub, open a pull request from `main` into `Prod` and merge it
+   once its checks pass. The push to `Prod` runs CI, and Heroku then builds the image (several
+   minutes), runs the release phase (migrations, then the catalog and every program package) and
+   starts the dyno. To deploy what `Prod` holds now without a new push, use Manual deploy, branch
+   `Prod`, Deploy Branch.
+8. **Check it.** The Activity tab shows the build and the release; the release must not say "failed".
+   Open `https://<app>.herokuapp.com/api/ready`, which answers `{"status": "ready", ...}`, then the app.
+   On the Resources tab, make sure the web dyno is Basic (Eco dynos sleep when idle).
+
+From then on, every merge into `Prod` deploys by itself. To go back to the previous release, use
+Roll back on the Activity tab (it does not undo database migrations).
+
+To deploy from the command line instead, `heroku git:remote -a <app>` and `git push heroku main`.
+
+A custom domain such as `advisor.auib.edu.iq`:
+
+```sh
+heroku domains:add advisor.auib.edu.iq -a auib-advisor   # prints the DNS target for a CNAME record
+heroku certs:auto:enable -a auib-advisor                 # Heroku obtains and renews the certificate
+```
+
+### Config vars on Heroku
+
+Heroku Postgres sets `DATABASE_URL`; the API turns it into its own form and requires TLS to the
+database (`ADVISOR_DATABASE_URL`, when set, wins). The image sets `ADVISOR_ENVIRONMENT=production`
+and `ADVISOR_API_DOCS=false`. The other variables in [Configuration](#configuration) work as config
+vars too, apart from `POSTGRES_PASSWORD`, `SITE_ADDRESS`, `HTTP_PORT`, `HTTPS_PORT` and `APP_VERSION`,
+which only the Compose set-up uses. Heroku-specific ones:
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `ADVISOR_WORKERS` | `2` | API worker processes. Two fit a 512 MB Basic dyno with the web server and Caddy (about 400 MB in all); use `1` if Heroku logs memory errors (R14) |
+| `ADVISOR_DB_POOL_SIZE`, `ADVISOR_DB_MAX_OVERFLOW` | `5`, `10` | Connections per API worker, kept open and extra at busy moments. Heroku Postgres Essential allows 20 in all, so use `3` and `2` |
+| `ADVISOR_FORWARDED_ALLOW_IPS` | loopback and private ranges | Proxies whose `X-Forwarded-For` the API trusts; the client address is the last one not in this list |
+
+### Routine tasks on Heroku
+
+| Task | Command (add `-a <app>`) |
+| --- | --- |
+| Update to a new version | Merge a pull request from `main` into `Prod`: CI, then build, release phase (migrations and new packages) and restart |
+| Import changed catalog or program data | `heroku run python -m app.cli import-all --accept-warnings` |
+| Validate the catalog and packages | `heroku run python -m app.cli validate` |
+| Back up the database | `heroku pg:backups:schedule DATABASE_URL --at "02:00 Asia/Baghdad"` once; `heroku pg:backups:capture` for one now |
+| Download a backup (a standard `pg_dump` file) | `heroku pg:backups:download` |
+| Restore a backup | `heroku pg:backups:restore <backup-id> DATABASE_URL` |
+| Take or restore an encrypted backup | Admin page, Backup and restore tab, as in [Encrypted backups](#encrypted-backups) |
+| Rotate the admin token | `heroku config:set ADVISOR_ADMIN_TOKEN=<new token>` (restarts the dyno) |
+| Logs | `heroku logs --tail` (the API's JSON lines, Caddy's access log and Heroku's router log) |
+| Roll back a release | `heroku rollback`. It does not undo database migrations; restore a backup if one must go |
+
+`scripts/backup-db.sh` and `scripts/restore-db.sh` are for the Compose set-up; Heroku's backups replace
+them. To move from Heroku to a server, download a backup and restore it with `scripts/restore-db.sh`.
+
+### What to know about Heroku
+
+- **How a request travels.** Heroku's router (HTTPS) → the dyno's Caddy on `$PORT` → `/api/*` to the
+  API on 127.0.0.1:8000, everything else to the web server on 127.0.0.1:3000.
+- **Client addresses.** Heroku's router appends the address it saw to `X-Forwarded-For` and Caddy
+  passes the header on unchanged; the API counts the last address not in `ADVISOR_FORWARDED_ALLOW_IPS`
+  for the rate limit, so a visitor cannot choose their own.
+- **Restarts.** Heroku restarts each dyno about once a day. Nothing is lost: students' data is in their
+  browsers and everything else is in Heroku Postgres. The dyno's file system is temporary.
+- **Region.** The database holds only catalog data and admin records, never students' courses or
+  grades. Choose `--region eu` or `us` when the app is created.
+- **Size.** One Basic dyno plans a degree in tens of milliseconds. For registration week, a larger dyno
+  with more `ADVISOR_WORKERS`, or more dynos, adds capacity (see [Scaling notes](#scaling-notes)).
 
 ## Scaling notes
 

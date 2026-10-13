@@ -2,7 +2,8 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    # Prod is what Heroku deploys, once these checks pass (docs/operations.md, "Heroku").
+    branches: [main, Prod]
   pull_request:
 
 permissions:
@@ -130,3 +131,48 @@ jobs:
       - name: Stop the stack
         if: always()
         run: docker compose down -v
+
+  heroku:
+    name: Heroku image (build, release phase, smoke test)
+    needs: [api, web]
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: advisor
+          POSTGRES_USER: advisor
+          POSTGRES_PASSWORD: ci-only-password
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U advisor -d advisor"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      # As Heroku Postgres sets it; CI's database has no TLS, so the address says so.
+      DATABASE_URL: postgres://advisor:ci-only-password@localhost:5432/advisor?sslmode=disable
+      ADVISOR_ADMIN_TOKEN: ci-only-admin-token-0123456789abcdef
+      ADVISOR_AUTO_IMPORT_ACCEPT_WARNINGS: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Dockerfile.heroku
+        run: docker build -f Dockerfile.heroku -t advisor-heroku .
+      # Heroku does not run containers as root, nor as the image's own user, so neither does CI.
+      - name: Release phase (migrations and import)
+        run: >-
+          docker run --rm --network host --user 4242:4242
+          -e DATABASE_URL -e ADVISOR_ADMIN_TOKEN -e ADVISOR_AUTO_IMPORT_ACCEPT_WARNINGS
+          advisor-heroku /app/deploy/heroku/release.sh
+      - name: Start the web dyno
+        run: >-
+          docker run -d --name dyno --network host --user 4242:4242 -e PORT=8080
+          -e DATABASE_URL -e ADVISOR_ADMIN_TOKEN advisor-heroku
+      - name: Smoke test
+        run: |
+          for attempt in $(seq 1 60); do curl -fsS http://localhost:8080/api/ready && break; sleep 2; done
+          curl -fsS -o /dev/null http://localhost:8080/
+          curl -fsS -o /dev/null -X POST http://localhost:8080/api/v1/planner/plan \
+            -H "Content-Type: application/json" -d '{"program_id": "casc-computer-science"}'
+          test "$(curl -s -o /dev/null -w '%{http_code}' -H 'X-Forwarded-Proto: http' http://localhost:8080/)" = 308
+      - name: Dyno logs
+        if: always()
+        run: docker logs dyno

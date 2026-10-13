@@ -1,0 +1,46 @@
+{
+  "name": "AUIB Academic Advisor",
+  "description": "Degree planning for AUIB students: progress per requirement, a term-by-term plan to graduation and explained elective suggestions.",
+  "keywords": ["education", "degree-planning", "fastapi", "nextjs"],
+  "stack": "container",
+  "formation": {
+    "web": { "quantity": 1, "size": "basic" }
+  },
+  "addons": [
+    { "plan": "heroku-postgresql:essential-0", "as": "DATABASE" }
+  ],
+  "env": {
+    "ADVISOR_ADMIN_TOKEN": {
+      "description": "Bearer token for the admin page (at least 32 characters). Generated here; keep it secret.",
+      "generator": "secret"
+    },
+    "ADVISOR_AUTO_IMPORT": {
+      "description": "Import the course catalog and new program packages in each release.",
+      "value": "true"
+    },
+    "ADVISOR_AUTO_IMPORT_ACCEPT_WARNINGS": {
+      "description": "Publish packages whose only findings are warnings, such as an unconfirmed catalog year.",
+      "value": "true"
+    },
+    "ADVISOR_WORKERS": {
+      "description": "API worker processes. 2 fits a 512 MB dyno; use 1 if Heroku reports memory errors (R14).",
+      "value": "2"
+    },
+    "ADVISOR_DB_POOL_SIZE": {
+      "description": "Database connections each API worker keeps open (Heroku's smallest plans allow 20 in all).",
+      "value": "3"
+    },
+    "ADVISOR_DB_MAX_OVERFLOW": {
+      "description": "Extra connections each worker may open at busy moments.",
+      "value": "2"
+    },
+    "ADVISOR_RATE_LIMIT_PER_MINUTE": {
+      "description": "Planning requests per minute per visitor.",
+      "value": "60"
+    },
+    "ADVISOR_LOG_LEVEL": {
+      "description": "DEBUG, INFO, WARNING or ERROR.",
+      "value": "INFO"
+    }
+  }
+}

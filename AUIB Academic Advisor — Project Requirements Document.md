@@ -308,7 +308,7 @@ Catalog data enters only through the import pipeline; students reach the API onl
 | Planning logic | NetworkX for the prerequisite graph; a constraint solver (OR-Tools) for term plans | Topological ordering and load limits are solved problems in both |
 | Database | PostgreSQL | Relational data with clear foreign keys; JSON columns for parsed rules |
 | Sign-in | Email magic link or Google sign-in limited to AUIB domain | No passwords to store |
-| Hosting | Any server or platform that runs Docker containers: a small cloud VM, Render, Railway, Fly.io, or AUIB IT's servers | Cheap for a prototype; changing host means redeploying the same containers |
+| Hosting | Heroku (container stack, one web dyno with Heroku Postgres) for the prototype; the same containers also run with Docker Compose on any server, including AUIB IT's | Cheap for a prototype; changing host means redeploying the same containers |
 | Containers | Docker for every service (web app, API, PostgreSQL, import pipeline, scraper), run together with Docker Compose | One command starts the whole app on any server; development matches production |
 | AI assistant (post-release) | A hosted large-language-model API called by the API server, with the planning engine exposed as tools | Answers come from the same data and logic as every other feature; no model hosting to run |
 

@@ -56,6 +56,10 @@ Open http://localhost. On start the API applies database migrations and imports 
 (`data/catalog/`) and every program package in `data/programs/` that is not imported yet. To serve a real domain with automatic HTTPS, set `SITE_ADDRESS` in `.env`
 (see [docs/operations.md](docs/operations.md)).
 
+On Heroku, the app deploys automatically from the `Prod` branch once CI passes: a container-stack app
+with Heroku Postgres, connected to this repository. The set-up steps are in
+[docs/operations.md, Heroku](docs/operations.md#heroku).
+
 ## Develop
 
 | Part | Folder | Stack |
@@ -65,7 +69,7 @@ Open http://localhost. On start the API applies database migrations and imports 
 | Design system | [design-system/](design-system/auib-academic-advisor/MASTER.md) | AUIB colours, components, motion and accessibility rules for the web app |
 | Course catalog | [data/catalog/](data/catalog) | Every AUIB course, shared by all programs, in the SIS scraper's format |
 | Program data | [data/programs/](data/programs) | One package per major or minor: requirements and labels |
-| Deployment | [docker-compose.yml](docker-compose.yml), [deploy/](deploy) | Docker, PostgreSQL 17, Caddy |
+| Deployment | [docker-compose.yml](docker-compose.yml), [deploy/](deploy); on Heroku [heroku.yml](heroku.yml), [Dockerfile.heroku](Dockerfile.heroku), [deploy/heroku/](deploy/heroku) | Docker, PostgreSQL 17, Caddy; Heroku container stack and Heroku Postgres |
 
 API (from `api/`):
 

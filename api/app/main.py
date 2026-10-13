@@ -31,7 +31,7 @@ log = logging.getLogger("app")
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or get_settings()
     configure_logging(settings.log_level)
-    engine = make_engine(settings.database_url)
+    engine = make_engine(settings.database_url, settings.db_pool_size, settings.db_max_overflow)
     session_factory = make_session_factory(engine)
 
     @asynccontextmanager

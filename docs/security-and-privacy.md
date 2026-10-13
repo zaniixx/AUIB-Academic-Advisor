@@ -35,8 +35,8 @@ generated from AUIB's published curricula (`scripts/curricula`); none of these h
 
 | Area | Control | Where |
 | --- | --- | --- |
-| Transport | HTTPS with automatic certificates and HTTP-to-HTTPS redirect when `SITE_ADDRESS` is a domain; HSTS header | `deploy/Caddyfile` |
-| Network | Only the proxy publishes ports; PostgreSQL is on an internal network with no route in or out | `docker-compose.yml` |
+| Transport | HTTPS with automatic certificates and HTTP-to-HTTPS redirect when `SITE_ADDRESS` is a domain; HSTS header. On Heroku, the router provides HTTPS (Automated Certificate Management for a custom domain), Caddy redirects plain HTTP to HTTPS and the API connects to Heroku Postgres over TLS | `deploy/Caddyfile`, `deploy/heroku/Caddyfile`, `app/settings.py` |
+| Network | Only the proxy publishes ports; PostgreSQL is on an internal network with no route in or out. On Heroku, the API and the web server listen on 127.0.0.1 inside the dyno and only Caddy takes Heroku's traffic; the rate limit reads the client address Heroku's router records, which a visitor cannot set | `docker-compose.yml`, `deploy/heroku/start.sh` ([ADR 0006](decisions/0006-heroku.md)) |
 | Containers | Non-root users in the API and web images; minimal base images (`python:3.13-slim`, `node:24-alpine`) | `api/Dockerfile`, `web/Dockerfile` |
 | Secrets | Database password and admin token come from `.env`, which is git-ignored; the app refuses to start in production with SQLite or a short admin token | `.env.example`, `app/settings.py` |
 | Admin access | Bearer token compared in constant time; admin API switched off when no token is set; every admin action written to the audit log | `app/api/deps.py`, `app/api/routes/admin.py` |
@@ -74,7 +74,10 @@ ESLint tooling; it never ships in the production image.
       accounts) when accounts arrive (F9.1).
 - [ ] Tighten the Content Security Policy from `'unsafe-inline'` scripts to nonces or Subresource
       Integrity (supported by Next.js; needs dynamic rendering or an experimental flag).
-- [ ] Agree log retention with AUIB IT (proxy logs contain client IP addresses).
+- [ ] Agree log retention with AUIB IT (proxy logs contain client IP addresses). On Heroku, logs
+      stream through Logplex and are kept only by a log add-on or drain, if one is added.
+- [ ] On Heroku, confirm with IT that a US or EU region is acceptable for the catalog and admin
+      records (students' data never reaches the server).
 - [ ] Encrypt the nightly `pg_dump` backups at rest too (`scripts/backup-db.sh` shows the `gpg` step).
       Backups taken from the admin page or `backup-export` are already encrypted.
 - [ ] A penetration test or review by AUIB IT before the full release.

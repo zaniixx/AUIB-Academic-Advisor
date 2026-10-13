@@ -37,7 +37,17 @@ from app.importer.package import (
 from app.importer.validate import Severity, ValidationReport, validate_courses, validate_package
 
 if TYPE_CHECKING:
+    from sqlalchemy import Engine
     from sqlalchemy.orm import Session, sessionmaker
+
+
+def _engine() -> Engine:
+    """The database the settings name, with their connection pool size."""
+    from app.db import make_engine
+    from app.settings import get_settings
+
+    settings = get_settings()
+    return make_engine(settings.database_url, settings.db_pool_size, settings.db_max_overflow)
 
 
 def _print_report(report: ValidationReport, verbose: bool) -> None:
@@ -104,9 +114,8 @@ def _print_result(result: ImportResult, verbose: bool) -> None:
 def _import(paths: list[Path], args: argparse.Namespace, *, only_new: bool = False) -> int:
     from sqlalchemy import select
 
-    from app.db import make_engine, make_session_factory
+    from app.db import make_session_factory
     from app.models import ProgramRow
-    from app.settings import get_settings
 
     try:
         course_list: CourseList = load_courses(_courses_path(args))
@@ -114,7 +123,7 @@ def _import(paths: list[Path], args: argparse.Namespace, *, only_new: bool = Fal
         print(f"\nCourse catalog cannot be read: {error}")
         return 1
     packages, failed = _load(paths)
-    factory = make_session_factory(make_engine(get_settings().database_url))
+    factory = make_session_factory(_engine())
     with factory() as session:
         if only_new:
             existing = set(session.scalars(select(ProgramRow.id)))
@@ -154,12 +163,11 @@ def cmd_import_courses(args: argparse.Namespace) -> int:
 def cmd_import_all(args: argparse.Namespace) -> int:
     from sqlalchemy import select
 
-    from app.db import make_engine, make_session_factory
+    from app.db import make_session_factory
     from app.models import ProgramRow
-    from app.settings import get_settings
 
     if args.only_if_empty:
-        with make_session_factory(make_engine(get_settings().database_url))() as session:
+        with make_session_factory(_engine())() as session:
             if session.scalar(select(ProgramRow.id).limit(1)) is not None:
                 print("Programs already imported; nothing to do.")
                 return 0
@@ -187,10 +195,9 @@ def _passphrase(confirm: bool) -> str:
 
 
 def _session_factory() -> sessionmaker[Session]:
-    from app.db import make_engine, make_session_factory
-    from app.settings import get_settings
+    from app.db import make_session_factory
 
-    return make_session_factory(make_engine(get_settings().database_url))
+    return make_session_factory(_engine())
 
 
 def cmd_backup_export(args: argparse.Namespace) -> int:
