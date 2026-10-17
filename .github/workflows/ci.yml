@@ -100,10 +100,20 @@ jobs:
       ADVISOR_ADMIN_TOKEN: ci-only-admin-token-0123456789abcdef
       ADVISOR_AUTO_IMPORT_ACCEPT_WARNINGS: "true"
       HTTP_PORT: "8080"
+      # No mail server in CI: sign-in codes go to the log, and the tests sign in with issued sessions.
+      ADVISOR_ENVIRONMENT: test
+      ADVISOR_MAIL_MODE: log
+      # The tests plan many times in a row from one address.
+      ADVISOR_RATE_LIMIT_PER_MINUTE: "600"
     steps:
       - uses: actions/checkout@v4
       - name: Build and start the whole stack
         run: docker compose up -d --build --wait
+      - name: Sessions for the test students (F9.1)
+        run: |
+          issue() { docker compose exec -T api python -m app.cli issue-session e2e@auib.edu.iq; }
+          echo "E2E_SESSION_TOKEN=$(issue)" >> "$GITHUB_ENV"
+          echo "E2E_SIGN_OUT_TOKEN=$(issue)" >> "$GITHUB_ENV"
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -152,6 +162,9 @@ jobs:
       DATABASE_URL: postgres://advisor:ci-only-password@localhost:5432/advisor?sslmode=disable
       ADVISOR_ADMIN_TOKEN: ci-only-admin-token-0123456789abcdef
       ADVISOR_AUTO_IMPORT_ACCEPT_WARNINGS: "true"
+      # No mail server in CI; the smoke test signs in with an issued session.
+      ADVISOR_ENVIRONMENT: test
+      ADVISOR_MAIL_MODE: log
     steps:
       - uses: actions/checkout@v4
       - name: Build Dockerfile.heroku
@@ -161,16 +174,22 @@ jobs:
         run: >-
           docker run --rm --network host --user 4242:4242
           -e DATABASE_URL -e ADVISOR_ADMIN_TOKEN -e ADVISOR_AUTO_IMPORT_ACCEPT_WARNINGS
+          -e ADVISOR_ENVIRONMENT -e ADVISOR_MAIL_MODE
           advisor-heroku /app/deploy/heroku/release.sh
       - name: Start the web dyno
         run: >-
           docker run -d --name dyno --network host --user 4242:4242 -e PORT=8080
-          -e DATABASE_URL -e ADVISOR_ADMIN_TOKEN advisor-heroku
+          -e DATABASE_URL -e ADVISOR_ADMIN_TOKEN -e ADVISOR_ENVIRONMENT -e ADVISOR_MAIL_MODE advisor-heroku
       - name: Smoke test
         run: |
           for attempt in $(seq 1 60); do curl -fsS http://localhost:8080/api/ready && break; sleep 2; done
           curl -fsS -o /dev/null http://localhost:8080/
+          # Course data needs a signed-in AUIB student (F9.1).
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/api/v1/programs)" = 401
+          token="$(docker run --rm --network host --user 4242:4242 -e DATABASE_URL -e ADVISOR_ENVIRONMENT \
+            -e ADVISOR_MAIL_MODE advisor-heroku python -m app.cli issue-session ci@auib.edu.iq)"
           curl -fsS -o /dev/null -X POST http://localhost:8080/api/v1/planner/plan \
+            -H "Cookie: advisor_session=$token" \
             -H "Content-Type: application/json" -d '{"program_id": "casc-computer-science"}'
           test "$(curl -s -o /dev/null -w '%{http_code}' -H 'X-Forwarded-Proto: http' http://localhost:8080/)" = 308
       - name: Dyno logs

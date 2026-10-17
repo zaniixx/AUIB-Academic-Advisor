@@ -39,7 +39,9 @@ async function expectAccessible(page: Page) {
   expect(results.violations.map((v) => `${v.id}: ${v.nodes.length} element(s)`)).toEqual([]);
 }
 
-test("a guest pastes their history and gets a plan", async ({ page }) => {
+test("a student pastes their history and gets a plan", async ({ page }) => {
+  // The whole journey, home page to printed document: more than the default 30 s when the suite runs in parallel.
+  test.slow();
   await page.goto("/");
   await expectAccessible(page);
   await page.getByRole("link", { name: "Start planning" }).first().click();

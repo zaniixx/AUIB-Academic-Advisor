@@ -43,3 +43,5 @@ next-env.d.ts
 # Playwright
 /e2e/.results/
 /e2e/.report/
+# Session cookies the end-to-end tests sign in with (F9.1).
+/e2e/.auth/

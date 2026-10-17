@@ -24,11 +24,11 @@ moves.
 | --- | --- | --- |
 | 0 | [Overview](#0-overview) | What are the parts and how do they connect? |
 | 1 | [Deployment](#1-deployment) | What runs on the server, and what is reachable? |
-| 2 | [Web app](#2-web-app) | Where does a student's data live in the browser? |
+| 2 | [Web app](#2-web-app) | Where does a student's data live in the browser, and how do they sign in? |
 | 3 | [API](#3-api) | What protections does every request pass? |
 | 4 | [Planning engine](#4-planning-engine) | How is a plan worked out? |
 | 5 | [Catalog data](#5-catalog-data) | How does SIS data become a published program? |
-| 6 | [Database tables](#6-database-tables) | What is stored? |
+| 6 | [Database tables](#6-database-tables) | What is stored, including for sign-in? |
 | 7 | [Security and privacy](#7-security-and-privacy) | Which data crosses which boundary? |
 | 8 | [A student's plan request](#8-a-students-plan-request) | What happens, step by step, when a plan is made? |
 | 9 | [An admin corrects a rule](#9-an-admin-corrects-a-rule) | How are admin changes checked and recorded? |
@@ -37,9 +37,11 @@ moves.
 
 ![Overview of the AUIB Academic Advisor](diagrams/00-overview.png)
 
-A student uses the app in their own browser (steps 1 to 3). Their pasted Course History, grades and
-goals are saved in that browser only and sent to the server with each request. The server works out
-the plan in memory and keeps nothing about the student.
+A student signs in with their AUIB email address and a code the app emails them, then uses the app in
+their own browser (steps 1 to 3). Course and program data are only for signed-in students. Their pasted
+Course History, grades and goals are saved in that browser only and sent to the server with each
+request. The server works out the plan in memory; the only thing it keeps about the student is their
+address while they are signed in.
 
 Catalog data gets in through steps A to D. The data maintainer scrapes programs and courses from SIS
 on their own computer. A script removes the personal data. Courses go into one AUIB-wide course
@@ -51,8 +53,11 @@ reviews the prerequisite rules in the `/admin` page.
 
 - Only the proxy publishes ports: `ports:` appears only under `proxy` in
   [docker-compose.yml](../docker-compose.yml).
-- No student data is stored: [api/app/models.py](../api/app/models.py) has no table for students,
-  grades or plans; [ADR 0002](decisions/0002-stateless-guest-mode.md) explains the decision.
+- No courses, grades or plans are stored: [api/app/models.py](../api/app/models.py) has no table for
+  them; [ADR 0002](decisions/0002-stateless-guest-mode.md) explains the decision. Sign-in keeps only the
+  address and hashes ([ADR 0007](decisions/0007-sign-in-with-auib-email.md)).
+- Course and program data need a signed-in AUIB student: `require_student` on the catalog and planner
+  routers in [api/app/main.py](../api/app/main.py).
 - The raw scrape stays private: `sis_data/` is in [.gitignore](../.gitignore), and the API image copies
   only the files allowed by [api/Dockerfile.dockerignore](../api/Dockerfile.dockerignore).
 
@@ -64,7 +69,8 @@ Four containers run on one server with Docker Compose. The proxy is the only con
 ports (80 and 443). The database sits on a separate internal network that has no route in or out; only
 the API joins both networks. Data lives in three named volumes, and secrets come from a `.env` file
 that exists only on the server. Moving to another server needs this repository, the `.env` file and a
-database backup.
+database backup. The API sends sign-in codes through a mail provider (AUIB's SMTP relay or a sending
+service) over TLS; it is the only outside service the server calls.
 
 **What to check**
 
@@ -75,7 +81,9 @@ database backup.
 - Start-up order and health checks: `depends_on` with `condition: service_healthy` in
   [docker-compose.yml](../docker-compose.yml); migrations and the first import in
   [api/docker-entrypoint.sh](../api/docker-entrypoint.sh).
-- Settings and secrets: [.env.example](../.env.example) lists every setting; `.env` is git-ignored.
+- Settings and secrets: [.env.example](../.env.example) lists every setting; `.env` is git-ignored. In
+  production the API refuses to start without `ADVISOR_SECRET_KEY` and the SMTP settings
+  (`_check_production` in [api/app/settings.py](../api/app/settings.py)).
 - Backups and restores: [scripts/backup-db.sh](../scripts/backup-db.sh),
   [scripts/restore-db.sh](../scripts/restore-db.sh) and [operations.md](operations.md).
 
@@ -88,6 +96,7 @@ On Heroku the same three services run in one web dyno, built from `Dockerfile.he
 the dyno's port; Caddy sends `/api/*` to the API and everything else to the web server, which both
 listen on 127.0.0.1 only. The database is the Heroku Postgres add-on, reached over TLS. Before each
 release goes live, Heroku's release phase migrates the database and imports any new program package.
+Sign-in codes go out through the mail provider set in the config vars.
 
 **What to check**
 
@@ -102,6 +111,8 @@ release goes live, Heroku's release phase migrates the database and imports any 
   data and `deploy/heroku/`, never `sis_data/` or `.env`.
 - Release phase and set-up: [heroku.yml](../heroku.yml), [deploy/heroku/release.sh](../deploy/heroku/release.sh)
   and [operations.md, Heroku](operations.md#heroku).
+- Config vars: [app.json](../app.json) generates `ADVISOR_ADMIN_TOKEN` and `ADVISOR_SECRET_KEY` and asks
+  for the SMTP settings; without them the release phase stops and the previous release keeps running.
 
 ## 2. Web app
 
@@ -114,6 +125,11 @@ data" removes it. Every page calls the API through one typed client, and only to
 storage and is forgotten when the tab closes. "Print for my advisor" opens `/plan/print`, a document laid
 out for paper that prints without the site's menus.
 
+The start, plan, courses and admin pages show a sign-in form until the student has signed in: their
+AUIB address, then the 6-digit code from the email. The API keeps the session in an `HttpOnly` cookie
+that scripts cannot read. The browser remembers whose plan it holds, so when a different student signs
+in on the same computer the previous plan is deleted first; signing out offers to delete it too.
+
 **What to check**
 
 - Storage key and clearing: [web/src/lib/profile.ts](../web/src/lib/profile.ts).
@@ -125,6 +141,11 @@ out for paper that prints without the site's menus.
   [web/next.config.ts](../web/next.config.ts).
 - The end-to-end test clears the data and checks that no plan is left:
   [web/e2e/student-flow.spec.ts](../web/e2e/student-flow.spec.ts).
+- Sign-in: the gate in [web/src/components/auth/](../web/src/components/auth/) and the `(students)` route
+  group's [layout.tsx](<../web/src/app/(students)/layout.tsx>); the owner check in
+  [web/src/lib/auth.ts](../web/src/lib/auth.ts), tested by [auth.test.ts](../web/src/lib/auth.test.ts);
+  [web/e2e/sign-in.spec.ts](../web/e2e/sign-in.spec.ts) checks that no course data shows before
+  sign-in, that a non-AUIB address is refused, and that signing out deletes the plan.
 - The advisor document says it schedules nothing and that an advisor's approval is not a promise of
   courses: `NOTICE_TEXT` in [web/src/lib/advisor.ts](../web/src/lib/advisor.ts), checked by
   [advisor.test.ts](../web/src/lib/advisor.test.ts) and the end-to-end test.
@@ -139,8 +160,13 @@ Every request passes the same five protections before it reaches a route:
 2. Security headers are added, plus `Cache-Control: no-store` on planning and admin responses.
 3. Bodies over 512 KB are refused; Caddy also refuses bodies over 1 MB. Admin uploads (a course list
    or a term schedule) may be up to 8 MB, and still need the admin token.
-4. Planning endpoints are rate-limited per client.
+4. Planning endpoints, and asking for or entering a sign-in code, are rate-limited per client.
 5. The input is validated against bounded fields, and error messages never repeat it.
+
+The catalog and planner routes also need a signed-in student: `require_student` hashes the
+`advisor_session` cookie's token and looks it up in `sessions`, and answers 401 without a valid one.
+The sign-in routes stay open; the sign-in service sends codes only to exact `@auib.edu.iq` addresses
+and stores a keyed hash of each code, never the code.
 
 The planning logic in `app/domain` is plain Python with no database or web code, so it is tested
 directly. Each API worker keeps the catalog in memory. It reloads the catalog when the catalog
@@ -151,6 +177,14 @@ revision number in the database changes.
 - Middleware order: [api/app/main.py](../api/app/main.py). The middleware is in
   [api/app/security.py](../api/app/security.py).
 - Admin token compared in constant time (`hmac.compare_digest`): [api/app/api/deps.py](../api/app/api/deps.py).
+- Signed-in student check: `require_student` in [api/app/api/deps.py](../api/app/api/deps.py), applied in
+  [api/app/main.py](../api/app/main.py); sign-in in [api/app/services/auth.py](../api/app/services/auth.py),
+  [api/app/api/routes/auth.py](../api/app/api/routes/auth.py) and [api/app/services/mail.py](../api/app/services/mail.py).
+- Sign-in tests in [api/tests/api/test_auth_api.py](../api/tests/api/test_auth_api.py):
+  `test_course_and_program_data_need_a_signed_in_student`, `test_only_university_addresses_get_a_code`,
+  `test_wrong_codes_are_counted_and_a_code_works_once`, `test_five_wrong_codes_stop_the_code`,
+  `test_codes_expire_and_cannot_be_asked_for_too_often`, `test_only_hashes_are_stored` and
+  `test_signing_out_everywhere_removes_the_address_from_the_server`.
 - Bounded input that rejects unknown fields (`extra="forbid"`): [api/app/api/schemas.py](../api/app/api/schemas.py).
 - Tests in [api/tests/api/test_planner_api.py](../api/tests/api/test_planner_api.py):
   - `test_private_responses_are_not_cached_and_carry_security_headers`
@@ -260,12 +294,18 @@ published term schedules with their sections) and admin records (import runs, th
 catalog revision). Courses and programs record whether an admin hid or edited them, so imports keep
 that work. Versions of one program share a `family`, and `valid_from` is the first term each applies
 to, and `standard_terms` is the program's length in Fall and Spring semesters. There is no table for
-students, grades, goals or plans.
+grades, goals, courses taken or plans.
+
+Sign-in has two tables of its own, linked to no other: `login_codes` (the address, a keyed hash of each
+code, its times and wrong tries; deleted a day after it was created) and `sessions` (a SHA-256 hash of
+the session token, the address and its dates; deleted when it ends). Encrypted backups leave both out.
 
 **What to check**
 
 - Table definitions: [api/app/models.py](../api/app/models.py).
-- Migrations, checked in CI to match the models: [api/migrations/versions/](../api/migrations/versions/).
+- Migrations, checked in CI to match the models: [api/migrations/versions/](../api/migrations/versions/);
+  the sign-in tables arrive in `0006_sign_in.py`.
+- Backups leave out the sign-in tables: `TABLES` in [api/app/services/backup.py](../api/app/services/backup.py).
 
 ## 7. Security and privacy
 
@@ -274,6 +314,10 @@ students, grades, goals or plans.
 The diagram shows each trust boundary, what data crosses it and how that data is protected:
 
 - A student's courses leave their device only inside an HTTPS request.
+- The session cookie is `HttpOnly`, `Secure`, `SameSite=Lax` and sent only to `/api`; the database keeps
+  only a hash of its token.
+- Sign-in codes travel by email through the mail provider, the only outside service the API calls. The
+  database keeps the address and a keyed hash of each code.
 - The admin token travels as a Bearer header and is checked in constant time.
 - The raw SIS scrape never leaves the data maintainer's computer.
 - The server logs method, path, status, time and a request ID, never bodies or query strings.
@@ -292,11 +336,14 @@ The diagram shows each trust boundary, what data crosses it and how that data is
 This sequence follows a plan request step by step:
 
 1. The browser reads the profile from local storage.
-2. It sends the profile to the API over HTTPS.
-3. The API checks the request size, the rate limit and the input.
-4. The API gets the catalog from its cache. The cache checks a single number in the database.
-5. The API works out the plan, progress, degree map and GPA in memory.
-6. The API sends the plan back with `Cache-Control: no-store`. Nothing about the request is kept.
+2. It sends the profile to the API over HTTPS, with the session cookie.
+3. The API checks the request size and the rate limit.
+4. The API looks up the hash of the session token. Without a valid session it answers 401, and the
+   browser shows the sign-in form.
+5. The API checks the input.
+6. The API gets the catalog from its cache. The cache checks a single number in the database.
+7. The API works out the plan, progress, degree map and GPA in memory.
+8. The API sends the plan back with `Cache-Control: no-store`. Nothing about the request is kept.
 
 ## 9. An admin corrects a rule
 

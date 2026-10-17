@@ -175,7 +175,7 @@ Each requirement has an ID for tracking; "Must" items are needed for the release
 
 | ID | Requirement | Priority | Acceptance criteria |
 | --- | --- | --- | --- |
-| F9.1 | Sign-in restricted to AUIB email addresses | Must | Non-AUIB emails are rejected |
+| F9.1 | Sign-in restricted to AUIB email addresses (`name@auib.edu.iq`), verified by a one-time code sent to that address. Course and program data and the planner are available only to signed-in students (required by the project's faculty advisor, Oct 17, 2026) | Must | Non-AUIB emails are rejected; without a session the server returns no course or program data; a code expires after 10 minutes, works once and allows 5 tries |
 | F9.2 | Student can delete their account and all their data | Must | Deletion completes within 30 days, reviews anonymised |
 | F9.3 | Admin role for curriculum corrections and review moderation | Must | Admin actions are logged |
 | F9.4 | Login page for students and admins with AUIB single sign-on; a signed-in student's plan is saved to their account and follows them across devices; admins sign in instead of using the shared token | Must | Login works with an AUIB account only; signing out leaves no data in the browser |
@@ -193,11 +193,11 @@ A possible addition after the full release: students ask questions in plain lang
 
 ### F11 — Guest mode and Course History paste
 
-Anyone can use the planner without an account: pick a major, an optional minor, and paste their SIS Course History. Guests get plans, progress and recommendations; anything tied to an identity needs AUIB sign-in.
+Students sign in with their AUIB email address (F9.1), then pick a major, an optional minor, and paste their SIS Course History. Their courses and plans stay in their browser; anything stored on the server with their identity needs their consent.
 
 | ID | Requirement | Priority | Acceptance criteria |
 | --- | --- | --- | --- |
-| F11.1 | Use the app without signing in | Must | A guest reaches a full plan without entering an email |
+| F11.1 | ~~Use the app without signing in~~ Superseded by F9.1 (Oct 17, 2026): course and program data are only for signed-in AUIB students | — | — |
 | F11.2 | Select a major and, where one is modelled, a minor | Must | Only programs with loaded requirements are listed; the minor is optional |
 | F11.3 | Import course history by pasting the SIS page: Academic Record → Course History, Ctrl+A, Ctrl+C, then paste into the app | Must | Courses, terms, grades and status parse correctly for 10 test students' pastes |
 | F11.4 | Show the parsed courses for the student to confirm or fix before planning | Must | Unrecognised lines are listed, never silently dropped |

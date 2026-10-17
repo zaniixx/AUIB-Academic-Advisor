@@ -69,6 +69,8 @@ export type ProgramVersion = Schemas["ProgramVersionOut"];
 export type GpaPlan = Schemas["GpaPlanOut"];
 export type ExpectedGrade = Schemas["ExpectedGradeIn"];
 export type RestoreResult = Schemas["RestoreOut"];
+export type CodeSent = Schemas["CodeSentOut"];
+export type SignedIn = Schemas["SignedInOut"];
 
 export class ApiError extends Error {
   constructor(
@@ -95,6 +97,13 @@ function describeError(status: number, body: unknown): string {
   return `The server answered ${status}. Please try again.`;
 }
 
+// F9.1: told when the API says the session has ended, so the sign-in screen can come back.
+const signedOutListeners = new Set<() => void>();
+export function onSignedOut(listener: () => void): () => void {
+  signedOutListeners.add(listener);
+  return () => signedOutListeners.delete(listener);
+}
+
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   let response: Response;
   try {
@@ -107,6 +116,9 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     throw new ApiError(0, "Cannot reach the server. Check your connection and try again.");
   }
   const body: unknown = await response.json().catch(() => null);
+  if (response.status === 401 && !path.startsWith("/api/v1/auth/") && !path.startsWith("/api/v1/admin")) {
+    signedOutListeners.forEach((listener) => listener());
+  }
   if (!response.ok) throw new ApiError(response.status, describeError(response.status, body));
   return body as T;
 }
@@ -145,6 +157,12 @@ const program = (id: string) => `/api/v1/admin/programs/${encodeURIComponent(id)
 const bearer = (token: string): HeadersInit => ({ Authorization: `Bearer ${token}` });
 
 export const api = {
+  auth: {
+    requestCode: (email: string) => post<CodeSent>("/api/v1/auth/request-code", { email }),
+    verify: (email: string, code: string) => post<SignedIn>("/api/v1/auth/verify", { email, code }),
+    me: () => request<SignedIn>("/api/v1/auth/me"),
+    signOut: (everywhere = false) => post<null>("/api/v1/auth/sign-out", { everywhere }),
+  },
   meta: () => request<MetaOut>("/api/v1/meta"),
   programs: (kind?: "major" | "minor") =>
     request<ProgramSummary[]>(`/api/v1/programs${kind ? `?kind=${kind}` : ""}`),

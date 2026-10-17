@@ -27,7 +27,13 @@ log = logging.getLogger("app.access")
 # Responses about a student's own courses must never be cached by browsers or proxies.
 ADMIN_PREFIX = "/api/v1/admin"
 PRIVATE_PREFIXES = ("/api/v1/planner", "/api/v1/history", ADMIN_PREFIX)
-RATE_LIMITED_PREFIXES = ("/api/v1/planner", "/api/v1/history")
+# Sending and checking sign-in codes are limited too; asking who is signed in (/auth/me) is not.
+RATE_LIMITED_PREFIXES = (
+    "/api/v1/planner",
+    "/api/v1/history",
+    "/api/v1/auth/request-code",
+    "/api/v1/auth/verify",
+)
 
 
 async def _send_json(

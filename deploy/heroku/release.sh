@@ -9,6 +9,9 @@
 set -euo pipefail
 cd /app/api
 
+# Stop here, listing every missing config var (such as ADVISOR_SECRET_KEY or the SMTP settings).
+python -m app.cli check-settings
+
 alembic upgrade head
 
 if [ "${ADVISOR_AUTO_IMPORT:-true}" = "true" ]; then

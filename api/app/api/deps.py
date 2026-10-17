@@ -13,7 +13,12 @@ from sqlalchemy.orm import Session
 
 from app.db import session_scope
 from app.domain.catalog import Catalog, Program
+from app.models import SessionRow
+from app.services import auth
 from app.settings import Settings
+
+# The session cookie (F9.1); the browser sends it to /api only.
+SESSION_COOKIE = "advisor_session"
 
 _bearer = HTTPBearer(auto_error=False, description="Admin token (ADVISOR_ADMIN_TOKEN)")
 
@@ -45,6 +50,18 @@ def published_program(catalog: Catalog, program_id: str) -> Program:
     return program
 
 
+def require_student(request: Request, session: Annotated[Session, Depends(get_session)]) -> SessionRow:
+    """Course and program data are only for signed-in AUIB students (F9.1)."""
+    found = auth.find_session(session, request.cookies.get(SESSION_COOKIE), auth.utcnow())
+    if found is None:
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED,
+            "Sign in with your AUIB email address to continue.",
+            headers={"WWW-Authenticate": 'Session realm="AUIB Academic Advisor"'},
+        )
+    return found
+
+
 def require_admin(
     settings: Annotated[Settings, Depends(get_settings)],
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
@@ -69,3 +86,5 @@ SessionDep = Annotated[Session, Depends(get_session)]
 CatalogDep = Annotated[Catalog, Depends(get_catalog)]
 TodayDep = Annotated[date, Depends(get_today)]
 AdminDep = Annotated[str, Depends(require_admin)]
+SettingsDep = Annotated[Settings, Depends(get_settings)]
+StudentDep = Annotated[SessionRow, Depends(require_student)]

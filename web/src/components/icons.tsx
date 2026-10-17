@@ -393,3 +393,28 @@ export function LockIcon({ className = "h-3.5 w-3.5" }: { className?: string }) 
     </svg>
   );
 }
+
+export const MailIcon = icon(
+  "MailIcon",
+  <>
+    <rect x="3" y="5" width="18" height="14" rx="2" />
+    <path d="m3 7 9 6 9-6" />
+  </>,
+);
+
+export const UserIcon = icon(
+  "UserIcon",
+  <>
+    <circle cx="12" cy="8" r="4" />
+    <path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" />
+  </>,
+);
+
+export const LogOutIcon = icon(
+  "LogOutIcon",
+  <>
+    <path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3" />
+    <path d="M10 17l-5-5 5-5" />
+    <path d="M5 12h11" />
+  </>,
+);

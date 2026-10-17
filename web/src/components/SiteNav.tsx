@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { AccountMenu } from "./auth/AccountMenu";
 import { BookOpenIcon, RouteIcon, ShieldCheckIcon } from "./icons";
 
 const NAV = [
@@ -50,6 +51,9 @@ function NavList({ pathname }: { pathname: string | null }) {
             </li>
           );
         })}
+        <li>
+          <AccountMenu />
+        </li>
       </ul>
     </nav>
   );

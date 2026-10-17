@@ -269,6 +269,48 @@ def cmd_backup_restore(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_issue_session(args: argparse.Namespace) -> int:
+    """Start a session without an emailed code, for automated tests and support. Anyone who can run
+    this already has the server's database, so it opens nothing new; it still accepts only addresses
+    at the allowed domains."""
+    from app.services import auth
+    from app.settings import get_settings
+
+    settings = get_settings()
+    try:
+        email = auth.check_email(args.email, settings.allowed_email_domains)
+    except auth.SignInError as error:
+        print(error.message, file=sys.stderr)
+        return 1
+    with _session_factory()() as session:
+        signed_in = auth.start_session(session, settings, email, auth.utcnow())
+        session.commit()
+    print(signed_in.token)
+    return 0
+
+
+def cmd_check_settings(args: argparse.Namespace) -> int:
+    """Run at start-up: say plainly which settings are missing, without echoing any value (a
+    validation error's own message would show part of the raw settings, secrets included)."""
+    from pydantic import ValidationError
+
+    from app.settings import Settings
+
+    try:
+        settings = Settings()
+    except ValidationError as error:
+        print("The API cannot start until these settings are fixed:", file=sys.stderr)
+        for problem in error.errors(include_url=False, include_input=False):
+            field = f"ADVISOR_{str(problem['loc'][0]).upper()}: " if problem["loc"] else ""
+            message = str(problem["msg"]).removeprefix("Value error, ")
+            for line in message.splitlines():
+                print(f"  - {field}{line}", file=sys.stderr)
+        print("See .env.example and docs/operations.md (Configuration).", file=sys.stderr)
+        return 1
+    print(f"Settings are complete ({settings.environment}).")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="python -m app.cli", description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -343,6 +385,16 @@ def main(argv: list[str] | None = None) -> int:
     backup_restore.add_argument("--yes", action="store_true", help="Confirm replacing every table")
     backup_restore.add_argument("--actor", default="cli", help="Name recorded in the audit log")
     backup_restore.set_defaults(func=cmd_backup_restore)
+
+    issue = commands.add_parser(
+        "issue-session",
+        help="Print a session token (cookie advisor_session) for an AUIB address, for tests and support",
+    )
+    issue.add_argument("email")
+    issue.set_defaults(func=cmd_issue_session)
+
+    check = commands.add_parser("check-settings", help="Check the settings and list any that are missing")
+    check.set_defaults(func=cmd_check_settings)
 
     args = parser.parse_args(argv)
     result: int = args.func(args)

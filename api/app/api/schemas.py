@@ -851,3 +851,35 @@ class ReadyOut(BaseModel):
     catalog_revision: int
     programs: int
     today: date
+
+
+# ---------------------------------------------------------------------------
+# Sign-in (F9.1)
+# ---------------------------------------------------------------------------
+
+
+class CodeRequestIn(StrictModel):
+    email: str = Field(min_length=3, max_length=254, examples=["name@auib.edu.iq"])
+
+
+class CodeSentOut(BaseModel):
+    email: str
+    expires_in_minutes: int
+    resend_after_seconds: int
+
+
+class VerifyIn(StrictModel):
+    email: str = Field(min_length=3, max_length=254)
+    code: str = Field(pattern=r"^\s*\d{6}\s*$", description="The 6-digit code from the email")
+
+
+class SignedInOut(BaseModel):
+    email: str
+    expires_at: datetime
+
+
+class SignOutIn(StrictModel):
+    everywhere: bool = Field(
+        default=False,
+        description="Also end the sessions on other devices and delete the address from the server",
+    )

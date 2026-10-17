@@ -1,7 +1,7 @@
 # Requirements traceability
 
 Status of every requirement in the [project requirements document](../AUIB%20Academic%20Advisor%20—%20Project%20Requirements%20Document.md)
-as of 2026-10-10. "Verify" means the feature is built and tested with synthetic data, but its acceptance
+as of 2026-10-17. "Verify" means the feature is built and tested with synthetic data, but its acceptance
 criterion needs real students, advisors or registrar data.
 
 | Status | Meaning |
@@ -35,12 +35,12 @@ criterion needs real students, advisors or registrar data.
 | F2.2 | Rank electives with reasons | Done | `api/app/domain/recommend.py` | `test_every_suggestion_explains_itself` |
 | F2.3 | Use review-based workload and difficulty | Not started | | Needs course reviews (F8) |
 | F2.4 | Balanced terms | Partial | Preferred load and spreading of electives | No difficulty data yet |
-| F11.1 | Use without signing in | Done | Whole app | End-to-end test |
+| F11.1 | Use without signing in | Superseded by F9.1 | | On 2026-10-17 the project's faculty advisor required that course and program data be available only to students signed in with an AUIB email address. The rest of F11 (paste, confirm, data in the browser only) still holds |
 | F11.2 | Choose a major and, where modelled, a minor | Done | `/start`, step 1; `api/app/domain/planner.py` | Minors in Psychology and Teaching and Learning Design; `test_minor.py`, `test_plan_with_a_minor`, end-to-end test |
 | F11.3 | Paste the SIS Course History | Verify | `api/app/domain/history.py` | Synthetic pastes pass; acceptance needs 10 students' anonymised pastes in `api/tests/fixtures/history/` |
 | F11.4 | Confirm or fix parsed courses; unread lines listed | Done | `/start`, step 3 | `test_rows_that_need_a_decision_carry_issues`, end-to-end test |
-| F11.5 | Guest data in the browser only; "Clear my data" | Done | `web/src/lib/profile.ts`, stateless API | ADR 0002; end-to-end test clears data |
-| F11.6 | Turn a guest session into an account | Not started | | Needs AUIB sign-in (F9.1) |
+| F11.5 | Student data in the browser only; "Clear my data" | Done | `web/src/lib/profile.ts`, stateless API; sign-in stores only the address and hashes | ADR 0002, ADR 0007; end-to-end tests clear data and sign out |
+| F11.6 | Save the browser's plan to an account | Not started | | Sign-in exists (F9.1) but plans are not stored on the server; storing them needs the student's consent and a decision with IT |
 | F11.7 | Reviews and share links need sign-in | Not applicable yet | | Neither feature exists yet |
 
 ## Later milestones
@@ -63,11 +63,11 @@ criterion needs real students, advisors or registrar data.
 | F7.2 | Project GPA from expected grades | Done | GPA card, "Plan my grades": an expected grade per in-progress (and, optionally, next-term) course gives the projected CGPA; `project_gpa` in `api/app/domain/gpa.py`, `POST /api/v1/planner/gpa` | `test_expected_grades_project_the_cgpa`, `test_a_projected_retake_replaces_the_old_grade`, `test_gpa_projection_and_target`, end-to-end test |
 | F7.3 | Grades needed for a target GPA | Done | "Plan my grades": a target CGPA gives the average grade the courses marked "Not sure" need, or says it is already met or out of reach (with the best possible CGPA); retake suggestions stay on the card | `test_grades_needed_for_a_target`, `test_a_target_can_be_out_of_reach_or_already_met`, `test_gpa_projection_and_target`, end-to-end test |
 | F8.1–F8.5 | Course reviews | Not started | Needs accounts and moderation |
-| F9.1 | Sign-in limited to AUIB email | Not started | Guest mode first; admin uses a token for now |
-| F9.2 | Delete account and data | Partial | Guests clear their own data; accounts do not exist yet |
+| F9.1 | Sign-in limited to AUIB email | Done | A 6-digit code is emailed to an exact `@auib.edu.iq` address (10 minutes, once, 5 tries, one a minute and 5 an hour); a 30-day `HttpOnly` session cookie; every catalog and planner endpoint needs it (`require_student`); the start, plan, courses and admin pages show the sign-in form first; a different student signing in on the same browser removes the previous plan ([ADR 0007](decisions/0007-sign-in-with-auib-email.md)). `api/app/services/auth.py`, `api/app/api/routes/auth.py`, `web/src/lib/auth.ts`, `web/src/components/auth/`. `test_auth_api.py` (13), `test_mail.py`, `auth.test.ts`, `sign-in.spec.ts` (end to end, with axe). Needs a mail server in production; the admin API keeps its token until single sign-on (F9.4) |
+| F9.2 | Delete account and data | Done | Signing out deletes the plan from the browser (ticked by default); "Sign out on all my devices" deletes every session and code of the student from the server, so nothing about them is left; codes are deleted after a day and sessions when they end. `test_signing_out_everywhere_removes_the_address_from_the_server`, `sign-in.spec.ts` |
 | F9.3 | Admin role; actions logged | Done | `test_correction_changes_plans_is_audited_and_survives_reimport` |
 | F10 | AI chat assistant | Not started (post-release) | The planner's API endpoints are ready to be used as the assistant's tools |
-| F9.4 | Login page; plans saved to the account; admins sign in | Not started | Needs AUIB single sign-on (F9.1) |
+| F9.4 | Single sign-on; plans saved to the account; admins sign in | Not started | Students sign in with an emailed code (F9.1); single sign-on (Google or Microsoft) needs AUIB IT to register the app and would also replace the admin token |
 | F12 | Course requests for next semester, with student IDs, and per-department documents with recommended courses and time slots | Not started | Builds on sign-in (F9.4), term schedules (F0.5), the drop/delay engine (F1.5) and gateway detection (F3.2); time slots need AUIB's time-slot grid |
 | F13 | Automatic sync with SIS (post-launch) | Not started (post-launch) | Needs an official SIS API from AUIB IT |
 
@@ -101,13 +101,19 @@ criterion needs real students, advisors or registrar data.
 | Admin: restore the system from an uploaded backup with its passphrase or key | Done | Admin page, Backup and restore: check the file (rows now and in the backup), type RESTORE, restore; the previous data downloads first as an undo file; the audit log is kept | `test_restore_from_the_admin_page`, `test_restore_refuses_a_backup_from_another_schema`, `test_an_upload_that_is_not_a_backup_is_refused`, admin end-to-end test (backs up, then restores the same file) |
 | Admin: upload a term's course schedule from a sheet or CSV | Done | Admin page, Term schedules (F0.5); students see sections on course pages | `test_a_term_schedule_decides_what_is_planned_that_term`, admin end-to-end test |
 
+## Clarifications of 2026-10-17
+
+| Request | Status | Where | Evidence |
+| --- | --- | --- | --- |
+| From the project's faculty advisor: all course and program data only for holders of a university email address (`name@auib.edu.iq`), verified by a code sent to that address | Done | F9.1 above; [ADR 0007](decisions/0007-sign-in-with-auib-email.md). The home and privacy pages stay open so students learn what the app is before signing in | `test_course_and_program_data_need_a_signed_in_student` (every catalog and planner endpoint answers 401 without a session), `test_only_university_addresses_get_a_code`, `sign-in.spec.ts` |
+
 ## Non-functional requirements
 
 | Area | Status | Evidence |
 | --- | --- | --- |
-| Privacy | Done | No student data stored; `no-store` responses; [security-and-privacy.md](security-and-privacy.md) |
+| Privacy | Done | No courses, grades or plans stored; only the AUIB address of a signed-in student, with hashes of codes and sessions; `no-store` responses; [security-and-privacy.md](security-and-privacy.md) |
 | Data minimisation | Done | No SIS passwords or sessions; the app never logs into SIS |
-| Security | Partial | HTTPS, headers, rate limits, audit log and encrypted backups (admin page and CLI) are built; AUIB sign-in and encrypting the nightly `pg_dump` files are open items |
+| Security | Partial | HTTPS, headers, rate limits, AUIB email sign-in, audit log and encrypted backups (admin page and CLI) are built; single sign-on for admins and encrypting the nightly `pg_dump` files are open items |
 | Performance | Done | About 20 ms per full-degree plan, including replacement options; `test_plan_is_fast_enough` |
 | Scale (500 concurrent users) | Verify | Not load-tested yet |
 | Availability | Verify | Health checks and automatic restarts; depends on hosting |

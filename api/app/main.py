@@ -6,13 +6,14 @@ import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app import __version__
-from app.api.routes import admin, admin_catalog, catalog, health, planner
+from app.api.deps import require_student
+from app.api.routes import admin, admin_catalog, auth, catalog, health, planner
 from app.db import make_engine, make_session_factory
 from app.security import (
     ADMIN_PREFIX,
@@ -42,7 +43,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app = FastAPI(
         title="AUIB Academic Advisor API",
         version=__version__,
-        description="Degree planning for AUIB students. Planning endpoints are stateless and store nothing.",
+        description="Degree planning for AUIB students. Catalog and planning endpoints need a session "
+        "started with a code emailed to an AUIB address; planning stores nothing.",
         docs_url="/api/docs" if settings.api_docs else None,
         redoc_url=None,
         openapi_url="/api/openapi.json" if settings.api_docs else None,
@@ -53,7 +55,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.session_factory = session_factory
     app.state.catalog_cache = CatalogCache()
 
-    for router in (health.router, catalog.router, planner.router, admin.router, admin_catalog.router):
+    # Course and program data are for signed-in AUIB students only (F9.1); the admin API has its own
+    # token, and health checks and sign-in stay open.
+    for router in (catalog.router, planner.router):
+        app.include_router(router, dependencies=[Depends(require_student)])
+    for router in (health.router, auth.router, admin.router, admin_catalog.router):
         app.include_router(router)
 
     @app.exception_handler(RequestValidationError)

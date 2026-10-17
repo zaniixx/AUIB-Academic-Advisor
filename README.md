@@ -5,8 +5,9 @@ A web app that shows each AUIB student what to take next, what is left to gradua
 described in the [project requirements document](AUIB%20Academic%20Advisor%20—%20Project%20Requirements%20Document.md):
 Computer Science first, with other programs added by importing their data.
 
-Students use it without an account: they pick their major, paste their SIS Course History and get a
-term-by-term plan. Their courses stay in their browser and are never stored on the server.
+Students sign in with their AUIB email address (a code is emailed to them), pick their major, paste
+their SIS Course History and get a term-by-term plan. Course and program data is only for signed-in
+AUIB students. Their courses stay in their browser and are never stored on the server.
 
 ## What works today
 
@@ -35,10 +36,11 @@ term-by-term plan. Their courses stay in their browser and are never stored on t
 | Requirement versions: each student follows the version of their major in force when they joined AUIB (F0.4) | Done |
 | Offering seasons: internships planned in summer only | Done |
 | Progress tracking and "what's left" (F4) | Done |
-| Guest mode and Course History paste, data kept in the browser only (F11) | Done |
+| Sign-in with an AUIB email address and a code sent to it; course and program data only for signed-in students; signing out deletes the plan from a shared computer, or ends every session and the address on the server (F9.1, F9.2) | Done; needs a mail server (AUIB's relay or a sending service) |
+| Course History paste, data kept in the browser only (F11.3–F11.5) | Done |
 | Per-term course schedules uploaded in the admin page; a term with one plans only its courses, and terms without one are marked "not confirmed" (F0.5, F1.8) | Done |
 | Offering history (F3.1, F3.3) | Waiting for registrar data |
-| AUIB sign-in and saved accounts (F9.1, F9.2, F9.4), course requests (F12), reviews (F8) | Next milestones |
+| AUIB single sign-on and plans saved to an account (F9.4, F11.6), course requests (F12), reviews (F8) | Next milestones |
 
 The full list, with the code and tests behind each item, is in
 [docs/requirements-traceability.md](docs/requirements-traceability.md).
@@ -48,9 +50,14 @@ The full list, with the code and tests behind each item, is in
 You need Docker with Compose.
 
 ```sh
-cp .env.example .env        # set POSTGRES_PASSWORD and ADVISOR_ADMIN_TOKEN
+cp .env.example .env        # set POSTGRES_PASSWORD, ADVISOR_ADMIN_TOKEN, ADVISOR_SECRET_KEY and the SMTP settings
 docker compose up -d --build
 ```
+
+Sign-in codes are emailed, so the API needs an SMTP server that can reach `@auib.edu.iq` mailboxes
+(see [docs/operations.md, Mail for sign-in codes](docs/operations.md#mail-for-sign-in-codes)). To try
+the app without one, set `ADVISOR_ENVIRONMENT=development` and `ADVISOR_MAIL_MODE=log` in `.env`; the
+codes then appear in `docker compose logs api`.
 
 Open http://localhost. On start the API applies database migrations and imports the course catalog
 (`data/catalog/`) and every program package in `data/programs/` that is not imported yet. To serve a real domain with automatic HTTPS, set `SITE_ADDRESS` in `.env`
@@ -79,7 +86,7 @@ pip install -r requirements-dev.txt
 alembic upgrade head                                  # SQLite file by default
 python -m app.cli import-all --accept-warnings        # load data/catalog and data/programs
 uvicorn app.main:create_app --factory --reload        # http://localhost:8000/api/docs
-pytest                                                # 306 tests
+pytest                                                # 323 tests
 ruff check app tests && mypy app
 ```
 
@@ -91,6 +98,11 @@ npm run dev            # http://localhost:3000; /api is proxied to the API
 npm run lint && npm run typecheck && npm test
 npx playwright test    # end-to-end and accessibility tests against a running stack
 ```
+
+In development the API writes each sign-in code to its log instead of emailing it, so any
+`@auib.edu.iq` address works. The browser tests sign in with sessions from
+`python -m app.cli issue-session <address>`, run with `api/.venv` (or set `E2E_SESSION_TOKEN` and
+`E2E_SIGN_OUT_TOKEN`, as CI does).
 
 After changing an API response, run `python -m app.cli export-openapi ../web/openapi.json` in `api/` and
 `npm run gen:api` in `web/`; CI fails if the web types fall out of date.
@@ -110,5 +122,7 @@ After changing an API response, run `python -m app.cli export-openapi ../web/ope
 Catalog data (courses, requirements) is public information scraped from SIS and committed as
 sanitised packages; the raw scraper output in `sis_data/` contains a logged-in browser profile and
 personal progress, so it is git-ignored and never copied into an image. Students' course histories are
-processed in memory for each request and never stored or logged. Details are in
+processed in memory for each request and never stored or logged. The only thing the server keeps about
+a student is their AUIB email address while they are signed in, with hashes of their sign-in code and
+session. Details are in
 [docs/security-and-privacy.md](docs/security-and-privacy.md).

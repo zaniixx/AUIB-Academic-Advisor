@@ -149,3 +149,49 @@ def test_a_package_can_be_a_new_version_of_a_program(database: str, tmp_path: Pa
     meta.update(id="casc-computer-science-2027b")
     (clash / "program.json").write_text(json.dumps(meta), encoding="utf-8")
     assert cli.main(["import", str(clash), "--accept-warnings"]) == 1
+
+
+def test_issue_session_prints_a_working_token_for_an_auib_address(
+    database: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from app.services import auth
+    from app.settings import get_settings as settings
+
+    assert cli.main(["issue-session", "e2e@auib.edu.iq"]) == 0
+    token = capsys.readouterr().out.strip()
+    engine = create_engine(database)
+    from sqlalchemy.orm import Session
+
+    with Session(engine) as session:
+        found = auth.find_session(session, token, auth.utcnow())
+        assert found is not None and found.email == "e2e@auib.edu.iq"
+    engine.dispose()
+    assert settings().allowed_email_domains == ["auib.edu.iq"]
+    assert cli.main(["issue-session", "someone@gmail.com"]) == 1
+
+
+def test_check_settings_lists_every_missing_setting_without_echoing_secrets(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    admin_token = "an-admin-token-that-must-never-be-printed-0123"
+    monkeypatch.setenv("ADVISOR_ENVIRONMENT", "production")
+    monkeypatch.setenv(
+        "ADVISOR_DATABASE_URL", "postgresql+psycopg://advisor:db-password-never-printed@db/advisor"
+    )
+    monkeypatch.setenv("ADVISOR_ADMIN_TOKEN", admin_token)
+    monkeypatch.setenv("ADVISOR_MAIL_MODE", "smtp")
+    monkeypatch.setenv("ADVISOR_SMTP_PASSWORD", "smtp-password-never-printed")
+    monkeypatch.delenv("ADVISOR_SECRET_KEY", raising=False)
+    monkeypatch.delenv("ADVISOR_SMTP_HOST", raising=False)
+    monkeypatch.delenv("ADVISOR_SMTP_FROM", raising=False)
+
+    assert cli.main(["check-settings"]) == 1
+    err = capsys.readouterr().err
+    assert "ADVISOR_SECRET_KEY" in err and "ADVISOR_SMTP_HOST" in err
+    assert admin_token not in err and "never-printed" not in err and "Traceback" not in err
+
+    monkeypatch.setenv("ADVISOR_SECRET_KEY", "k" * 64)
+    monkeypatch.setenv("ADVISOR_SMTP_HOST", "smtp.example.com")
+    monkeypatch.setenv("ADVISOR_SMTP_FROM", "advisor@auib.edu.iq")
+    assert cli.main(["check-settings"]) == 0
+    assert capsys.readouterr().out.strip() == "Settings are complete (production)."

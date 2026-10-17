@@ -5,6 +5,10 @@
 #   docker compose exec api python -m app.cli import-all
 set -eu
 
+# Missing settings (such as ADVISOR_SECRET_KEY or the mail server) are reported once, in plain
+# words, rather than retried below as if the database were not ready.
+python -m app.cli check-settings
+
 attempt=1
 until alembic upgrade head; do
   if [ "$attempt" -ge 10 ]; then

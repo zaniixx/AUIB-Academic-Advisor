@@ -11,6 +11,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 DEFAULT_DATA_DIR = Path(__file__).resolve().parents[2] / "data" / "programs"
 DEFAULT_COURSES_FILE = Path(__file__).resolve().parents[2] / "data" / "catalog" / "courses.json"
+# Public on purpose, for development and tests; production refuses to start with it.
+DEVELOPMENT_SECRET = "development-only-secret-do-not-use-in-production"  # noqa: S105
 
 
 class Settings(BaseSettings):
@@ -40,20 +42,69 @@ class Settings(BaseSettings):
     api_docs: bool = True
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
 
+    # Sign-in (F9.1): only addresses at these domains get a code, and only signed-in students reach
+    # the course and program data.
+    allowed_email_domains: list[str] = Field(default_factory=lambda: ["auib.edu.iq"])
+    # Keys the hashes of sign-in codes, so a copy of the database alone cannot be used to guess them.
+    # Required in production; the development value is public and only for development and tests.
+    secret_key: SecretStr = SecretStr(DEVELOPMENT_SECRET)
+    login_code_minutes: int = Field(default=10, ge=1, le=60)
+    session_days: int = Field(default=30, ge=1, le=180)
+    # How sign-in codes are delivered: "smtp" sends email; "log" writes the code to the API log,
+    # for development and tests only.
+    mail_mode: Literal["smtp", "log"] = "log"
+    smtp_host: str = ""
+    smtp_port: int = Field(default=587, ge=1, le=65535)
+    # "starttls" (port 587), "ssl" (port 465) or "none" (a trusted relay on the same network).
+    smtp_security: Literal["starttls", "ssl", "none"] = "starttls"
+    smtp_username: str = ""
+    smtp_password: SecretStr = SecretStr("")
+    # The sender, such as "AUIB Academic Advisor <advisor@auib.edu.iq>".
+    smtp_from: str = ""
+
     @field_validator("database_url")
     @classmethod
     def _driver(cls, value: str) -> str:
         return sqlalchemy_url(value)
 
+    @field_validator("allowed_email_domains")
+    @classmethod
+    def _domains(cls, values: list[str]) -> list[str]:
+        domains = [value.strip().lower().lstrip("@") for value in values if value.strip()]
+        if not domains:
+            raise ValueError("Name at least one email domain students sign in with")
+        return domains
+
     @model_validator(mode="after")
     def _check_production(self) -> Settings:
-        if self.environment == "production":
-            if self.database_url.startswith("sqlite"):
-                raise ValueError("Use PostgreSQL in production (set ADVISOR_DATABASE_URL)")
-            token = self.admin_token.get_secret_value() if self.admin_token else ""
-            if token and len(token) < 32:
-                raise ValueError("ADVISOR_ADMIN_TOKEN must be at least 32 characters in production")
+        problems = self._production_problems()
+        if problems:
+            # One line per problem, so they can all be fixed at once (python -m app.cli check-settings).
+            raise ValueError("\n".join(problems))
         return self
+
+    def _production_problems(self) -> list[str]:
+        if self.environment != "production":
+            return []
+        problems = []
+        if self.database_url.startswith("sqlite"):
+            problems.append("Use PostgreSQL in production (set ADVISOR_DATABASE_URL)")
+        token = self.admin_token.get_secret_value() if self.admin_token else ""
+        if token and len(token) < 32:
+            problems.append("ADVISOR_ADMIN_TOKEN must be at least 32 characters in production")
+        secret = self.secret_key.get_secret_value()
+        if secret == DEVELOPMENT_SECRET or len(secret) < 32:
+            problems.append("Set ADVISOR_SECRET_KEY to a random value of at least 32 characters")
+        if self.mail_mode != "smtp":
+            problems.append("Sign-in codes must be emailed in production (ADVISOR_MAIL_MODE=smtp)")
+        if not self.smtp_host or not self.smtp_from:
+            problems.append("Set ADVISOR_SMTP_HOST and ADVISOR_SMTP_FROM so sign-in codes can be emailed")
+        return problems
+
+    @property
+    def secure_cookies(self) -> bool:
+        """Session cookies are sent over HTTPS only (browsers treat localhost as HTTPS); tests use HTTP."""
+        return self.environment != "test"
 
 
 def sqlalchemy_url(url: str) -> str:

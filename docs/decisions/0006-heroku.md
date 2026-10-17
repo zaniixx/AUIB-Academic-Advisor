@@ -41,5 +41,6 @@ can build and run Docker images.
   `ADVISOR_WORKERS=1`, or a larger dyno, gives more room.
 - More web dynos are possible, but the rate limit then counts per process per dyno (as with more
   workers under Compose).
-- Heroku runs in US and EU regions. The database holds only the course catalog and admin records;
+- Heroku runs in US and EU regions. The database holds the course catalog, admin records and, while
+  students are signed in, their AUIB email addresses ([ADR 0007](0007-sign-in-with-auib-email.md));
   students' courses, grades and plans never reach it ([ADR 0002](0002-stateless-guest-mode.md)).
