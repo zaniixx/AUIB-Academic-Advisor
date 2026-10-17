@@ -74,7 +74,7 @@ jobs:
         working-directory: web
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
@@ -114,7 +114,7 @@ jobs:
           issue() { docker compose exec -T api python -m app.cli issue-session e2e@auib.edu.iq; }
           echo "E2E_SESSION_TOKEN=$(issue)" >> "$GITHUB_ENV"
           echo "E2E_SIGN_OUT_TOKEN=$(issue)" >> "$GITHUB_ENV"
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
