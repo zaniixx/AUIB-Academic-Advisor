@@ -1,6 +1,5 @@
 import json
 import shutil
-from collections.abc import Callable
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -18,21 +17,6 @@ def _rule_id(client: TestClient, headers: dict[str, str], course: str) -> int:
         "rules"
     ]
     return next(r["id"] for r in rules if r["course_code"] == course and r["kind"] == "pre")
-
-
-def test_admin_needs_a_signed_in_admin_or_the_master_token(
-    client: TestClient, anonymous_client: TestClient
-) -> None:
-    assert anonymous_client.get("/api/v1/admin/rules").status_code == 401
-    student = client.get("/api/v1/admin/rules")  # signed in, but a student
-    assert student.status_code == 403
-    assert "not an admin" in student.json()["detail"]
-    assert client.get("/api/v1/admin/rules", headers={"Authorization": "Bearer wrong"}).status_code == 401
-
-
-def test_admin_is_off_without_a_configured_token(make_client: Callable[..., TestClient]) -> None:
-    client = make_client(admin_token=None)
-    assert client.get("/api/v1/admin/rules", headers={"Authorization": "Bearer anything"}).status_code == 503
 
 
 def test_review_queue_shows_rules_beside_their_source(

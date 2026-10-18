@@ -67,7 +67,7 @@ examples.
 | Browser | Content Security Policy, `X-Frame-Options: DENY`, `nosniff`, strict referrer policy, permissions policy; planning and admin responses are `Cache-Control: no-store` | `web/next.config.ts`, `app/security.py` |
 | Storage in the browser | Profile and saved plans in local storage, both removed by a "Clear my data" button on the plan and privacy pages; when another student signs in on the same browser, the previous student's profile and plans are removed first; signing out offers to remove them (ticked by default); the session cookie cannot be read by scripts; admin token in session storage only | `web/src/lib/profile.ts`, `web/src/lib/auth.ts` |
 | Dependencies | Pinned versions; `pip-audit` and `npm audit` (production dependencies) run in CI; Dependabot opens weekly update PRs | `.github/` |
-| Code quality | Strict type checking (mypy, TypeScript), linting with security rules (Ruff's Bandit set), 336 API tests, browser tests including automated WCAG 2.1 AA checks | CI workflow |
+| Code quality | Strict type checking (mypy, TypeScript), linting with security rules (Ruff's Bandit set), 334 API tests, browser tests including automated WCAG 2.1 AA checks | CI workflow |
 
 At the time of writing, `pip-audit` and `npm audit --omit=dev` report no known vulnerabilities. `npm
 audit` without `--omit=dev` reports a denial-of-service advisory in a glob library used only by the

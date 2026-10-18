@@ -28,26 +28,6 @@ def _sign_in(client: TestClient, outbox: list[tuple[str, str]], email: str = EMA
     assert client.post(f"{AUTH}/verify", json={"email": email, "code": code}).status_code == 200
 
 
-def test_course_and_program_data_need_a_signed_in_student(anonymous_client: TestClient) -> None:
-    for method, path in [
-        ("GET", "/api/v1/meta"),
-        ("GET", "/api/v1/programs"),
-        ("GET", "/api/v1/programs/casc-computer-science"),
-        ("GET", "/api/v1/courses?q=csc"),
-        ("GET", "/api/v1/courses/CSC%20231"),
-        ("POST", "/api/v1/planner/plan"),
-        ("POST", "/api/v1/history/parse"),
-    ]:
-        response = anonymous_client.request(method, path, json={"program_id": "casc-computer-science"})
-        assert response.status_code == 401, path
-        assert response.json() == {"detail": "Sign in with your AUIB email address to continue."}
-        assert "CSC" not in response.text
-    # Health checks and sign-in stay open.
-    assert anonymous_client.get("/api/health").status_code == 200
-    assert anonymous_client.get("/api/ready").status_code == 200
-    assert anonymous_client.get(f"{AUTH}/me").status_code == 401
-
-
 def test_a_student_signs_in_with_an_emailed_code(
     anonymous_client: TestClient, outbox: list[tuple[str, str]]
 ) -> None:

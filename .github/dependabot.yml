@@ -4,6 +4,13 @@ updates:
     directory: /api
     schedule:
       interval: weekly
+    groups:
+      # pydantic pins an exact pydantic-core, so they must move together or the install fails.
+      pydantic:
+        patterns: ["pydantic", "pydantic-core", "pydantic_core", "pydantic-settings"]
+      # One pull request a week for the small updates, instead of one per package.
+      minor-and-patch:
+        update-types: ["minor", "patch"]
   - package-ecosystem: npm
     directory: /web
     schedule:
@@ -11,6 +18,8 @@ updates:
     groups:
       next-and-react:
         patterns: ["next", "react", "react-dom", "eslint-config-next"]
+      minor-and-patch:
+        update-types: ["minor", "patch"]
   - package-ecosystem: docker
     directories: ["/api", "/web"]
     schedule:
@@ -19,3 +28,6 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]

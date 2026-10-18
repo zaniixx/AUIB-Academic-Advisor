@@ -176,7 +176,7 @@ python -m app.cli data-unseal                        # write data/ and scripts/c
 alembic upgrade head                                  # SQLite file by default
 python -m app.cli import-all --accept-warnings        # load data/catalog and data/programs
 uvicorn app.main:create_app --factory --reload        # http://localhost:8000/api/docs
-pytest                                                # 336 tests
+pytest                                                # 334 tests
 ruff check app tests && mypy app
 ```
 =======

@@ -16,6 +16,10 @@ from app.importer.validate import validate_package
 from ..conftest import PROGRAMS_DIR
 
 PACKAGES = sorted(path for path in PROGRAMS_DIR.iterdir() if (path / "program.json").is_file())
+# Students plan with published majors; minors are planned with a major, and drafts are not offered.
+PUBLISHED_MAJORS = [
+    path for path in PACKAGES if (meta := load_package(path).meta).kind == "major" and meta.published
+]
 
 
 @pytest.fixture(scope="module")
@@ -35,11 +39,9 @@ def test_every_package_validates(packages: list[ProgramPackage], catalog: Catalo
         assert report.ok, (package.meta.id, [f.message for f in report.errors])
 
 
-@pytest.mark.parametrize("path", PACKAGES, ids=lambda path: path.name)
+@pytest.mark.parametrize("path", PUBLISHED_MAJORS, ids=lambda path: path.name)
 def test_a_new_student_can_plan_every_published_major(path: Path, catalog: Catalog, today: date) -> None:
     program = catalog.programs[path.name]
-    if program.kind != "major" or not program.published:
-        pytest.skip("only published majors are planned on their own")
     options = PlanOptions(max_units=21, regular_terms_to_graduate=program.standard_terms)
     plan = build_plan(program, catalog, build_record([]), options, today)
     assert plan.unscheduled == []

@@ -15,6 +15,9 @@ async function expectAccessible(page: Page) {
 test.skip(!TOKEN, "Set E2E_ADMIN_TOKEN to run the admin tests");
 
 test("an admin previews uploads, checks a minor, and backs up and restores the data", async ({ page }, testInfo) => {
+  // Once, on desktop: admins work there, and two copies of this test would back up and restore the
+  // shared database at the same time, under the other tests.
+  test.skip(testInfo.project.name !== "desktop", "admin work is done on desktop; one restore at a time");
   await page.goto("/admin");
   // The test student is not an admin (ADR 0009), so the page offers the master token.
   await expect(page.getByRole("heading", { name: "Admins only" })).toBeVisible();

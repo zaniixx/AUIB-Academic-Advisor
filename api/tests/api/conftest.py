@@ -6,6 +6,7 @@ from collections.abc import Callable, Iterator
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from sqlalchemy import text
 
 from app.importer.load import import_courses, import_package
 from app.importer.package import load_courses, load_package
@@ -31,7 +32,11 @@ def build_app(**overrides: object) -> FastAPI:
     }
     settings = Settings(**values)  # type: ignore[arg-type]
     app = create_app(settings)
+    # On PostgreSQL every app shares one database: start each from empty, including the table the
+    # migration check in CI leaves behind.
     Base.metadata.drop_all(app.state.engine)
+    with app.state.engine.begin() as connection:
+        connection.execute(text("DROP TABLE IF EXISTS alembic_version"))
     Base.metadata.create_all(app.state.engine)
     with app.state.session_factory() as session:
         import_courses(session, load_courses(COURSES_FILE), actor="test")
@@ -69,9 +74,10 @@ def client(make_client: Callable[..., TestClient]) -> TestClient:
 
 
 @pytest.fixture
-def anonymous_client(make_client: Callable[..., TestClient]) -> TestClient:
-    """Nobody signed in."""
-    return make_client(signed_in=False)
+def anonymous_client(client: TestClient) -> TestClient:
+    """Nobody signed in: another browser on the same server as ``client`` (a second app would empty the
+    shared PostgreSQL database, signing ``client`` out)."""
+    return TestClient(client.app)
 
 
 @pytest.fixture

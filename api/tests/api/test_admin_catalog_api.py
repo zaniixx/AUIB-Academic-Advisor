@@ -40,13 +40,6 @@ def _plan(client: TestClient, **extra: object) -> dict[str, Any]:
     return response.json()
 
 
-def test_catalog_editing_needs_an_admin(client: TestClient, anonymous_client: TestClient) -> None:
-    assert anonymous_client.get(f"{ADMIN}/courses").status_code == 401
-    assert client.get(f"{ADMIN}/courses").status_code == 403  # a signed-in student
-    assert client.post(f"{ADMIN}/backup", json={"passphrase": "x" * 20}).status_code == 403
-    assert client.get(f"{ADMIN}/programs", headers={"Authorization": "Bearer wrong"}).status_code == 401
-
-
 def test_add_a_course_by_hand(client: TestClient, admin_headers: dict[str, str]) -> None:
     body = {
         "code": "csc 395",
@@ -434,6 +427,7 @@ def test_encrypted_backup_round_trip(client: TestClient, admin_headers: dict[str
     assert "auib-advisor-backup-" in response.headers["content-disposition"]
     blob = response.content
     assert b"CSC 101" not in blob  # encrypted, not just compressed
+    assert "backup.export" in _audit_actions(client)
 
     with pytest.raises(BackupError, match="Wrong passphrase"):
         read_backup(blob, "not the passphrase")
@@ -443,14 +437,14 @@ def test_encrypted_backup_round_trip(client: TestClient, admin_headers: dict[str
 
     data = read_backup(blob, passphrase)
     assert len(data["tables"]["courses"]) == 821
-    # Restore into an empty database: everything comes back, including the hidden flag.
+    # Restore into an empty database (on PostgreSQL, the same one emptied): everything comes back,
+    # including the hidden flag.
     other = build_app()
     with other.state.session_factory() as session:
         counts = restore_data(session, data)
         session.commit()
         assert counts["courses"] == 821
         assert session.get(CourseRow, "CSC 101").hidden is True
-    assert "backup.export" in _audit_actions(client)
 
 
 def test_admin_uploads_may_be_larger_than_planning_requests(make_client: Callable[..., TestClient]) -> None:

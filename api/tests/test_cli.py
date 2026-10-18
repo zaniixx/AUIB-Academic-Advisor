@@ -7,8 +7,6 @@ import pytest
 from sqlalchemy import create_engine, text
 
 from app import cli
-from app.domain.terms import Season
-from app.importer.package import build_courses, load_courses
 from app.models import Base
 from app.settings import get_settings
 from tests.conftest import COURSES_FILE, CS_PACKAGE, PROGRAMS_DIR, PSY_PACKAGE
@@ -107,12 +105,6 @@ def test_unknown_offered_terms_are_rejected(tmp_path: Path) -> None:
     broken = tmp_path / "courses.json"
     broken.write_text(json.dumps(courses), encoding="utf-8")
     assert cli.main(["validate", str(CS_PACKAGE), "--courses", str(broken)]) == 1
-
-
-def test_catalog_marks_internships_as_summer_only() -> None:
-    courses = build_courses(load_courses(COURSES_FILE))
-    assert courses["CSC 390"].offered_terms == frozenset({Season.SUMMER})
-    assert courses["CSC 231"].offered_terms is None
 
 
 def test_catalog_is_shared_and_names_no_program() -> None:

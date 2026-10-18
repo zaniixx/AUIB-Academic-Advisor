@@ -32,7 +32,13 @@ def get_session(request: Request) -> Iterator[Session]:
     yield from session_scope(request.app.state.session_factory)
 
 
-def get_catalog(request: Request, session: Annotated[Session, Depends(get_session)]) -> Catalog:
+# The request's database session commits when the endpoint returns, before the response is sent
+# ("function" scope). With FastAPI's default ("request") it would commit after the response, and a
+# browser's next request (the list after a save, the first request after signing in) could miss the change.
+_SESSION = Depends(get_session, scope="function")
+
+
+def get_catalog(request: Request, session: Annotated[Session, _SESSION]) -> Catalog:
     catalog: Catalog = request.app.state.catalog_cache.get(session)
     return catalog
 
@@ -50,7 +56,7 @@ def published_program(catalog: Catalog, program_id: str) -> Program:
     return program
 
 
-def require_student(request: Request, session: Annotated[Session, Depends(get_session)]) -> SessionRow:
+def require_student(request: Request, session: Annotated[Session, _SESSION]) -> SessionRow:
     """Course and program data are only for signed-in AUIB students (F9.1)."""
     found = auth.find_session(session, request.cookies.get(SESSION_COOKIE), auth.utcnow())
     if found is None:
@@ -66,7 +72,7 @@ def require_admin(
     request: Request,
     settings: Annotated[Settings, Depends(get_settings)],
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
-    session: Annotated[Session, Depends(get_session)],
+    session: Annotated[Session, _SESSION],
 ) -> str:
     """Admin endpoints (ADR 0009): a signed-in admin, whose email is the actor in the audit log, or the
     master token sent as ``Authorization: Bearer <ADVISOR_ADMIN_TOKEN>`` (the actor "master token")."""
@@ -96,7 +102,7 @@ def require_admin(
     return found.email
 
 
-SessionDep = Annotated[Session, Depends(get_session)]
+SessionDep = Annotated[Session, _SESSION]
 CatalogDep = Annotated[Catalog, Depends(get_catalog)]
 TodayDep = Annotated[date, Depends(get_today)]
 AdminDep = Annotated[str, Depends(require_admin)]

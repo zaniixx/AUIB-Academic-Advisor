@@ -47,7 +47,7 @@ from app.importer.validate import Severity, ValidationReport, validate_courses, 
 
 if TYPE_CHECKING:
     from sqlalchemy import Engine
-    from sqlalchemy.orm import Session, sessionmaker
+    from sqlalchemy.orm import Session
 
 
 def _engine() -> Engine:
@@ -149,7 +149,6 @@ def _print_result(result: ImportResult, verbose: bool) -> None:
 def _import(paths: list[Path], args: argparse.Namespace, *, only_new: bool = False) -> int:
     from sqlalchemy import select
 
-    from app.db import make_session_factory
     from app.models import ProgramRow
 
     try:
@@ -158,8 +157,7 @@ def _import(paths: list[Path], args: argparse.Namespace, *, only_new: bool = Fal
         print(f"\nCourse catalog cannot be read: {error}")
         return 1
     packages, failed = _load(paths)
-    factory = make_session_factory(_engine())
-    with factory() as session:
+    with _database() as session:
         if only_new:
             existing = set(session.scalars(select(ProgramRow.id)))
             packages = [package for package in packages if package.meta.id not in existing]
@@ -198,11 +196,10 @@ def cmd_import_courses(args: argparse.Namespace) -> int:
 def cmd_import_all(args: argparse.Namespace) -> int:
     from sqlalchemy import select
 
-    from app.db import make_session_factory
     from app.models import ProgramRow
 
     if args.only_if_empty:
-        with make_session_factory(_engine())() as session:
+        with _database() as session:
             if session.scalar(select(ProgramRow.id).limit(1)) is not None:
                 print("Programs already imported; nothing to do.")
                 return 0
@@ -229,17 +226,25 @@ def _passphrase(confirm: bool) -> str:
     return first
 
 
-def _session_factory() -> sessionmaker[Session]:
+@contextmanager
+def _database() -> Iterator[Session]:
+    """A session on the configured database. The engine is closed afterwards, so no connection is left
+    open (a command may run inside the test suite, or several times in one process)."""
     from app.db import make_session_factory
 
-    return make_session_factory(_engine())
+    engine = _engine()
+    try:
+        with make_session_factory(engine)() as session:
+            yield session
+    finally:
+        engine.dispose()
 
 
 def cmd_backup_export(args: argparse.Namespace) -> int:
     from app.models import AuditLogRow
     from app.services.backup import BackupError, make_backup
 
-    with _session_factory()() as session:
+    with _database() as session:
         try:
             blob, counts = make_backup(session, _passphrase(confirm=True))
         except BackupError as error:
@@ -285,7 +290,7 @@ def cmd_backup_restore(args: argparse.Namespace) -> int:
     data = _read_backup(args.file)
     if data is None:
         return 1
-    with _session_factory()() as session:
+    with _database() as session:
         try:
             counts = restore_data(session, data)
         except BackupError as error:
@@ -317,7 +322,7 @@ def cmd_issue_session(args: argparse.Namespace) -> int:
     except auth.SignInError as error:
         print(error.message, file=sys.stderr)
         return 1
-    with _session_factory()() as session:
+    with _database() as session:
         signed_in = auth.start_session(session, settings, email, auth.utcnow())
         session.commit()
     print(signed_in.token)
@@ -330,7 +335,7 @@ def cmd_staff(args: argparse.Namespace) -> int:
     from app.services import auth, staff
     from app.settings import get_settings
 
-    with _session_factory()() as session:
+    with _database() as session:
         if args.staff_command == "list":
             for row in staff.list_staff(session):
                 print(f"{row.role:8} {row.email}  (added by {row.added_by}, {row.added_at:%Y-%m-%d})")
