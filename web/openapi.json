@@ -850,7 +850,7 @@
         "tags": [
           "sign-in"
         ],
-        "summary": "The signed-in student",
+        "summary": "The signed-in student, and their role if they are staff",
         "operationId": "me_api_v1_auth_me_get",
         "responses": {
           "200": {
@@ -2400,6 +2400,146 @@
           }
         ]
       }
+    },
+    "/api/v1/admin/me": {
+      "get": {
+        "tags": [
+          "admin: people"
+        ],
+        "summary": "Who is using the admin page",
+        "operationId": "whoami_api_v1_admin_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminMeOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/staff": {
+      "get": {
+        "tags": [
+          "admin: people"
+        ],
+        "summary": "Admins and advisors",
+        "operationId": "list_people_api_v1_admin_staff_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/StaffOut"
+                  },
+                  "type": "array",
+                  "title": "Response List People Api V1 Admin Staff Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "admin: people"
+        ],
+        "summary": "Give an AUIB address a role, or change it",
+        "operationId": "grant_api_v1_admin_staff_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StaffIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/staff/{email}": {
+      "delete": {
+        "tags": [
+          "admin: people"
+        ],
+        "summary": "Remove an admin or advisor",
+        "operationId": "revoke_api_v1_admin_staff__email__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "email",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Email"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2618,6 +2758,34 @@
           "origin"
         ],
         "title": "AdminCourseSummaryOut"
+      },
+      "AdminMeOut": {
+        "properties": {
+          "actor": {
+            "type": "string",
+            "title": "Actor"
+          },
+          "via": {
+            "type": "string",
+            "enum": [
+              "master token",
+              "email"
+            ],
+            "title": "Via"
+          },
+          "can_manage_admins": {
+            "type": "boolean",
+            "title": "Can Manage Admins"
+          }
+        },
+        "type": "object",
+        "required": [
+          "actor",
+          "via",
+          "can_manage_admins"
+        ],
+        "title": "AdminMeOut",
+        "description": "Who is using the admin page, and whether they can add or remove admins."
       },
       "AdminProgramOut": {
         "properties": {
@@ -7604,6 +7772,22 @@
             "type": "string",
             "format": "date-time",
             "title": "Expires At"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "admin",
+                  "advisor"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role",
+            "description": "Set for admins and advisors (ADR 0009); students have none"
           }
         },
         "type": "object",
@@ -7612,6 +7796,65 @@
           "expires_at"
         ],
         "title": "SignedInOut"
+      },
+      "StaffIn": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "minLength": 3,
+            "title": "Email"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "admin",
+              "advisor"
+            ],
+            "title": "Role"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "email",
+          "role"
+        ],
+        "title": "StaffIn",
+        "description": "Give an AUIB address a role (ADR 0009). Only the master token may name an admin."
+      },
+      "StaffOut": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "admin",
+              "advisor"
+            ],
+            "title": "Role"
+          },
+          "added_by": {
+            "type": "string",
+            "title": "Added By"
+          },
+          "added_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Added At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "role",
+          "added_by",
+          "added_at"
+        ],
+        "title": "StaffOut"
       },
       "StudentIn": {
         "properties": {
@@ -8169,7 +8412,7 @@
     "securitySchemes": {
       "HTTPBearer": {
         "type": "http",
-        "description": "Admin token (ADVISOR_ADMIN_TOKEN)",
+        "description": "The master token (ADVISOR_ADMIN_TOKEN, ADR 0009)",
         "scheme": "bearer"
       }
     }

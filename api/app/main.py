@@ -13,7 +13,7 @@ from fastapi.responses import JSONResponse
 
 from app import __version__
 from app.api.deps import require_student
-from app.api.routes import admin, admin_catalog, auth, catalog, health, planner
+from app.api.routes import admin, admin_catalog, admin_staff, auth, catalog, health, planner
 from app.db import make_engine, make_session_factory
 from app.security import (
     ADMIN_PREFIX,
@@ -55,11 +55,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.session_factory = session_factory
     app.state.catalog_cache = CatalogCache()
 
-    # Course and program data are for signed-in AUIB students only (F9.1); the admin API has its own
-    # token, and health checks and sign-in stay open.
+    # Course and program data are for signed-in AUIB students only (F9.1); the admin API needs a
+    # signed-in admin or the master token (ADR 0009), and health checks and sign-in stay open.
     for router in (catalog.router, planner.router):
         app.include_router(router, dependencies=[Depends(require_student)])
-    for router in (health.router, auth.router, admin.router, admin_catalog.router):
+    for router in (health.router, auth.router, admin.router, admin_catalog.router, admin_staff.router):
         app.include_router(router)
 
     @app.exception_handler(RequestValidationError)

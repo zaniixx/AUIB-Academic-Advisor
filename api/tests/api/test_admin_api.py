@@ -20,8 +20,13 @@ def _rule_id(client: TestClient, headers: dict[str, str], course: str) -> int:
     return next(r["id"] for r in rules if r["course_code"] == course and r["kind"] == "pre")
 
 
-def test_admin_needs_the_token(client: TestClient) -> None:
-    assert client.get("/api/v1/admin/rules").status_code == 401
+def test_admin_needs_a_signed_in_admin_or_the_master_token(
+    client: TestClient, anonymous_client: TestClient
+) -> None:
+    assert anonymous_client.get("/api/v1/admin/rules").status_code == 401
+    student = client.get("/api/v1/admin/rules")  # signed in, but a student
+    assert student.status_code == 403
+    assert "not an admin" in student.json()["detail"]
     assert client.get("/api/v1/admin/rules", headers={"Authorization": "Bearer wrong"}).status_code == 401
 
 
@@ -98,7 +103,7 @@ def test_approving_a_rule(client: TestClient, admin_headers: dict[str, str]) -> 
     rule_id = _rule_id(client, admin_headers, "CSC 231")
     approved = client.post(f"/api/v1/admin/rules/{rule_id}/approve", headers=admin_headers).json()
     assert approved["reviewed"] is True
-    assert approved["reviewed_by"] == "admin"
+    assert approved["reviewed_by"] == "master token"  # the actor; a signed-in admin shows their email
 
 
 def test_import_history_is_listed(client: TestClient, admin_headers: dict[str, str]) -> None:

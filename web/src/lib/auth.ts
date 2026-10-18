@@ -7,7 +7,7 @@
  * next student must not see them, so signing in as someone else first clears the previous student's
  * data, and signing out offers to clear it too.
  */
-import { ApiError, api, onSignedOut } from "./api";
+import { ApiError, api, onSignedOut, type StaffRole } from "./api";
 import { clearProfile } from "./profile";
 
 export const OWNER_KEY = "auib-advisor:owner";
@@ -16,7 +16,7 @@ export type AuthState =
   | { status: "checking" }
   | { status: "unreachable"; message: string }
   | { status: "signed-out" }
-  | { status: "signed-in"; email: string; expiresAt: string };
+  | { status: "signed-in"; email: string; expiresAt: string; role: StaffRole | null };
 
 const CHECKING: AuthState = { status: "checking" };
 let state: AuthState = CHECKING;
@@ -64,7 +64,7 @@ export function checkSession(): Promise<void> {
     .then(
       (me) => {
         claimBrowserData(me.email);
-        set({ status: "signed-in", email: me.email, expiresAt: me.expires_at });
+        set({ status: "signed-in", email: me.email, expiresAt: me.expires_at, role: me.role ?? null });
       },
       (error: unknown) => {
         if (error instanceof ApiError && error.status === 401) set({ status: "signed-out" });
@@ -87,7 +87,7 @@ export function recheckSession(): Promise<void> {
 export async function verifyCode(email: string, code: string): Promise<void> {
   const me = await api.auth.verify(email, code);
   claimBrowserData(me.email);
-  set({ status: "signed-in", email: me.email, expiresAt: me.expires_at });
+  set({ status: "signed-in", email: me.email, expiresAt: me.expires_at, role: me.role ?? null });
 }
 
 /**

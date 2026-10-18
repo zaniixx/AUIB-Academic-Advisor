@@ -18,6 +18,27 @@ Computer Science came from SIS; the Psychology and Teaching and Learning Design 
 came from official documents (see [Minors](#minors) and
 [Programs from the released curricula](#programs-from-the-released-curricula)).
 
+## The data is sealed in the repository
+
+Course and program data are only for signed-in AUIB students, and the repository is public, so git holds
+them sealed ([ADR 0008](decisions/0008-sealed-course-data.md)): `data/sealed/curriculum.sealed` is the
+course catalog, every program package and the curriculum scripts in `scripts/curricula/`, encrypted with
+AES-256-GCM. The plain files are git-ignored. To work on the data you need the key, `ADVISOR_DATA_KEY`,
+from the project's maintainers. Put it in `.env` at the repository root (git-ignored, the same file
+Docker Compose reads) as `ADVISOR_DATA_KEY=...`, or set it as an environment variable. Then, from `api/`:
+
+```sh
+python -m app.cli data-unseal     # after cloning or pulling: write the plain files from the sealed copy
+# ... change the data (the steps below) ...
+python -m app.cli data-seal       # seal them again; commit data/sealed/curriculum.sealed
+```
+
+`data-unseal` never overwrites plain files you changed but have not sealed (`--force` does). `data-seal`
+leaves the sealed file alone when nothing changed. A test fails while plain files differ from the sealed
+copy, and CI fails if a plain data file is committed. Program details that name courses, such as how
+the minors and the released curricula were modelled and what to confirm with the colleges, are in
+`scripts/curricula/NOTES.md`, sealed with the data.
+
 ## 1. Get the data
 
 Run the SIS scraper under a student login of the program, or ask the registrar for the program sheet
@@ -111,14 +132,13 @@ plans both together:
 
 The two minors were written by hand from official documents, because they are not in the SIS scrape:
 
-| Minor | Source | Requirements as modelled |
-| --- | --- | --- |
-| Psychology (`minor-psychology`) | Registrar's announcement "Minor in Psychology", 14 January 2024 | PSY 101 first; then any 5 of PSY 210, 226, 230, 240, 330, 332, 340, 350 (15 credit hours); 18 credits in all |
-| Teaching and Learning Design (`minor-teaching-and-learning-design`) | CEHD flier "Minor in Teaching and Learning Design", Fall 2025 | One of TLD 100, 101, 102, 103; then TLD 202, two more 200-level TLD courses, one 300- or 400-level TLD course and one 400-level TLD course (15 credit hours); 18 credits in all |
+| Minor | Source |
+| --- | --- |
+| Psychology (`minor-psychology`) | Registrar's announcement "Minor in Psychology", 14 January 2024; 18 credits |
+| Teaching and Learning Design (`minor-teaching-and-learning-design`) | CEHD flier "Minor in Teaching and Learning Design", Fall 2025; 18 credits |
 
-To confirm with CEHD: the TLD lists leave out TLD 206 (marked "Learning Design pathway only"), the
-internships TLD 302 and TLD 305, the TLD 401 capstone and the TLD 403 practicum, which belong to the TLD
-major. Both minors need their catalog year confirmed by the registrar, like Computer Science.
+The requirements as modelled, and the questions for CEHD, are in the sealed `scripts/curricula/NOTES.md`.
+Both minors need their catalog year confirmed by the registrar, like Computer Science.
 
 ## Programs from the released curricula
 
@@ -143,47 +163,33 @@ unclear or disagrees with SIS is commented in the script where it is made.
 | Business Administration: Accounting, Entrepreneurship, Finance and Banking, Management, Management Information Systems, Marketing (`cob-…`) | College of Business degree plans, November 2024 | 120 each | Published |
 | Optometry and Vision Sciences, Anesthesia Technology (`coht-…`) | College of Healthcare Technology curricula, appendices I–II and VII–VIII | 121, 123 | Published |
 | Dental Surgery (BDS) (`cod-dental-surgery`) | College of Dentistry curriculum | 189, ten semesters | Published |
-| Radiologic Sciences (`coht-radiologic-sciences`) | Healthcare Technology appendices III–IV | 117 of 120 | Draft: the document gives Radiographic Anatomy and Pathology II the code RAD 450, which Practicum II also uses |
-| Dental Technology (`coht-dental-technology`) | Healthcare Technology appendices V–VI | 119 of 120 | Draft: the document gives the CAD-CAM lab the code BDT 461L, which Digital Dentistry Lab II also uses |
-| Pharmacy (BPharm) (`cop-pharmacy`) | College of Pharmacy curriculum | 174 of 180 | Draft: PHA 410 Physical Assessment is not in SIS, and the year-5 courses have other titles and credits in SIS |
+| Radiologic Sciences (`coht-radiologic-sciences`) | Healthcare Technology appendices III–IV | 117 of 120 | Draft: two courses share one code in the document |
+| Dental Technology (`coht-dental-technology`) | Healthcare Technology appendices V–VI | 119 of 120 | Draft: two courses share one code in the document |
+| Pharmacy (BPharm) (`cop-pharmacy`) | College of Pharmacy curriculum | 174 of 180 | Draft: a required course is not in SIS, and the year-5 courses differ from SIS |
 
 A draft is imported unpublished, so students do not see it. Once the college confirms the missing
 course, fix the program in the admin page (Majors and minors) and publish it there.
 
-How the documents are modelled:
+How the documents are modelled (the course-by-course details are in the sealed `scripts/curricula/NOTES.md`):
 
-- **Core liberal arts (42 credits).** UNI 101, ENL 101, 201 and 210, CSC 101 and one mathematics course,
-  four humanities, two social sciences and two natural sciences. The lists are SIS's (from the CS
-  program) plus HIS 201, 341 and 350 and HUM 210, which the CIS and Healthcare Technology documents list
-  for every program. A course a program names (BIO 101 for Biology, PSY 101 for Psychology, "2 HIS and
-  1 GEO" for International Relations) is required in its category. Optometry and Dental Technology set
-  most CLA courses and leave a few open; Anesthesia Technology and Radiologic Sciences set all fourteen.
+- **Core liberal arts (42 credits).** The university courses, English, computing and mathematics, four
+  humanities, two social sciences and two natural sciences, from SIS's lists (from the CS program) plus
+  the courses the CIS and Healthcare Technology documents list for every program. A course a program
+  names is required in its category.
 - **Courses missing from SIS.** 195 courses the documents require are added to the catalog from their
   descriptions (credits and prerequisite sentences as printed), each with a notice that it is not in
-  SIS yet. Courses with no description (for example ACC 201, BIO 420, POL 404 and 405) are added with
-  their title and credits only.
+  SIS yet. Courses with no description are added with their title and credits only.
 - **Electives.** "Biology elective" and the like become the department's catalog courses at the
   program's level that are not already required; free electives are any undergraduate SIS course (300-
   or 400-level where the Business plans say so).
-- **Summer.** Internships and practicums a study plan places in summer (BIO 485, CHE 352, PHY 389,
-  LIT 390, PSY 480, OVS 390, ANT 295, ANT 399) are marked summer-only.
+- **Summer.** Internships and practicums a study plan places in summer are marked summer-only.
 - **Length.** `standard_terms` in `program.json` is 10 for the five-year degrees, so their plans are
   measured against ten Fall and Spring semesters. The Dentistry curriculum takes 19 to 20 credits a
   term, so at the usual 18-credit maximum the plan finishes a term late and says so; students can raise
   their maximum in Adjust plan.
 
-To confirm with the colleges:
-
-| Program | Question |
-| --- | --- |
-| Biology | BIO 420 Microbiology (4 credits) is not in SIS, which has BIO 219 Medical Microbiology and its lab |
-| International Relations | POL 404 and POL 405 are not in SIS; SIS has POL 295 Professional Development and Leadership Seminar. The electives include the POL courses SIS adds (POL 113, 200, 253, 342, 360, 390, 391) |
-| Business (all tracks) | ACC 201 is not in SIS (nor ACC 202 and 301 for Accounting); "SOC 101 or HUM 210", and HUM 210 is not in SIS |
-| Optometry | The descriptions number OVS 277 as OVS 227; the planning guide and the prerequisites use OVS 277. Some prerequisites name OVS 225, 320, 330 and 370, which the curriculum does not have |
-| Anesthesia Technology | The required list includes ANT 450, which no year of the plan has; the year plan (123 credits) is followed |
-| Radiologic Sciences | "PHY 241 Medical Physics and Dosimetry" is PHY 107 in SIS (PHY 241 is Mathematical Methods for Physics); RAD 390 has 2 credits in the planning guide and 3 in its description |
-| Dentistry | "BIO 220 General Histology (3 credits)" is BIO 220 with its lab BIO 220L in SIS |
-| Every program | The catalog year |
+Questions to confirm with each college (courses missing from SIS, codes or credits that differ, and every
+program's catalog year) are listed in the sealed `scripts/curricula/NOTES.md`.
 
 A prerequisite that names a course missing from the catalog, as some of these do, is shown to the student
 as "check with your advisor" and never holds a course back or adds a course nobody can take. Correct it
@@ -218,10 +224,12 @@ python -m app.cli import-all --accept-warnings                           # the c
 latest courses. Importing the same files again changes nothing. Changes made in the admin page are kept
 (see [6. Changes in the admin page](#6-changes-in-the-admin-page)).
 
-In Docker, rebuild the API image (it copies `data/catalog/` and `data/programs/` in). On start, the API
-imports every program that is not in the database yet (`import-all --only-new`), so a new package such
-as a minor arrives with the next deploy. Changed data for programs already imported is imported by hand:
-`docker compose exec api python -m app.cli import-all`.
+For a server, seal the data (`data-seal`) and commit the sealed file. The images carry only
+`data/sealed/curriculum.sealed`; the import commands open it with `ADVISOR_DATA_KEY` into a temporary
+folder that is deleted afterwards. On start, the API imports every program that is not in the database
+yet (`import-all --only-new`), so a new package such as a minor arrives with the next deploy. Changed
+data for programs already imported is imported by hand: `docker compose exec api python -m app.cli
+import-all`.
 
 ## 5. Review the prerequisite rules
 

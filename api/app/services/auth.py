@@ -192,8 +192,7 @@ def _clean_up(db: Session, now: datetime) -> None:
 
 
 def _code_hash(settings: Settings, email: str, code: str) -> str:
-    key = settings.secret_key.get_secret_value().encode()
-    return hmac.new(key, f"{email}:{code}".encode(), hashlib.sha256).hexdigest()
+    return hmac.new(settings.code_key, f"{email}:{code}".encode(), hashlib.sha256).hexdigest()
 
 
 def _token_hash(token: str) -> str:

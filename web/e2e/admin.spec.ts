@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 
-// The admin tests need the server's admin token: E2E_ADMIN_TOKEN=... npx playwright test.
+// The admin tests need the server's master token (ADVISOR_ADMIN_TOKEN): E2E_ADMIN_TOKEN=... npx playwright test.
 // They leave the catalog as it was: uploads are previewed (dry runs), the program is only
 // checked, and the backup that is restored is the one made a moment before. The audit log
 // gains the backup and restore entries.
@@ -14,12 +14,25 @@ async function expectAccessible(page: Page) {
 
 test.skip(!TOKEN, "Set E2E_ADMIN_TOKEN to run the admin tests");
 
-test("an admin previews uploads, checks a minor, and backs up and restores the data", async ({ page }) => {
+test("an admin previews uploads, checks a minor, and backs up and restores the data", async ({ page }, testInfo) => {
   await page.goto("/admin");
-  await page.getByLabel("Admin token").fill(TOKEN!);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  // The test student is not an admin (ADR 0009), so the page offers the master token.
+  await expect(page.getByRole("heading", { name: "Admins only" })).toBeVisible();
+  await page.getByLabel("Master token").fill(TOKEN!);
+  await page.getByRole("button", { name: "Use the master token" }).click();
   await expect(page.getByRole("heading", { name: "Course data" })).toBeVisible();
   await expectAccessible(page);
+
+  // People: the master token adds an advisor, then removes them again.
+  const advisor = `e2e.advisor.${testInfo.project.name}@auib.edu.iq`;
+  await page.getByRole("tab", { name: "People" }).click();
+  await page.getByLabel("AUIB email address").fill(advisor);
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+  await expect(page.getByRole("list", { name: "Admins and advisors" }).getByText(advisor)).toBeVisible();
+  await expectAccessible(page);
+  page.once("dialog", (dialog) => void dialog.accept());
+  await page.getByRole("button", { name: `Remove ${advisor} (Advisor)` }).click();
+  await expect(page.getByText(advisor)).toHaveCount(0);
 
   // Courses: edit dialog, then a bulk upload preview that saves nothing.
   await page.getByRole("tab", { name: "Courses" }).click();

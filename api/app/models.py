@@ -260,3 +260,16 @@ class SessionRow(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
     last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class StaffRow(Base):
+    """An admin or advisor, by AUIB email address. They sign in like students (F9.1); this row gives the
+    signed-in address its role. Only the master token adds or removes admins; admins add or remove
+    advisors (ADR 0009). Advisors have no extra rights until the advisor view exists (F5.3)."""
+
+    __tablename__ = "staff"
+
+    email: Mapped[str] = mapped_column(String(254), primary_key=True)
+    role: Mapped[str] = mapped_column(String(16))  # "admin" or "advisor"
+    added_by: Mapped[str] = mapped_column(String(254))
+    added_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

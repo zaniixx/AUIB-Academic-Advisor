@@ -16,6 +16,7 @@ AUIB students. Their courses stay in their browser and are never stored on the s
 | Curriculum import from the SIS scraper, with validation (F0.1, F0.6, F0.7) | Done |
 | Prerequisite parsing from course descriptions, 343 of 351 CS-catalog rules fully understood (F0.2) | Done |
 | Admin review and correction of rules, kept across re-imports, audit log (F0.3, F9.3) | Done |
+| Admins and advisors by AUIB email: the master token adds admins, admins add advisors, everyone signs in with an emailed code, and the audit log names each admin (F9.3, part of F9.4) | Done; advisors get their own view later (F5.3) |
 | Admin editing: edit, add, bulk-upload (CSV, spreadsheet paste, .xlsx) and hide courses; build, edit and hide majors and minors; edits kept across imports | Done |
 | 16 majors: Computer Science from SIS, and Biology, Chemistry, Physics, English Literature, Psychology, International Relations, six Business tracks, Optometry, Anesthesia Technology and Dental Surgery from AUIB's released curricula; Radiologic Sciences, Dental Technology and Pharmacy wait as drafts (F0.6) | Done, to confirm with the colleges |
 | Encrypted backup and restore in the admin page (AES-256-GCM, passphrase or generated key); the command line restores too, for moving servers | Done |
@@ -50,9 +51,13 @@ The full list, with the code and tests behind each item, is in
 You need Docker with Compose.
 
 ```sh
-cp .env.example .env        # set POSTGRES_PASSWORD, ADVISOR_ADMIN_TOKEN, ADVISOR_SECRET_KEY and the SMTP settings
+cp .env.example .env        # set POSTGRES_PASSWORD, ADVISOR_ADMIN_TOKEN (the master token), ADVISOR_DATA_KEY and the SMTP settings
 docker compose up -d --build
 ```
+
+The course and program data are only for signed-in AUIB students, so this public repository holds them
+sealed (`data/sealed/curriculum.sealed`, [ADR 0008](docs/decisions/0008-sealed-course-data.md)).
+`ADVISOR_DATA_KEY`, from the project's maintainers, opens them for the import.
 
 Sign-in codes are emailed, so the API needs an SMTP server that can reach `@auib.edu.iq` mailboxes
 (see [docs/operations.md, Mail for sign-in codes](docs/operations.md#mail-for-sign-in-codes)). To try
@@ -78,15 +83,17 @@ with Heroku Postgres, connected to this repository. The set-up steps are in
 | Program data | [data/programs/](data/programs) | One package per major or minor: requirements and labels |
 | Deployment | [docker-compose.yml](docker-compose.yml), [deploy/](deploy); on Heroku [heroku.yml](heroku.yml), [Dockerfile.heroku](Dockerfile.heroku), [deploy/heroku/](deploy/heroku) | Docker, PostgreSQL 17, Caddy; Heroku container stack and Heroku Postgres |
 
-API (from `api/`):
+API (from `api/`). The course data is sealed: put the key from the maintainers in `.env` at the repository
+root as `ADVISOR_DATA_KEY`, then open it (see [docs/data-pipeline.md](docs/data-pipeline.md)):
 
 ```sh
 python -m venv .venv && .venv/Scripts/activate        # macOS/Linux: source .venv/bin/activate
 pip install -r requirements-dev.txt
+python -m app.cli data-unseal                        # write data/ and scripts/curricula/ from the sealed copy
 alembic upgrade head                                  # SQLite file by default
 python -m app.cli import-all --accept-warnings        # load data/catalog and data/programs
 uvicorn app.main:create_app --factory --reload        # http://localhost:8000/api/docs
-pytest                                                # 323 tests
+pytest                                                # 334 tests
 ruff check app tests && mypy app
 ```
 
@@ -119,8 +126,9 @@ After changing an API response, run `python -m app.cli export-openapi ../web/ope
 
 ## Data and privacy in one paragraph
 
-Catalog data (courses, requirements) is public information scraped from SIS and committed as
-sanitised packages; the raw scraper output in `sis_data/` contains a logged-in browser profile and
+Catalog data (courses, requirements) comes from SIS and AUIB's documents and is only for signed-in AUIB
+students: the public repository holds it sealed (AES-256-GCM), and the key is kept by the maintainers,
+the servers and CI. The raw scraper output in `sis_data/` contains a logged-in browser profile and
 personal progress, so it is git-ignored and never copied into an image. Students' course histories are
 processed in memory for each request and never stored or logged. The only thing the server keeps about
 a student is their AUIB email address while they are signed in, with hashes of their sign-in code and

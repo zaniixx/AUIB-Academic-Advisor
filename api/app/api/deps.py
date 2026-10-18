@@ -14,13 +14,13 @@ from sqlalchemy.orm import Session
 from app.db import session_scope
 from app.domain.catalog import Catalog, Program
 from app.models import SessionRow
-from app.services import auth
+from app.services import auth, staff
 from app.settings import Settings
 
 # The session cookie (F9.1); the browser sends it to /api only.
 SESSION_COOKIE = "advisor_session"
 
-_bearer = HTTPBearer(auto_error=False, description="Admin token (ADVISOR_ADMIN_TOKEN)")
+_bearer = HTTPBearer(auto_error=False, description="The master token (ADVISOR_ADMIN_TOKEN, ADR 0009)")
 
 
 def get_settings(request: Request) -> Settings:
@@ -63,23 +63,37 @@ def require_student(request: Request, session: Annotated[Session, Depends(get_se
 
 
 def require_admin(
+    request: Request,
     settings: Annotated[Settings, Depends(get_settings)],
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
+    session: Annotated[Session, Depends(get_session)],
 ) -> str:
-    """Admin endpoints need ``Authorization: Bearer <ADVISOR_ADMIN_TOKEN>``; returns the actor name."""
-    expected = settings.admin_token.get_secret_value() if settings.admin_token else ""
-    if not expected:
-        raise HTTPException(
-            status.HTTP_503_SERVICE_UNAVAILABLE, "The admin API is not enabled on this server"
-        )
-    supplied = credentials.credentials if credentials else ""
-    if not hmac.compare_digest(supplied.encode(), expected.encode()):
+    """Admin endpoints (ADR 0009): a signed-in admin, whose email is the actor in the audit log, or the
+    master token sent as ``Authorization: Bearer <ADVISOR_ADMIN_TOKEN>`` (the actor "master token")."""
+    if credentials is not None:
+        expected = settings.admin_token.get_secret_value() if settings.admin_token else ""
+        if not expected:
+            raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "No master token is set on this server")
+        if not hmac.compare_digest(credentials.credentials.encode(), expected.encode()):
+            raise HTTPException(
+                status.HTTP_401_UNAUTHORIZED,
+                "That is not the master token",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        return staff.MASTER_ACTOR
+    found = auth.find_session(session, request.cookies.get(SESSION_COOKIE), auth.utcnow())
+    if found is None:
         raise HTTPException(
             status.HTTP_401_UNAUTHORIZED,
-            "A valid admin token is required",
+            "Sign in with an admin's AUIB email address, or use the master token.",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    return "admin"
+    if staff.role_of(session, found.email) != "admin":
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "This account is not an admin. Ask the holder of the master token to add it.",
+        )
+    return found.email
 
 
 SessionDep = Annotated[Session, Depends(get_session)]

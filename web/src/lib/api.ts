@@ -71,6 +71,9 @@ export type ExpectedGrade = Schemas["ExpectedGradeIn"];
 export type RestoreResult = Schemas["RestoreOut"];
 export type CodeSent = Schemas["CodeSentOut"];
 export type SignedIn = Schemas["SignedInOut"];
+export type StaffRole = NonNullable<SignedIn["role"]>;
+export type StaffMember = Schemas["StaffOut"];
+export type AdminMe = Schemas["AdminMeOut"];
 
 export class ApiError extends Error {
   constructor(
@@ -154,7 +157,13 @@ async function download(path: string, body: unknown, headers: HeadersInit): Prom
 const course = (code: string) => `/api/v1/admin/courses/${encodeURIComponent(code)}`;
 const program = (id: string) => `/api/v1/admin/programs/${encodeURIComponent(id)}`;
 
-const bearer = (token: string): HeadersInit => ({ Authorization: `Bearer ${token}` });
+// The master token, when one was entered; otherwise nothing, and the signed-in admin's session cookie
+// does the work (ADR 0009).
+const bearer = (token: string): HeadersInit => (token ? { Authorization: `Bearer ${token}` } : {});
+
+/** True when an admin request was refused for who is asking (signed out, not an admin, wrong master token). */
+export const isAdminAccessError = (message: string | undefined): boolean =>
+  !!message && /master token|not an admin/i.test(message);
 
 export const api = {
   auth: {
@@ -259,5 +268,12 @@ export const api = {
       post<BackupCheck>("/api/v1/admin/restore/check", { backup_base64, passphrase }, bearer(token)),
     restore: (token: string, backup_base64: string, passphrase: string) =>
       post<RestoreResult>("/api/v1/admin/restore", { backup_base64, passphrase, confirm: "RESTORE" }, bearer(token)),
+
+    me: (token: string) => request<AdminMe>("/api/v1/admin/me", { headers: bearer(token) }),
+    staff: (token: string) => request<StaffMember[]>("/api/v1/admin/staff", { headers: bearer(token) }),
+    grant: (token: string, email: string, role: StaffRole) =>
+      put<StaffMember>("/api/v1/admin/staff", { email, role }, bearer(token)),
+    revoke: (token: string, email: string) =>
+      request<null>(`/api/v1/admin/staff/${encodeURIComponent(email)}`, { method: "DELETE", headers: bearer(token) }),
   },
 };

@@ -876,6 +876,9 @@ class VerifyIn(StrictModel):
 class SignedInOut(BaseModel):
     email: str
     expires_at: datetime
+    role: Literal["admin", "advisor"] | None = Field(
+        default=None, description="Set for admins and advisors (ADR 0009); students have none"
+    )
 
 
 class SignOutIn(StrictModel):

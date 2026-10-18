@@ -20,7 +20,11 @@ until alembic upgrade head; do
   sleep 3
 done
 
-if [ "${ADVISOR_AUTO_IMPORT:-false}" = "true" ]; then
+# The image holds the course data sealed (ADR 0008): the import opens it with ADVISOR_DATA_KEY into a
+# temporary folder. Without the key the database keeps what it already has.
+if [ "${ADVISOR_AUTO_IMPORT:-false}" = "true" ] && [ -z "${ADVISOR_DATA_KEY:-}" ]; then
+  echo "ADVISOR_DATA_KEY is not set, so the course data was not imported (see docs/operations.md)." >&2
+elif [ "${ADVISOR_AUTO_IMPORT:-false}" = "true" ]; then
   if [ "${ADVISOR_AUTO_IMPORT_ACCEPT_WARNINGS:-false}" = "true" ]; then
     python -m app.cli import-all --only-new --accept-warnings --actor auto-import
   else

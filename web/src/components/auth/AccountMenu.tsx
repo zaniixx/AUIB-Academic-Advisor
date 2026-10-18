@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useId, useState, useSyncExternalStore } from "react";
 import { authSnapshot, checkSession, serverAuthSnapshot, signOut, subscribeAuth } from "@/lib/auth";
 import { LogOutIcon, UserIcon } from "@/components/icons";
@@ -38,7 +39,16 @@ export function AccountMenu() {
           <div className="space-y-4">
             <p className="text-sm">
               Signed in as <strong className="break-all">{auth.email}</strong> until {expires}.
+              {auth.role === "advisor" && " You are an advisor."}
             </p>
+            {auth.role === "admin" && (
+              <p className="text-sm">
+                You are an admin.{" "}
+                <Link href="/admin" className="font-medium text-primary underline" onClick={() => setOpen(false)}>
+                  Open the admin page
+                </Link>
+              </p>
+            )}
             <label htmlFor={clearId} className="flex items-start gap-3 rounded-xl border border-border p-3 text-sm">
               <input
                 id={clearId}

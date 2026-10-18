@@ -15,7 +15,7 @@ from fastapi import APIRouter, HTTPException, Request, Response, status
 
 from app.api import schemas as s
 from app.api.deps import SESSION_COOKIE, SessionDep, SettingsDep, StudentDep
-from app.services import auth, mail
+from app.services import auth, mail, staff
 from app.settings import Settings
 
 router = APIRouter(prefix="/api/v1/auth", tags=["sign-in"])
@@ -101,12 +101,15 @@ def verify(body: s.VerifyIn, response: Response, db: SessionDep, settings: Setti
     except auth.SignInError as error:
         raise _refuse(error) from error
     _set_cookie(response, settings, signed_in.token, settings.session_days * 86_400)
-    return s.SignedInOut(email=signed_in.email, expires_at=signed_in.expires_at)
+    role = staff.role_of(db, signed_in.email)
+    return s.SignedInOut(email=signed_in.email, expires_at=signed_in.expires_at, role=role)
 
 
-@router.get("/me", summary="The signed-in student")
-def me(student: StudentDep) -> s.SignedInOut:
-    return s.SignedInOut(email=student.email, expires_at=student.expires_at)
+@router.get("/me", summary="The signed-in student, and their role if they are staff")
+def me(student: StudentDep, db: SessionDep) -> s.SignedInOut:
+    return s.SignedInOut(
+        email=student.email, expires_at=student.expires_at, role=staff.role_of(db, student.email)
+    )
 
 
 @router.post("/sign-out", status_code=status.HTTP_204_NO_CONTENT, summary="End this browser's session")

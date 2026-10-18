@@ -6,10 +6,16 @@ python -m app.cli import ../data/programs/minor-psychology [--accept-warnings]
 python -m app.cli import-all [--only-if-empty | --only-new] [--accept-warnings]
 python -m app.cli export-openapi ../web/openapi.json
 python -m app.cli backup-export backup.aab | backup-inspect backup.aab | backup-restore backup.aab --yes
+python -m app.cli data-unseal [--force] | data-seal | data-key
+python -m app.cli staff list | staff add name@auib.edu.iq admin|advisor | staff remove name@auib.edu.iq
 
 The course catalog (data/catalog/courses.json by default) is shared by every program.
 "validate" checks it and then each program against it; "import" and "import-all"
 import it first, so a program is always checked against the latest courses.
+
+The repository holds the catalog and programs sealed (app/services/sealed_data.py, ADR 0008).
+When the plain files are not on disk, the data commands open the sealed copy with
+ADVISOR_DATA_KEY into a temporary folder that is deleted afterwards.
 
 Backups are encrypted (see app/services/backup.py). The passphrase is read from
 ADVISOR_BACKUP_PASSPHRASE, or asked for when that is not set.
@@ -22,6 +28,9 @@ import getpass
 import json
 import os
 import sys
+import tempfile
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -59,18 +68,39 @@ def _print_report(report: ValidationReport, verbose: bool) -> None:
         print(f"  [{finding.severity.value}] {finding.where}: {finding.message}")
 
 
-def _courses_path(args: argparse.Namespace) -> Path:
-    from app.settings import get_settings
+DATA_COMMANDS = {"validate", "import", "import-courses", "import-all"}
 
-    return Path(args.courses) if args.courses else get_settings().courses_file
+
+@contextmanager
+def _course_data(args: argparse.Namespace) -> Iterator[None]:
+    """Point the data commands at the plain course data: the files on disk when they are there (a
+    maintainer's computer), else the sealed copy opened into a temporary folder (images, Heroku)."""
+    from app.services import sealed_data
+    from app.settings import REPO_ROOT, get_settings
+
+    settings = get_settings()
+    args.default_courses, args.default_data_dir = settings.courses_file, settings.data_dir
+    if settings.courses_file.exists() or not settings.sealed_data.is_file():
+        yield
+        return
+    configured = settings.data_key.get_secret_value() if settings.data_key else None
+    key = sealed_data.find_key(configured, REPO_ROOT)
+    with tempfile.TemporaryDirectory(prefix="advisor-data-") as folder:
+        root = Path(folder)
+        sealed_data.unseal_folder(settings.sealed_data, key, root, only=sealed_data.DATA_PATHS)
+        args.default_courses = root / "data" / "catalog" / "courses.json"
+        args.default_data_dir = root / "data" / "programs"
+        yield
+
+
+def _courses_path(args: argparse.Namespace) -> Path:
+    return Path(args.courses) if args.courses else Path(args.default_courses)
 
 
 def _package_paths(args: argparse.Namespace) -> list[Path]:
-    from app.settings import get_settings
-
     if getattr(args, "paths", None):
         return [Path(p) for p in args.paths]
-    root = Path(args.directory) if getattr(args, "directory", None) else get_settings().data_dir
+    root = Path(args.directory) if getattr(args, "directory", None) else Path(args.default_data_dir)
     return sorted(p for p in root.iterdir() if (p / "program.json").exists())
 
 
@@ -289,6 +319,73 @@ def cmd_issue_session(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_staff(args: argparse.Namespace) -> int:
+    """List, add or remove admins and advisors from the server (ADR 0009). Anyone who can run this has
+    the server's database, so it may add admins, like the master token; changes are audited as "cli"."""
+    from app.services import auth, staff
+    from app.settings import get_settings
+
+    with _session_factory()() as session:
+        if args.staff_command == "list":
+            for row in staff.list_staff(session):
+                print(f"{row.role:8} {row.email}  (added by {row.added_by}, {row.added_at:%Y-%m-%d})")
+            return 0
+        try:
+            email = auth.check_email(args.email, get_settings().allowed_email_domains)
+            if args.staff_command == "add":
+                staff.grant(session, "cli", email, args.role, manage_admins=True)
+            else:
+                staff.revoke(session, "cli", email, manage_admins=True)
+        except (auth.SignInError, staff.StaffError) as error:
+            print(error.message, file=sys.stderr)
+            return 1
+        session.commit()
+    print(f"{email}: {'now ' + args.role if args.staff_command == 'add' else 'removed'}.")
+    return 0
+
+
+def _data_key() -> bytes:
+    from app.services import sealed_data
+    from app.settings import REPO_ROOT, get_settings
+
+    settings = get_settings()
+    return sealed_data.find_key(
+        settings.data_key.get_secret_value() if settings.data_key else None, REPO_ROOT
+    )
+
+
+def cmd_data_key(args: argparse.Namespace) -> int:
+    from app.services import sealed_data
+
+    print(sealed_data.new_key())
+    return 0
+
+
+def cmd_data_seal(args: argparse.Namespace) -> int:
+    """Seal the plain course data on this computer into data/sealed/curriculum.sealed."""
+    from app.services import sealed_data
+    from app.settings import REPO_ROOT, get_settings
+
+    sealed = get_settings().sealed_data
+    count = sealed_data.seal_folder(REPO_ROOT, sealed, _data_key())
+    if count is None:
+        print(f"{sealed.relative_to(REPO_ROOT).as_posix()} already holds these files; nothing changed.")
+    else:
+        print(f"Sealed {count} files into {sealed.relative_to(REPO_ROOT).as_posix()}. Commit that file.")
+    return 0
+
+
+def cmd_data_unseal(args: argparse.Namespace) -> int:
+    """Write the plain course data from the sealed copy (after cloning or pulling)."""
+    from app.services import sealed_data
+    from app.settings import REPO_ROOT, get_settings
+
+    root = Path(args.to) if args.to else REPO_ROOT
+    count = sealed_data.unseal_folder(get_settings().sealed_data, _data_key(), root, force=args.force)
+    print(f"Wrote {count} files under {root}.")
+    return 0
+
+
 def cmd_check_settings(args: argparse.Namespace) -> int:
     """Run at start-up: say plainly which settings are missing, without echoing any value (a
     validation error's own message would show part of the raw settings, secrets included)."""
@@ -396,8 +493,43 @@ def main(argv: list[str] | None = None) -> int:
     check = commands.add_parser("check-settings", help="Check the settings and list any that are missing")
     check.set_defaults(func=cmd_check_settings)
 
+    people = commands.add_parser("staff", help="List, add or remove admins and advisors (ADR 0009)")
+    people_commands = people.add_subparsers(dest="staff_command", required=True)
+    people_commands.add_parser("list", help="List admins and advisors")
+    add = people_commands.add_parser("add", help="Give an AUIB address a role")
+    add.add_argument("email")
+    add.add_argument("role", choices=("admin", "advisor"))
+    remove = people_commands.add_parser("remove", help="Remove an admin or advisor")
+    remove.add_argument("email")
+    people.set_defaults(func=cmd_staff)
+
+    data_key = commands.add_parser("data-key", help="Print a new random key for sealing the course data")
+    data_key.set_defaults(func=cmd_data_key)
+
+    data_seal = commands.add_parser(
+        "data-seal", help="Seal the plain course data into data/sealed/curriculum.sealed (ADR 0008)"
+    )
+    data_seal.set_defaults(func=cmd_data_seal)
+
+    data_unseal = commands.add_parser("data-unseal", help="Write the plain course data from the sealed copy")
+    data_unseal.add_argument("--to", help="Folder to write into (default: the repository)")
+    data_unseal.add_argument(
+        "--force", action="store_true", help="Replace plain files that differ from the sealed copy"
+    )
+    data_unseal.set_defaults(func=cmd_data_unseal)
+
     args = parser.parse_args(argv)
-    result: int = args.func(args)
+    from app.services.sealed_data import SealError
+
+    try:
+        if args.command in DATA_COMMANDS:
+            with _course_data(args):
+                result: int = args.func(args)
+        else:
+            result = args.func(args)
+    except SealError as error:
+        print(error, file=sys.stderr)
+        return 1
     return result
 
 

@@ -14,7 +14,11 @@ python -m app.cli check-settings
 
 alembic upgrade head
 
-if [ "${ADVISOR_AUTO_IMPORT:-true}" = "true" ]; then
+# The image holds the course data sealed (ADR 0008): the import opens it with the ADVISOR_DATA_KEY
+# config var into a temporary folder. Without the key the database keeps what it already has.
+if [ "${ADVISOR_AUTO_IMPORT:-true}" = "true" ] && [ -z "${ADVISOR_DATA_KEY:-}" ]; then
+  echo "ADVISOR_DATA_KEY is not set, so the course data was not imported (docs/operations.md, Heroku)." >&2
+elif [ "${ADVISOR_AUTO_IMPORT:-true}" = "true" ]; then
   if [ "${ADVISOR_AUTO_IMPORT_ACCEPT_WARNINGS:-false}" = "true" ]; then
     python -m app.cli import-all --only-new --accept-warnings --actor heroku-release
   else

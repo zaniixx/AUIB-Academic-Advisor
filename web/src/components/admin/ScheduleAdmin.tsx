@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api, type ScheduleSummary } from "@/lib/api";
+import { api, isAdminAccessError, type ScheduleSummary } from "@/lib/api";
 import { pluralize } from "@/lib/format";
 import { useAsync } from "@/lib/hooks";
 import { CalendarIcon, TrashIcon, UploadIcon } from "@/components/icons";
@@ -24,7 +24,7 @@ export function ScheduleAdmin({ token, onUnauthorized }: { token: string; onUnau
   const [error, setError] = useState<string | null>(null);
   const list = useAsync(`schedules|${version}`, () => api.admin.schedules(token), { keepPrevious: true });
   const refresh = () => setVersion((v) => v + 1);
-  const unauthorized = list.error?.includes("admin token") ?? false;
+  const unauthorized = isAdminAccessError(list.error);
   useEffect(() => {
     if (unauthorized) onUnauthorized();
   }, [unauthorized, onUnauthorized]);

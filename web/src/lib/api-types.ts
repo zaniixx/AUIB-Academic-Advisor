@@ -351,7 +351,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** The signed-in student */
+        /** The signed-in student, and their role if they are staff */
         get: operations["me_api_v1_auth_me_get"];
         put?: never;
         post?: never;
@@ -771,6 +771,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/admin/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Who is using the admin page */
+        get: operations["whoami_api_v1_admin_me_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/staff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Admins and advisors */
+        get: operations["list_people_api_v1_admin_staff_get"];
+        /** Give an AUIB address a role, or change it */
+        put: operations["grant_api_v1_admin_staff_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/staff/{email}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove an admin or advisor */
+        delete: operations["revoke_api_v1_admin_staff__email__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -846,6 +898,21 @@ export interface components {
              * @enum {string}
              */
             origin: "import" | "admin";
+        };
+        /**
+         * AdminMeOut
+         * @description Who is using the admin page, and whether they can add or remove admins.
+         */
+        AdminMeOut: {
+            /** Actor */
+            actor: string;
+            /**
+             * Via
+             * @enum {string}
+             */
+            via: "master token" | "email";
+            /** Can Manage Admins */
+            can_manage_admins: boolean;
         };
         /** AdminProgramOut */
         AdminProgramOut: {
@@ -2655,6 +2722,41 @@ export interface components {
              * Format: date-time
              */
             expires_at: string;
+            /**
+             * Role
+             * @description Set for admins and advisors (ADR 0009); students have none
+             */
+            role?: ("admin" | "advisor") | null;
+        };
+        /**
+         * StaffIn
+         * @description Give an AUIB address a role (ADR 0009). Only the master token may name an admin.
+         */
+        StaffIn: {
+            /** Email */
+            email: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "admin" | "advisor";
+        };
+        /** StaffOut */
+        StaffOut: {
+            /** Email */
+            email: string;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "admin" | "advisor";
+            /** Added By */
+            added_by: string;
+            /**
+             * Added At
+             * Format: date-time
+             */
+            added_at: string;
         };
         /**
          * StudentIn
@@ -4427,6 +4529,108 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["RestoreOut"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    whoami_api_v1_admin_me_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminMeOut"];
+                };
+            };
+        };
+    };
+    list_people_api_v1_admin_staff_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffOut"][];
+                };
+            };
+        };
+    };
+    grant_api_v1_admin_staff_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StaffIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revoke_api_v1_admin_staff__email__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                email: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

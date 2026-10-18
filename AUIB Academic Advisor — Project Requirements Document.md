@@ -177,7 +177,7 @@ Each requirement has an ID for tracking; "Must" items are needed for the release
 | --- | --- | --- | --- |
 | F9.1 | Sign-in restricted to AUIB email addresses (`name@auib.edu.iq`), verified by a one-time code sent to that address. Course and program data and the planner are available only to signed-in students (required by the project's faculty advisor, Oct 17, 2026) | Must | Non-AUIB emails are rejected; without a session the server returns no course or program data; a code expires after 10 minutes, works once and allows 5 tries |
 | F9.2 | Student can delete their account and all their data | Must | Deletion completes within 30 days, reviews anonymised |
-| F9.3 | Admin role for curriculum corrections and review moderation | Must | Admin actions are logged |
+| F9.3 | Admin role for curriculum corrections and review moderation, and an advisor role, both given to AUIB addresses whose owners sign in by email; only the master token adds or removes admins, and admins add or remove advisors | Must | Admin actions are logged under the admin's address; removing a role takes effect at once |
 | F9.4 | Login page for students and admins with AUIB single sign-on; a signed-in student's plan is saved to their account and follows them across devices; admins sign in instead of using the shared token | Must | Login works with an AUIB account only; signing out leaves no data in the browser |
 
 ### F10 — AI chat assistant (post-release, potential)

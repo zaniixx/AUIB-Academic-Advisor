@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api, ApiError, type AdminRule, type RuleCheck } from "@/lib/api";
+import { api, ApiError, isAdminAccessError, type AdminRule, type RuleCheck } from "@/lib/api";
 import { useAsync } from "@/lib/hooks";
 import { Alert, Badge, Button, Card, Spinner, StatusBadge } from "@/components/ui";
 
@@ -28,7 +28,7 @@ export function RuleQueue({ token, onUnauthorized }: { token: string; onUnauthor
   );
   const refresh = () => setVersion((v) => v + 1);
 
-  const unauthorized = list.error?.includes("admin token") ?? false;
+  const unauthorized = isAdminAccessError(list.error);
   useEffect(() => {
     if (unauthorized) onUnauthorized();
   }, [unauthorized, onUnauthorized]);

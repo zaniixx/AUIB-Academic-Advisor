@@ -40,9 +40,10 @@ def _plan(client: TestClient, **extra: object) -> dict[str, Any]:
     return response.json()
 
 
-def test_catalog_editing_needs_the_token(client: TestClient) -> None:
-    assert client.get(f"{ADMIN}/courses").status_code == 401
-    assert client.post(f"{ADMIN}/backup", json={"passphrase": "x" * 20}).status_code == 401
+def test_catalog_editing_needs_an_admin(client: TestClient, anonymous_client: TestClient) -> None:
+    assert anonymous_client.get(f"{ADMIN}/courses").status_code == 401
+    assert client.get(f"{ADMIN}/courses").status_code == 403  # a signed-in student
+    assert client.post(f"{ADMIN}/backup", json={"passphrase": "x" * 20}).status_code == 403
     assert client.get(f"{ADMIN}/programs", headers={"Authorization": "Bearer wrong"}).status_code == 401
 
 

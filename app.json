@@ -22,12 +22,12 @@
   ],
   "env": {
     "ADVISOR_ADMIN_TOKEN": {
-      "description": "Bearer token for the admin page (at least 32 characters). Generated here; keep it secret.",
+      "description": "The master token (ADR 0009): adds and removes admins in the admin page (People tab) and opens it in an emergency. Generated here; keep it secret. The key for sign-in codes is derived from it.",
       "generator": "secret"
     },
-    "ADVISOR_SECRET_KEY": {
-      "description": "Key for hashing sign-in codes. Generated here; keep it secret.",
-      "generator": "secret"
+    "ADVISOR_DATA_KEY": {
+      "description": "Opens the sealed course data for the import (ADR 0008). Use the key the project's maintainers keep; a new one cannot open the data.",
+      "required": true
     },
     "ADVISOR_MAIL_MODE": {
       "description": "Sign-in codes are emailed through SMTP.",

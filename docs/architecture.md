@@ -13,8 +13,8 @@ flowchart LR
   api --> db[(PostgreSQL)]
   api -->|sign-in codes, SMTP| mail[[Mail provider: AUIB relay or a service]]
   mail -.->|email| student
-  catalog[[data/catalog course catalog]] -->|CLI import| api
-  packages[[data/programs packages]] -->|CLI import| api
+  catalog[[course catalog, sealed in git]] -->|CLI import with ADVISOR_DATA_KEY| api
+  packages[[program packages, sealed in git]] -->|CLI import with ADVISOR_DATA_KEY| api
   scraper[[SIS scraper, run by a student]] -.->|prepare_program_package.py| catalog
   scraper -.->|prepare_program_package.py| packages
 ```
@@ -57,7 +57,9 @@ api/app/
                  tables (CSV, spreadsheet pastes and .xlsx uploads)
   services/      catalog cache (database -> in-memory catalog); catalog_edit (admin changes to courses,
                  programs and term schedules); backup (encrypted export and restore);
-                 auth (sign-in codes and sessions); mail (sends codes over SMTP)
+                 auth (sign-in codes and sessions); mail (sends codes over SMTP);
+                 sealed_data (the course data as one encrypted file in git, ADR 0008);
+                 staff (admins and advisors by AUIB email, ADR 0009)
   api/           routes, request/response schemas, conversions
   models.py      database tables;  migrations/ holds the Alembic history
   security.py    headers, body-size limit, rate limit, request logging
@@ -66,7 +68,7 @@ api/app/
 ```
 
 The `domain` package has no dependencies on the web or database layers, so every rule can be tested
-with plain data. 218 of the API's 323 tests exercise it directly against the real course catalog and programs.
+with plain data. 218 of the API's 334 tests exercise it directly against the real course catalog and programs.
 
 ### Signing in
 
@@ -100,6 +102,8 @@ with plain data. 218 of the API's 323 tests exercise it directly against the rea
 
 ### Importing a program
 
+The repository holds the catalog and packages sealed ([ADR 0008](decisions/0008-sealed-course-data.md));
+the import commands open the sealed copy with `ADVISOR_DATA_KEY` when the plain files are not on disk.
 `python -m app.cli import <package>` first imports the shared course catalog: it validates it, upserts
 courses and re-parses every requisite rule from its description while keeping admin corrections. It then
 validates the package against the courses in the database (errors block, warnings are reported),
@@ -197,8 +201,8 @@ Credits are stored in fields named `units` (as the SIS export names them); the a
 credits.
 
 Supporting tables: `import_runs` (every import with its validation report), `audit_log` (every admin
-action) and `catalog_state` (the catalog revision). Sign-in uses two tables of its own, not linked to
-the others: `login_codes` (address, keyed hash of the code, times, wrong tries; deleted after a day)
+action) and `catalog_state` (the catalog revision). Admins and advisors are in `staff` (address, role,
+who added them and when; ADR 0009). Sign-in uses two tables of its own, not linked to the others: `login_codes` (address, keyed hash of the code, times, wrong tries; deleted after a day)
 and `sessions` (SHA-256 hash of the token, address, start, last use, end). Students' courses, grades
 and plans are never stored.
 

@@ -187,11 +187,26 @@ def test_check_settings_lists_every_missing_setting_without_echoing_secrets(
 
     assert cli.main(["check-settings"]) == 1
     err = capsys.readouterr().err
-    assert "ADVISOR_SECRET_KEY" in err and "ADVISOR_SMTP_HOST" in err
+    assert "ADVISOR_SMTP_HOST" in err and "ADVISOR_SECRET_KEY" not in err  # derived from the master token
     assert admin_token not in err and "never-printed" not in err and "Traceback" not in err
 
-    monkeypatch.setenv("ADVISOR_SECRET_KEY", "k" * 64)
+    monkeypatch.delenv("ADVISOR_ADMIN_TOKEN")
+    assert cli.main(["check-settings"]) == 1
+    assert "ADVISOR_ADMIN_TOKEN, the master token" in capsys.readouterr().err
+    monkeypatch.setenv("ADVISOR_ADMIN_TOKEN", admin_token)
     monkeypatch.setenv("ADVISOR_SMTP_HOST", "smtp.example.com")
     monkeypatch.setenv("ADVISOR_SMTP_FROM", "advisor@auib.edu.iq")
     assert cli.main(["check-settings"]) == 0
     assert capsys.readouterr().out.strip() == "Settings are complete (production)."
+
+
+def test_staff_can_be_managed_from_the_server(database: str, capsys: pytest.CaptureFixture[str]) -> None:
+    assert cli.main(["staff", "add", "First.Admin@auib.edu.iq", "admin"]) == 0
+    assert cli.main(["staff", "add", "advisor@auib.edu.iq", "advisor"]) == 0
+    assert cli.main(["staff", "add", "someone@gmail.com", "advisor"]) == 1
+    capsys.readouterr()
+    assert cli.main(["staff", "list"]) == 0
+    listing = capsys.readouterr().out
+    assert "admin    first.admin@auib.edu.iq  (added by cli" in listing and "advisor@auib.edu.iq" in listing
+    assert cli.main(["staff", "remove", "advisor@auib.edu.iq"]) == 0
+    assert cli.main(["staff", "remove", "advisor@auib.edu.iq"]) == 1

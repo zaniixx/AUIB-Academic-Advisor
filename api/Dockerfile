@@ -17,16 +17,15 @@ FROM base AS runtime
 LABEL org.opencontainers.image.title="AUIB Academic Advisor API"
 RUN groupadd --system app && useradd --system --gid app --home-dir /app --shell /usr/sbin/nologin app
 COPY --from=build /opt/venv /opt/venv
+# The course data ships sealed (ADR 0008); the import opens it with ADVISOR_DATA_KEY at start-up.
 ENV PATH="/opt/venv/bin:$PATH" \
-    ADVISOR_DATA_DIR=/data/programs \
-    ADVISOR_COURSES_FILE=/data/catalog/courses.json
+    ADVISOR_SEALED_DATA=/data/sealed/curriculum.sealed
 WORKDIR /app
 COPY api/alembic.ini ./
 COPY api/migrations ./migrations
 COPY api/app ./app
 COPY --chmod=755 api/docker-entrypoint.sh ./
-COPY data/catalog /data/catalog
-COPY data/programs /data/programs
+COPY data/sealed /data/sealed
 USER app
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
