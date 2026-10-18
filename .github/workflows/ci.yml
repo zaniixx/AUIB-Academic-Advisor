@@ -34,7 +34,7 @@ jobs:
     env:
       POSTGRES_URL: postgresql+psycopg://advisor:advisor@localhost:5432/advisor_test
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
@@ -83,7 +83,7 @@ jobs:
       run:
         working-directory: web
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -118,7 +118,7 @@ jobs:
       # Opens the sealed course data for the API's import at start-up (ADR 0008).
       ADVISOR_DATA_KEY: ${{ secrets.ADVISOR_DATA_KEY }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Build and start the whole stack
         run: docker compose up -d --build --wait
       - name: Sessions for the test students (F9.1)
@@ -177,7 +177,7 @@ jobs:
       # Opens the sealed course data in the release phase, as the config var does on Heroku (ADR 0008).
       ADVISOR_DATA_KEY: ${{ secrets.ADVISOR_DATA_KEY }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Build Dockerfile.heroku
         run: docker build -f Dockerfile.heroku -t advisor-heroku .
       # Heroku does not run containers as root, nor as the image's own user, so neither does CI.
