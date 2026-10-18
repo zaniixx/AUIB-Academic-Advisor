@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { OWNER_KEY, claimBrowserData } from "./auth";
+import { OWNER_KEY, auibAddress, claimBrowserData, nameForBox } from "./auth";
 import { PROFILE_KEY, SCENARIOS_KEY } from "./profile";
 
 /** A browser's localStorage, enough for these tests. */
@@ -50,5 +50,25 @@ describe("a shared computer (F9.1)", () => {
     storage.setItem(PROFILE_KEY, "{}");
     claimBrowserData("a@auib.edu.iq");
     expect(storage.getItem(PROFILE_KEY)).toBe("{}");
+  });
+});
+
+describe("the sign-in address (F9.1)", () => {
+  it("adds @auib.edu.iq to the name the student types", () => {
+    expect(auibAddress("  Ali.Hassan ")).toEqual({ address: "ali.hassan@auib.edu.iq" });
+  });
+
+  it("keeps only the name when a full AUIB address is pasted or autofilled", () => {
+    expect(nameForBox("ali.hassan@AUIB.edu.iq")).toBe("ali.hassan");
+    expect(auibAddress("ali.hassan@auib.edu.iq")).toEqual({ address: "ali.hassan@auib.edu.iq" });
+  });
+
+  it("explains an empty box, another domain and characters an address cannot have", () => {
+    expect(auibAddress("")).toEqual({ problem: "Type the first part of your AUIB email address." });
+    expect(auibAddress("someone@gmail.com")).toEqual({
+      problem: "Only AUIB addresses can sign in: type the part before @auib.edu.iq.",
+    });
+    expect(auibAddress("ali hassan")).toHaveProperty("problem");
+    expect(auibAddress(".ali")).toHaveProperty("problem");
   });
 });

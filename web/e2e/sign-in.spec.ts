@@ -19,12 +19,13 @@ test.describe("before signing in", () => {
 
     const card = page.getByRole("region", { name: "Sign in with your AUIB email" });
     const email = card.getByLabel("AUIB email address");
+    await expect(card.getByText("@auib.edu.iq", { exact: true })).toBeVisible(); // the domain is filled in
     await email.fill("someone@gmail.com");
     await page.getByRole("button", { name: "Email me a code" }).click();
-    await expect(card.getByRole("alert")).toHaveText("Use your AUIB email address (name@auib.edu.iq).");
+    await expect(card.getByRole("alert")).toHaveText("Only AUIB addresses can sign in: type the part before @auib.edu.iq.");
 
-    // A fresh address each run, so the one-code-a-minute limit never gets in the way of a retry.
-    await email.fill(`e2e.${Date.now()}@auib.edu.iq`);
+    // Only the name is typed. A fresh one each run, so the one-code-a-minute limit never gets in the way.
+    await email.fill(`e2e.${Date.now()}`);
     await page.getByRole("button", { name: "Email me a code" }).click();
     await expect(page.getByText(/^We sent a 6-digit code to e2e\.\d+@auib\.edu\.iq/)).toBeVisible();
     await expect(page.getByRole("button", { name: /^Send a new code in \d+ s$/ })).toBeDisabled();

@@ -11,6 +11,30 @@ import { ApiError, api, onSignedOut, type StaffRole } from "./api";
 import { clearProfile } from "./profile";
 
 export const OWNER_KEY = "auib-advisor:owner";
+/** The only addresses that can sign in (the API checks it too). */
+export const AUIB_DOMAIN = "auib.edu.iq";
+
+// The part before the @, as the API accepts it: letters, digits and . _ % + - inside.
+const LOCAL_PART = /^[a-z0-9](?:[a-z0-9._%+-]{0,62}[a-z0-9])?$/;
+
+/**
+ * What goes in the name box: a pasted or autofilled full AUIB address keeps only the name before the @;
+ * anything else is left as typed, so the student sees it and the check below can explain the problem.
+ */
+export function nameForBox(typed: string): string {
+  const value = typed.trim();
+  const suffix = `@${AUIB_DOMAIN}`;
+  return value.toLowerCase().endsWith(suffix) ? value.slice(0, -suffix.length) : value;
+}
+
+/** The full address for the name typed in front of @auib.edu.iq, or an explanation of what is wrong. */
+export function auibAddress(typed: string): { address: string } | { problem: string } {
+  const name = nameForBox(typed).toLowerCase();
+  if (!name) return { problem: "Type the first part of your AUIB email address." };
+  if (name.includes("@")) return { problem: `Only AUIB addresses can sign in: type the part before @${AUIB_DOMAIN}.` };
+  if (!LOCAL_PART.test(name)) return { problem: "That is not an email address. Use letters, digits, dots or dashes." };
+  return { address: `${name}@${AUIB_DOMAIN}` };
+}
 
 export type AuthState =
   | { status: "checking" }

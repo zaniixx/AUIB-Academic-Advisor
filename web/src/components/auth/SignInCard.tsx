@@ -3,11 +3,9 @@
 import Link from "next/link";
 import { useEffect, useId, useState, type FormEvent } from "react";
 import { ApiError, api } from "@/lib/api";
-import { verifyCode } from "@/lib/auth";
+import { AUIB_DOMAIN, auibAddress, nameForBox, verifyCode } from "@/lib/auth";
 import { ArrowLeftIcon, ArrowRightIcon, MailIcon, ShieldCheckIcon } from "@/components/icons";
 import { Button, FIELD, IconBadge } from "@/components/ui";
-
-export const AUIB_DOMAIN = "auib.edu.iq";
 
 function message(error: unknown): string {
   return error instanceof Error ? error.message : "Something went wrong. Please try again.";
@@ -27,6 +25,7 @@ export function SignInCard() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const emailId = useId();
+  const domainId = useId();
   const codeId = useId();
   const errorId = useId();
 
@@ -56,12 +55,12 @@ export function SignInCard() {
 
   function submitEmail(event: FormEvent) {
     event.preventDefault();
-    const address = email.trim().toLowerCase();
-    if (!address.endsWith(`@${AUIB_DOMAIN}`)) {
-      setError(`Use your AUIB email address (name@${AUIB_DOMAIN}).`);
+    const checked = auibAddress(email);
+    if ("problem" in checked) {
+      setError(checked.problem);
       return;
     }
-    void sendCode(address);
+    void sendCode(checked.address);
   }
 
   async function submitCode(event: FormEvent) {
@@ -102,20 +101,33 @@ export function SignInCard() {
               <label htmlFor={emailId} className="block text-sm font-medium">
                 AUIB email address
               </label>
-              <input
-                id={emailId}
-                type="email"
-                inputMode="email"
-                autoComplete="email"
-                autoFocus
-                required
-                placeholder={`name@${AUIB_DOMAIN}`}
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                aria-invalid={error ? true : undefined}
-                aria-describedby={error ? errorId : undefined}
-                className={FIELD}
-              />
+              {/* Only AUIB addresses can sign in, so the domain is already in the box: the student types
+                  the part before it. A pasted full address keeps just that part. */}
+              <div className="flex min-h-11 w-full items-stretch overflow-hidden rounded-field border border-border-strong bg-surface shadow-soft transition hover:border-text-muted focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/30">
+                <input
+                  id={emailId}
+                  type="text"
+                  inputMode="email"
+                  autoComplete="username"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  autoFocus
+                  required
+                  placeholder="AUIB Email"
+                  value={email}
+                  onChange={(event) => setEmail(nameForBox(event.target.value))}
+                  aria-invalid={error ? true : undefined}
+                  aria-describedby={error ? `${domainId} ${errorId}` : domainId}
+                  className="min-w-0 flex-1 bg-transparent px-3.5 py-2 text-[0.95rem] text-text outline-none placeholder:text-text-muted/70"
+                />
+                <span
+                  id={domainId}
+                  className="flex shrink-0 select-none items-center border-s border-border bg-surface-sunken px-3 text-[0.95rem] text-text-muted"
+                >
+                  @{AUIB_DOMAIN}
+                </span>
+              </div>
             </div>
             {error && (
               <p id={errorId} role="alert" className="text-sm font-medium text-status-blocked">
