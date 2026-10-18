@@ -2,52 +2,10 @@
   "openapi": "3.1.0",
   "info": {
     "title": "AUIB Academic Advisor API",
-    "description": "Degree planning for AUIB students. Planning endpoints are stateless and store nothing.",
+    "description": "Degree planning for AUIB students. Catalog and planning endpoints need a session started with a code emailed to an AUIB address; planning stores nothing.",
     "version": "0.1.0"
   },
   "paths": {
-    "/api/health": {
-      "get": {
-        "tags": [
-          "health"
-        ],
-        "summary": "The process is up",
-        "operationId": "health_api_health_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HealthOut"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/ready": {
-      "get": {
-        "tags": [
-          "health"
-        ],
-        "summary": "The database answers and the catalog is loaded",
-        "operationId": "ready_api_ready_get",
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ReadyOut"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/meta": {
       "get": {
         "tags": [
@@ -749,6 +707,192 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/health": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "The process is up",
+        "operationId": "health_api_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ready": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "The database answers and the catalog is loaded",
+        "operationId": "ready_api_ready_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadyOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/request-code": {
+      "post": {
+        "tags": [
+          "sign-in"
+        ],
+        "summary": "Email a sign-in code to an AUIB address",
+        "operationId": "request_code_api_v1_auth_request_code_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CodeRequestIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CodeSentOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/verify": {
+      "post": {
+        "tags": [
+          "sign-in"
+        ],
+        "summary": "Check the emailed code and start a session",
+        "operationId": "verify_api_v1_auth_verify_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignedInOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "tags": [
+          "sign-in"
+        ],
+        "summary": "The signed-in student, and their role if they are staff",
+        "operationId": "me_api_v1_auth_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignedInOut"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/sign-out": {
+      "post": {
+        "tags": [
+          "sign-in"
+        ],
+        "summary": "End this browser's session",
+        "operationId": "sign_out_api_v1_auth_sign_out_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/SignOutIn"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
           },
           "422": {
             "description": "Validation Error",
@@ -2256,6 +2400,146 @@
           }
         ]
       }
+    },
+    "/api/v1/admin/me": {
+      "get": {
+        "tags": [
+          "admin: people"
+        ],
+        "summary": "Who is using the admin page",
+        "operationId": "whoami_api_v1_admin_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminMeOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/staff": {
+      "get": {
+        "tags": [
+          "admin: people"
+        ],
+        "summary": "Admins and advisors",
+        "operationId": "list_people_api_v1_admin_staff_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/StaffOut"
+                  },
+                  "type": "array",
+                  "title": "Response List People Api V1 Admin Staff Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "admin: people"
+        ],
+        "summary": "Give an AUIB address a role, or change it",
+        "operationId": "grant_api_v1_admin_staff_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StaffIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/admin/staff/{email}": {
+      "delete": {
+        "tags": [
+          "admin: people"
+        ],
+        "summary": "Remove an admin or advisor",
+        "operationId": "revoke_api_v1_admin_staff__email__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "email",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Email"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2474,6 +2758,34 @@
           "origin"
         ],
         "title": "AdminCourseSummaryOut"
+      },
+      "AdminMeOut": {
+        "properties": {
+          "actor": {
+            "type": "string",
+            "title": "Actor"
+          },
+          "via": {
+            "type": "string",
+            "enum": [
+              "master token",
+              "email"
+            ],
+            "title": "Via"
+          },
+          "can_manage_admins": {
+            "type": "boolean",
+            "title": "Can Manage Admins"
+          }
+        },
+        "type": "object",
+        "required": [
+          "actor",
+          "via",
+          "can_manage_admins"
+        ],
+        "title": "AdminMeOut",
+        "description": "Who is using the admin page, and whether they can add or remove admins."
       },
       "AdminProgramOut": {
         "properties": {
@@ -3242,6 +3554,48 @@
           "action"
         ],
         "title": "ChangeIn"
+      },
+      "CodeRequestIn": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "minLength": 3,
+            "title": "Email",
+            "examples": [
+              "name@auib.edu.iq"
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "title": "CodeRequestIn"
+      },
+      "CodeSentOut": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "expires_in_minutes": {
+            "type": "integer",
+            "title": "Expires In Minutes"
+          },
+          "resend_after_seconds": {
+            "type": "integer",
+            "title": "Resend After Seconds"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "expires_in_minutes",
+          "resend_after_seconds"
+        ],
+        "title": "CodeSentOut"
       },
       "CompareIn": {
         "properties": {
@@ -7395,6 +7749,113 @@
         ],
         "title": "ShowIfOut"
       },
+      "SignOutIn": {
+        "properties": {
+          "everywhere": {
+            "type": "boolean",
+            "title": "Everywhere",
+            "description": "Also end the sessions on other devices and delete the address from the server",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "SignOutIn"
+      },
+      "SignedInOut": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Expires At"
+          },
+          "role": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "admin",
+                  "advisor"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Role",
+            "description": "Set for admins and advisors (ADR 0009); students have none"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "expires_at"
+        ],
+        "title": "SignedInOut"
+      },
+      "StaffIn": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "minLength": 3,
+            "title": "Email"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "admin",
+              "advisor"
+            ],
+            "title": "Role"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "email",
+          "role"
+        ],
+        "title": "StaffIn",
+        "description": "Give an AUIB address a role (ADR 0009). Only the master token may name an admin."
+      },
+      "StaffOut": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "title": "Email"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "admin",
+              "advisor"
+            ],
+            "title": "Role"
+          },
+          "added_by": {
+            "type": "string",
+            "title": "Added By"
+          },
+          "added_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Added At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "email",
+          "role",
+          "added_by",
+          "added_at"
+        ],
+        "title": "StaffOut"
+      },
       "StudentIn": {
         "properties": {
           "program_id": {
@@ -7790,6 +8251,29 @@
         ],
         "title": "ValidationError"
       },
+      "VerifyIn": {
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "minLength": 3,
+            "title": "Email"
+          },
+          "code": {
+            "type": "string",
+            "pattern": "^\\s*\\d{6}\\s*$",
+            "title": "Code",
+            "description": "The 6-digit code from the email"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "email",
+          "code"
+        ],
+        "title": "VerifyIn"
+      },
       "WhatIfIn": {
         "properties": {
           "program_id": {
@@ -7928,7 +8412,7 @@
     "securitySchemes": {
       "HTTPBearer": {
         "type": "http",
-        "description": "Admin token (ADVISOR_ADMIN_TOKEN)",
+        "description": "The master token (ADVISOR_ADMIN_TOKEN, ADR 0009)",
         "scheme": "bearer"
       }
     }

@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api, type AdminCourse, type AdminCourseSummary, type CourseFields, type RuleCheck } from "@/lib/api";
+import {
+  api,
+  isAdminAccessError,
+  type AdminCourse,
+  type AdminCourseSummary,
+  type CourseFields,
+  type RuleCheck,
+} from "@/lib/api";
 import { useAsync } from "@/lib/hooks";
 import { PencilIcon, PlusIcon, RotateIcon, SearchIcon, UploadIcon } from "@/components/icons";
 import {
@@ -51,7 +58,7 @@ export function CourseAdmin({ token, onUnauthorized }: { token: string; onUnauth
     { keepPrevious: true },
   );
   const refresh = () => setVersion((v) => v + 1);
-  const unauthorized = list.error?.includes("admin token") ?? false;
+  const unauthorized = isAdminAccessError(list.error);
   useEffect(() => {
     if (unauthorized) onUnauthorized();
   }, [unauthorized, onUnauthorized]);

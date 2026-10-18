@@ -25,15 +25,21 @@ JSONType = sa.JSON().with_variant(postgresql.JSONB(astext_type=sa.Text()), "post
 def upgrade() -> None:
     with op.batch_alter_table("courses", schema=None) as batch_op:
         batch_op.add_column(sa.Column("hidden", sa.Boolean(), nullable=False, server_default=sa.false()))
-        batch_op.add_column(sa.Column("admin_edited", sa.Boolean(), nullable=False, server_default=sa.false()))
+        batch_op.add_column(
+            sa.Column("admin_edited", sa.Boolean(), nullable=False, server_default=sa.false())
+        )
         batch_op.add_column(sa.Column("imported_values", JSONType, nullable=True))
         batch_op.add_column(
             sa.Column("source_changed", sa.Boolean(), nullable=False, server_default=sa.false())
         )
     with op.batch_alter_table("programs", schema=None) as batch_op:
         batch_op.add_column(sa.Column("hidden", sa.Boolean(), nullable=False, server_default=sa.false()))
-        batch_op.add_column(sa.Column("origin", sa.String(length=16), nullable=False, server_default="import"))
-        batch_op.add_column(sa.Column("admin_edited", sa.Boolean(), nullable=False, server_default=sa.false()))
+        batch_op.add_column(
+            sa.Column("origin", sa.String(length=16), nullable=False, server_default="import")
+        )
+        batch_op.add_column(
+            sa.Column("admin_edited", sa.Boolean(), nullable=False, server_default=sa.false())
+        )
 
     op.create_table(
         "term_schedules",

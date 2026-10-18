@@ -1,6 +1,8 @@
 # 0002. Stateless guest mode
 
-Date: 2026-10-08. Status: accepted.
+Date: 2026-10-08. Status: accepted; amended by [ADR 0007](0007-sign-in-with-auib-email.md), which
+requires students to sign in with their AUIB email address. Everything below still holds for their
+courses, grades and plans.
 
 ## Context
 

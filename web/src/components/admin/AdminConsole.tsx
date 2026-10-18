@@ -2,6 +2,7 @@
 
 import { useState, useSyncExternalStore } from "react";
 import { api } from "@/lib/api";
+import { authSnapshot, recheckSession, serverAuthSnapshot, subscribeAuth } from "@/lib/auth";
 import { useAsync } from "@/lib/hooks";
 import {
   BookOpenIcon,
@@ -11,6 +12,7 @@ import {
   LayersIcon,
   ListChecksIcon,
   ShieldCheckIcon,
+  UsersIcon,
 } from "@/components/icons";
 import { Alert, Button, Card, FIELD, PageHeader, Skeleton, TabPanel, Tabs, type TabItem } from "@/components/ui";
 import { BackupPanel } from "./BackupPanel";
@@ -18,7 +20,10 @@ import { CourseAdmin } from "./CourseAdmin";
 import { ProgramAdmin } from "./ProgramAdmin";
 import { RuleQueue } from "./RuleQueue";
 import { ScheduleAdmin } from "./ScheduleAdmin";
+import { StaffAdmin } from "./StaffAdmin";
 
+// ADR 0009: admins sign in with their AUIB email (the session cookie does the work). The master token
+// (ADVISOR_ADMIN_TOKEN) is entered here only to add or remove admins, or in an emergency.
 const TOKEN_KEY = "auib-advisor:admin-token";
 const tokenListeners = new Set<() => void>();
 
@@ -52,25 +57,36 @@ const TABS: TabItem[] = [
   { id: "programs", label: "Majors and minors", icon: <LayersIcon className="h-4 w-4" /> },
   { id: "schedules", label: "Term schedules", icon: <CalendarIcon className="h-4 w-4" /> },
   { id: "backup", label: "Backup and restore", icon: <ShieldCheckIcon className="h-4 w-4" /> },
+  { id: "people", label: "People", icon: <UsersIcon className="h-4 w-4" /> },
   { id: "history", label: "History", icon: <ClockIcon className="h-4 w-4" /> },
 ];
 
 export function AdminConsole() {
+  const auth = useSyncExternalStore(subscribeAuth, authSnapshot, serverAuthSnapshot);
   const token = useSyncExternalStore(subscribe, readToken, () => "");
   const [tab, setTab] = useState("rules");
-  const signOut = () => writeToken("");
+  const forgetToken = () => writeToken("");
+  const signedInAdmin = auth.status === "signed-in" && auth.role === "admin";
+  // Without the master token, a refused request means the admin role was taken away: ask the server again.
+  const signOut = token ? forgetToken : () => void recheckSession();
 
-  if (!token) return <SignIn onToken={writeToken} />;
+  if (!token && !signedInAdmin) {
+    return <SignIn onToken={writeToken} email={auth.status === "signed-in" ? auth.email : null} />;
+  }
   return (
     <div className="space-y-6">
       <PageHeader
         eyebrow="Admin"
         title="Course data"
-        description="Review rules, edit courses and programs, publish term schedules, and back up or restore the data. Every change is recorded in the audit log."
+        description={`Review rules, edit courses and programs, publish term schedules, and back up or restore the data. Every change is recorded in the audit log under ${
+          token ? "the master token" : "your email address"
+        }.`}
         actions={
-          <Button variant="secondary" onClick={signOut}>
-            Sign out
-          </Button>
+          token ? (
+            <Button variant="secondary" onClick={forgetToken}>
+              Stop using the master token
+            </Button>
+          ) : undefined
         }
       />
       <Tabs items={TABS} active={tab} onChange={setTab} label="Admin sections" />
@@ -89,6 +105,9 @@ export function AdminConsole() {
       <TabPanel id="backup" active={tab === "backup"}>
         <BackupPanel token={token} />
       </TabPanel>
+      <TabPanel id="people" active={tab === "people"}>
+        <StaffAdmin token={token} />
+      </TabPanel>
       <TabPanel id="history" active={tab === "history"}>
         <div className="grid gap-6 xl:grid-cols-[1fr_1.4fr]">
           <section className="space-y-3">
@@ -105,7 +124,7 @@ export function AdminConsole() {
   );
 }
 
-function SignIn({ onToken }: { onToken: (token: string) => void }) {
+function SignIn({ onToken, email }: { onToken: (token: string) => void; email: string | null }) {
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -115,7 +134,7 @@ function SignIn({ onToken }: { onToken: (token: string) => void }) {
     setBusy(true);
     setError(null);
     try {
-      await api.admin.rules(value, "needs_review", "");
+      await api.admin.me(value);
       onToken(value);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Sign-in failed");
@@ -129,13 +148,17 @@ function SignIn({ onToken }: { onToken: (token: string) => void }) {
       <span className="grid h-12 w-12 place-items-center rounded-xl bg-tint text-primary">
         <KeyIcon />
       </span>
-      <h1 className="font-heading text-2xl font-bold">Admin sign-in</h1>
+      <h1 className="font-heading text-2xl font-bold">Admins only</h1>
       <p className="text-sm text-text-muted">
-        For people who maintain the course data. Enter the admin token configured on the server.
+        Admins sign in with their AUIB email, as you did{email ? <> ({<strong className="break-all">{email}</strong>})</> : null}, but
+        this account is not an admin. The person who holds the master token can add it.
+      </p>
+      <p className="text-sm text-text-muted">
+        Holders of the master token can enter it here to add or remove admins, or to work in an emergency.
       </p>
       <form onSubmit={submit} className="space-y-3">
         <label className="block text-sm">
-          <span className="mb-1 block font-medium">Admin token</span>
+          <span className="mb-1 block font-medium">Master token</span>
           <input
             type="password"
             autoComplete="off"
@@ -146,7 +169,7 @@ function SignIn({ onToken }: { onToken: (token: string) => void }) {
         </label>
         {error && <Alert tone="error">{error}</Alert>}
         <Button type="submit" disabled={!value || busy}>
-          {busy ? "Checking…" : "Sign in"}
+          {busy ? "Checking…" : "Use the master token"}
         </Button>
       </form>
     </Card>

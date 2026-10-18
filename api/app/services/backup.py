@@ -32,7 +32,7 @@ from typing import Any
 from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
-from sqlalchemy import Date, DateTime, Table, delete, func, insert, inspect, select, text
+from sqlalchemy import Date, DateTime, Integer, Table, delete, func, insert, inspect, select, text
 from sqlalchemy.orm import Session
 
 from app import __version__
@@ -200,9 +200,11 @@ def _schema_revision(session: Session) -> str | None:
 
 
 def _reset_sequences(session: Session) -> None:
+    """After rows were inserted with their own ids, move PostgreSQL's id counters past them. Only
+    numbered ids have a counter: programs are keyed by text (and ``autoincrement`` is "auto" there)."""
     for table in TABLES:
         column = table.columns.get("id")
-        if column is None or not column.autoincrement:
+        if column is None or not isinstance(column.type, Integer):
             continue
         highest = session.scalar(select(func.max(column))) or 0
         session.execute(

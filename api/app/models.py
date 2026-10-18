@@ -1,8 +1,9 @@
 """Database tables.
 
-Only catalog data and admin records are stored. Guest course histories and
-plans are never written to the database (F11.5); accounts and saved plans
-arrive with sign-in (F9) in a later migration.
+Catalog data and admin records are stored, and for sign-in (F9.1) the AUIB email
+addresses of signed-in students with their sessions and pending sign-in codes.
+Students' course histories, grades and plans are never written to the database
+(F11.5): they stay in the student's browser.
 
 Catalog rows come from two places: the files in the repository (imported) and the
 admin page. An admin's change is never overwritten by a later import: the row is
@@ -231,3 +232,44 @@ class CatalogStateRow(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     revision: Mapped[int] = mapped_column(Integer, default=0)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+
+
+class LoginCodeRow(Base):
+    """A sign-in code emailed to a student (F9.1). Only a keyed hash of the code is kept, a code works
+    once and expires within minutes, and rows older than a day are deleted."""
+
+    __tablename__ = "login_codes"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    email: Mapped[str] = mapped_column(String(254), index=True)
+    code_hash: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class SessionRow(Base):
+    """A signed-in browser (F9.1). The cookie holds a random token; only its SHA-256 hash is stored."""
+
+    __tablename__ = "sessions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    email: Mapped[str] = mapped_column(String(254), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class StaffRow(Base):
+    """An admin or advisor, by AUIB email address. They sign in like students (F9.1); this row gives the
+    signed-in address its role. Only the master token adds or removes admins; admins add or remove
+    advisors (ADR 0009). Advisors have no extra rights until the advisor view exists (F5.3)."""
+
+    __tablename__ = "staff"
+
+    email: Mapped[str] = mapped_column(String(254), primary_key=True)
+    role: Mapped[str] = mapped_column(String(16))  # "admin" or "advisor"
+    added_by: Mapped[str] = mapped_column(String(254))
+    added_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

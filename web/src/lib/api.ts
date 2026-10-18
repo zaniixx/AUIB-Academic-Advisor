@@ -69,6 +69,11 @@ export type ProgramVersion = Schemas["ProgramVersionOut"];
 export type GpaPlan = Schemas["GpaPlanOut"];
 export type ExpectedGrade = Schemas["ExpectedGradeIn"];
 export type RestoreResult = Schemas["RestoreOut"];
+export type CodeSent = Schemas["CodeSentOut"];
+export type SignedIn = Schemas["SignedInOut"];
+export type StaffRole = NonNullable<SignedIn["role"]>;
+export type StaffMember = Schemas["StaffOut"];
+export type AdminMe = Schemas["AdminMeOut"];
 
 export class ApiError extends Error {
   constructor(
@@ -95,6 +100,13 @@ function describeError(status: number, body: unknown): string {
   return `The server answered ${status}. Please try again.`;
 }
 
+// F9.1: told when the API says the session has ended, so the sign-in screen can come back.
+const signedOutListeners = new Set<() => void>();
+export function onSignedOut(listener: () => void): () => void {
+  signedOutListeners.add(listener);
+  return () => signedOutListeners.delete(listener);
+}
+
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   let response: Response;
   try {
@@ -107,6 +119,9 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     throw new ApiError(0, "Cannot reach the server. Check your connection and try again.");
   }
   const body: unknown = await response.json().catch(() => null);
+  if (response.status === 401 && !path.startsWith("/api/v1/auth/") && !path.startsWith("/api/v1/admin")) {
+    signedOutListeners.forEach((listener) => listener());
+  }
   if (!response.ok) throw new ApiError(response.status, describeError(response.status, body));
   return body as T;
 }
@@ -142,9 +157,21 @@ async function download(path: string, body: unknown, headers: HeadersInit): Prom
 const course = (code: string) => `/api/v1/admin/courses/${encodeURIComponent(code)}`;
 const program = (id: string) => `/api/v1/admin/programs/${encodeURIComponent(id)}`;
 
-const bearer = (token: string): HeadersInit => ({ Authorization: `Bearer ${token}` });
+// The master token, when one was entered; otherwise nothing, and the signed-in admin's session cookie
+// does the work (ADR 0009).
+const bearer = (token: string): HeadersInit => (token ? { Authorization: `Bearer ${token}` } : {});
+
+/** True when an admin request was refused for who is asking (signed out, not an admin, wrong master token). */
+export const isAdminAccessError = (message: string | undefined): boolean =>
+  !!message && /master token|not an admin/i.test(message);
 
 export const api = {
+  auth: {
+    requestCode: (email: string) => post<CodeSent>("/api/v1/auth/request-code", { email }),
+    verify: (email: string, code: string) => post<SignedIn>("/api/v1/auth/verify", { email, code }),
+    me: () => request<SignedIn>("/api/v1/auth/me"),
+    signOut: (everywhere = false) => post<null>("/api/v1/auth/sign-out", { everywhere }),
+  },
   meta: () => request<MetaOut>("/api/v1/meta"),
   programs: (kind?: "major" | "minor") =>
     request<ProgramSummary[]>(`/api/v1/programs${kind ? `?kind=${kind}` : ""}`),
@@ -241,5 +268,12 @@ export const api = {
       post<BackupCheck>("/api/v1/admin/restore/check", { backup_base64, passphrase }, bearer(token)),
     restore: (token: string, backup_base64: string, passphrase: string) =>
       post<RestoreResult>("/api/v1/admin/restore", { backup_base64, passphrase, confirm: "RESTORE" }, bearer(token)),
+
+    me: (token: string) => request<AdminMe>("/api/v1/admin/me", { headers: bearer(token) }),
+    staff: (token: string) => request<StaffMember[]>("/api/v1/admin/staff", { headers: bearer(token) }),
+    grant: (token: string, email: string, role: StaffRole) =>
+      put<StaffMember>("/api/v1/admin/staff", { email, role }, bearer(token)),
+    revoke: (token: string, email: string) =>
+      request<null>(`/api/v1/admin/staff/${encodeURIComponent(email)}`, { method: "DELETE", headers: bearer(token) }),
   },
 };

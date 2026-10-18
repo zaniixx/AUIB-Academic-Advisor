@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { NEEDS_COURSE_DATA } from "./global-setup";
 
 // A synthetic Course History paste in the SIS layout: menus, one cell per line, a
 // duplicated status, and one in-progress row with no status that the student must fix.
@@ -39,7 +40,10 @@ async function expectAccessible(page: Page) {
   expect(results.violations.map((v) => `${v.id}: ${v.nodes.length} element(s)`)).toEqual([]);
 }
 
-test("a guest pastes their history and gets a plan", async ({ page }) => {
+test("a student pastes their history and gets a plan", async ({ page }) => {
+  test.skip(!process.env.E2E_COURSE_DATA, NEEDS_COURSE_DATA);
+  // The whole journey, home page to printed document: more than the default 30 s when the suite runs in parallel.
+  test.slow();
   await page.goto("/");
   await expectAccessible(page);
   await page.getByRole("link", { name: "Start planning" }).first().click();
@@ -217,6 +221,7 @@ test("a guest pastes their history and gets a plan", async ({ page }) => {
 });
 
 test("a new student adds a minor and sees it in the plan and the advisor document", async ({ page }) => {
+  test.skip(!process.env.E2E_COURSE_DATA, NEEDS_COURSE_DATA);
   await page.goto("/start");
   await page.getByLabel("Your major").selectOption("casc-computer-science");
   await page.getByLabel("Minor (optional)").selectOption({ label: "Psychology" });
@@ -248,6 +253,7 @@ test("a new student adds a minor and sees it in the plan and the advisor documen
 });
 
 test("course pages show rules beside their SIS source", async ({ page }) => {
+  test.skip(!process.env.E2E_COURSE_DATA, NEEDS_COURSE_DATA);
   await page.goto("/courses");
   await page.getByLabel("Search by code or title").fill("data structure");
   await page.getByRole("link", { name: /CSC 231/ }).click();

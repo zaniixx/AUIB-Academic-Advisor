@@ -11,8 +11,10 @@ flowchart LR
   proxy -->|/api/*| api[API: FastAPI + planning engine]
   proxy -->|everything else| web[Web app: Next.js]
   api --> db[(PostgreSQL)]
-  catalog[[data/catalog course catalog]] -->|CLI import| api
-  packages[[data/programs packages]] -->|CLI import| api
+  api -->|sign-in codes, SMTP| mail[[Mail provider: AUIB relay or a service]]
+  mail -.->|email| student
+  catalog[[course catalog, sealed in git]] -->|CLI import with ADVISOR_DATA_KEY| api
+  packages[[program packages, sealed in git]] -->|CLI import with ADVISOR_DATA_KEY| api
   scraper[[SIS scraper, run by a student]] -.->|prepare_program_package.py| catalog
   scraper -.->|prepare_program_package.py| packages
 ```
@@ -21,10 +23,15 @@ flowchart LR
   certificates when given a domain name) and routes `/api/*` to the API and everything else to the web
   app, so the browser talks to a single origin and no cross-origin requests are needed.
 - **Web app** (Next.js) serves pages that are prerendered at build time. Student data never touches
-  the web server: the browser keeps the profile in local storage and calls the API directly.
-- **API** (FastAPI) is stateless for students: each planning request carries the student's courses,
-  the API computes the answer and keeps nothing. It stores only catalog data, admin corrections,
-  import history and the audit log.
+  the web server: the browser keeps the profile in local storage and calls the API directly. The
+  start, plan, courses and admin pages show a sign-in form until the student has signed in.
+- **API** (FastAPI) lets only students signed in with an AUIB email address read course and program
+  data or plan (F9.1, [ADR 0007](decisions/0007-sign-in-with-auib-email.md)). It is stateless for
+  students' courses: each planning request carries them, the API computes the answer and keeps
+  nothing. It stores catalog data, admin corrections, import history, the audit log and the sessions
+  of signed-in students (their address and a hash of the session token).
+- **Mail provider** (AUIB's SMTP relay, or a service such as Mailgun) delivers sign-in codes. It is
+  the only outside service the API calls.
 - **PostgreSQL** sits on an internal Docker network with no route in or out.
 
 On Heroku the same three services run in one dyno: Caddy on Heroku's port, with the API and the web
@@ -49,16 +56,31 @@ api/app/
   importer/      course catalog and program packages: load, validate, write to the database;
                  tables (CSV, spreadsheet pastes and .xlsx uploads)
   services/      catalog cache (database -> in-memory catalog); catalog_edit (admin changes to courses,
-                 programs and term schedules); backup (encrypted export and restore)
+                 programs and term schedules); backup (encrypted export and restore);
+                 auth (sign-in codes and sessions); mail (sends codes over SMTP);
+                 sealed_data (the course data as one encrypted file in git, ADR 0008);
+                 staff (admins and advisors by AUIB email, ADR 0009)
   api/           routes, request/response schemas, conversions
   models.py      database tables;  migrations/ holds the Alembic history
   security.py    headers, body-size limit, rate limit, request logging
   cli.py         validate / import the catalog and packages, export the OpenAPI schema,
-                 encrypted backups (export, inspect, restore)
+                 encrypted backups (export, inspect, restore), issue a session for tests
 ```
 
 The `domain` package has no dependencies on the web or database layers, so every rule can be tested
-with plain data. 218 of the API's 306 tests exercise it directly against the real course catalog and programs.
+with plain data. 213 of the API's 334 tests exercise it directly against the real course catalog and programs.
+
+### Signing in
+
+1. The student enters their address. `POST /api/v1/auth/request-code` accepts only an address whose
+   domain is exactly `auib.edu.iq`, stores a keyed hash of a new 6-digit code and emails the code.
+2. `POST /api/v1/auth/verify` checks the code (10 minutes, once, 5 tries), creates a session and sets
+   the `advisor_session` cookie (`HttpOnly`, `Secure`, `SameSite=Lax`, path `/api`, 30 days).
+3. Every catalog and planner route depends on `require_student` (`app/api/deps.py`), which looks up the
+   hash of the cookie's token and answers 401 when there is no valid session. The browser then shows
+   the sign-in form again.
+4. The browser remembers which address its saved plan belongs to (`web/src/lib/auth.ts`). If a
+   different student signs in, the previous plan is deleted from the browser first.
 
 ### A planning request
 
@@ -80,6 +102,8 @@ with plain data. 218 of the API's 306 tests exercise it directly against the rea
 
 ### Importing a program
 
+The repository holds the catalog and packages sealed ([ADR 0008](decisions/0008-sealed-course-data.md));
+the import commands open the sealed copy with `ADVISOR_DATA_KEY` when the plain files are not on disk.
 `python -m app.cli import <package>` first imports the shared course catalog: it validates it, upserts
 courses and re-parses every requisite rule from its description while keeping admin corrections. It then
 validates the package against the courses in the database (errors block, warnings are reported),
@@ -177,8 +201,10 @@ Credits are stored in fields named `units` (as the SIS export names them); the a
 credits.
 
 Supporting tables: `import_runs` (every import with its validation report), `audit_log` (every admin
-action) and `catalog_state` (the catalog revision). Student and plan tables arrive with AUIB sign-in;
-guests are never stored.
+action) and `catalog_state` (the catalog revision). Admins and advisors are in `staff` (address, role,
+who added them and when; ADR 0009). Sign-in uses two tables of its own, not linked to the others: `login_codes` (address, keyed hash of the code, times, wrong tries; deleted after a day)
+and `sessions` (SHA-256 hash of the token, address, start, last use, end). Students' courses, grades
+and plans are never stored.
 
 ## Technology choices
 

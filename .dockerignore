@@ -11,8 +11,8 @@
 !api/app/
 # Not used by Dockerfile.heroku; listed so the Compose API image also builds with Docker's older builder.
 !api/docker-entrypoint.sh
-!data/catalog/
-!data/programs/
+# Only the sealed course data (ADR 0008); the plain files never go into an image.
+!data/sealed/
 !deploy/heroku/
 !web/
 web/node_modules

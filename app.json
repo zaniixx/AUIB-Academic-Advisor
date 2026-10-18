@@ -1,18 +1,61 @@
 {
   "name": "AUIB Academic Advisor",
   "description": "Degree planning for AUIB students: progress per requirement, a term-by-term plan to graduation and explained elective suggestions.",
-  "keywords": ["education", "degree-planning", "fastapi", "nextjs"],
+  "keywords": [
+    "education",
+    "degree-planning",
+    "fastapi",
+    "nextjs"
+  ],
   "stack": "container",
   "formation": {
-    "web": { "quantity": 1, "size": "basic" }
+    "web": {
+      "quantity": 1,
+      "size": "basic"
+    }
   },
   "addons": [
-    { "plan": "heroku-postgresql:essential-0", "as": "DATABASE" }
+    {
+      "plan": "heroku-postgresql:essential-0",
+      "as": "DATABASE"
+    }
   ],
   "env": {
     "ADVISOR_ADMIN_TOKEN": {
-      "description": "Bearer token for the admin page (at least 32 characters). Generated here; keep it secret.",
+      "description": "The master token (ADR 0009): adds and removes admins in the admin page (People tab) and opens it in an emergency. Generated here; keep it secret. The key for sign-in codes is derived from it.",
       "generator": "secret"
+    },
+    "ADVISOR_DATA_KEY": {
+      "description": "Optional: opens the sealed course data for the import (ADR 0008); only the maintainers' key works. Leave it empty to start with an empty catalog that admins fill in the admin page.",
+      "required": false
+    },
+    "ADVISOR_MAIL_MODE": {
+      "description": "Sign-in codes are emailed through SMTP.",
+      "value": "smtp"
+    },
+    "ADVISOR_SMTP_HOST": {
+      "description": "The mail server that sends sign-in codes, such as AUIB's SMTP relay or smtp.mailgun.org.",
+      "required": true
+    },
+    "ADVISOR_SMTP_PORT": {
+      "description": "587 for STARTTLS, 465 for SSL.",
+      "value": "587"
+    },
+    "ADVISOR_SMTP_SECURITY": {
+      "description": "starttls, ssl or none.",
+      "value": "starttls"
+    },
+    "ADVISOR_SMTP_USERNAME": {
+      "description": "SMTP user name. Leave empty for a relay that does not need a login.",
+      "required": false
+    },
+    "ADVISOR_SMTP_PASSWORD": {
+      "description": "SMTP password or API key. Leave empty for a relay that does not need a login.",
+      "required": false
+    },
+    "ADVISOR_SMTP_FROM": {
+      "description": "The sender, for example: AUIB Academic Advisor <advisor@auib.edu.iq>",
+      "required": true
     },
     "ADVISOR_AUTO_IMPORT": {
       "description": "Import the course catalog and new program packages in each release.",

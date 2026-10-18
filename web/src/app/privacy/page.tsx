@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { ClearDataButton } from "@/components/ClearDataButton";
-import { BookOpenIcon, ClipboardIcon, InfoIcon, RotateIcon, ShieldCheckIcon, TrashIcon } from "@/components/icons";
+import { BookOpenIcon, ClipboardIcon, InfoIcon, MailIcon, RotateIcon, ShieldCheckIcon, TrashIcon } from "@/components/icons";
 import { IconBadge, LockIcon, PageHeader } from "@/components/ui";
 
 export const metadata: Metadata = { title: "Privacy" };
+
+// How long a sign-in lasts (ADVISOR_SESSION_DAYS on the server).
+const SESSION_DAYS = 30;
 
 const PROMISES: { icon: ReactNode; title: string; text: ReactNode }[] = [
   {
@@ -12,8 +15,19 @@ const PROMISES: { icon: ReactNode; title: string; text: ReactNode }[] = [
     title: "Saved only in this browser",
     text: (
       <>
-        Your courses, grades, goals and the plans you save to compare are kept <strong>only in this browser</strong>. There is no account and
-        nothing is stored on the server.
+        Your courses, grades, goals and the plans you save to compare are kept <strong>only in this browser</strong>, never on the
+        server. If someone else signs in on this browser, your data is deleted first.
+      </>
+    ),
+  },
+  {
+    icon: <MailIcon />,
+    title: "Your AUIB email, while you are signed in",
+    text: (
+      <>
+        The course catalog is for AUIB students, so you sign in with a code sent to your university address. The server keeps that
+        address and your sign-in for {SESSION_DAYS} days, or until you sign out. A sign-in code is kept only as a scrambled
+        (hashed) copy and deleted within a day.
       </>
     ),
   },

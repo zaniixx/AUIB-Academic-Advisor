@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# API image. Build from the repository root so the course catalog and program data are included:
+# API image. Build from the repository root so the sealed course data, if any, is included:
 #   docker build -f api/Dockerfile -t auib-advisor-api .
 
 FROM python:3.13-slim AS base
@@ -13,20 +13,28 @@ WORKDIR /build
 COPY api/requirements.txt .
 RUN python -m venv /opt/venv && /opt/venv/bin/pip install --require-virtualenv -r requirements.txt
 
+# The sealed course data is optional (ADR 0008): without data/sealed/ the image gets an empty folder, and
+# the app starts with an empty catalog that admins fill in the admin page. A COPY whose only source is
+# missing fails, even through a wildcard, so alembic.ini (always there) is copied with it and removed
+# again. The build context holds only data/sealed/ of data/ (see the .dockerignore files).
+FROM base AS course-data
+WORKDIR /course-data
+COPY api/alembic.ini dat[a] ./
+RUN rm alembic.ini && mkdir -p sealed
+
 FROM base AS runtime
 LABEL org.opencontainers.image.title="AUIB Academic Advisor API"
 RUN groupadd --system app && useradd --system --gid app --home-dir /app --shell /usr/sbin/nologin app
 COPY --from=build /opt/venv /opt/venv
+# The course data ships sealed (ADR 0008); the import opens it with ADVISOR_DATA_KEY at start-up.
 ENV PATH="/opt/venv/bin:$PATH" \
-    ADVISOR_DATA_DIR=/data/programs \
-    ADVISOR_COURSES_FILE=/data/catalog/courses.json
+    ADVISOR_SEALED_DATA=/data/sealed/curriculum.sealed
 WORKDIR /app
 COPY api/alembic.ini ./
 COPY api/migrations ./migrations
 COPY api/app ./app
 COPY --chmod=755 api/docker-entrypoint.sh ./
-COPY data/catalog /data/catalog
-COPY data/programs /data/programs
+COPY --from=course-data /course-data/sealed /data/sealed
 USER app
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \

@@ -1,12 +1,21 @@
 # Raw SIS scraper output. It holds a logged-in browser profile (session cookies)
 # and pages showing one student's personal progress, so it must never be
-# committed or copied into an image. Sanitised data lives in data/programs/.
+# committed or copied into an image.
 sis_data/
+.editorconfig
+
+# Course and program data are only for signed-in AUIB students, so this public repository holds them
+# sealed (data/sealed/curriculum.sealed, ADR 0008), never as plain files. "python -m app.cli
+# data-unseal" writes the plain files below from it, and "data-seal" seals them again.
+/data/catalog/
+/data/programs/
+/scripts/curricula/
 
 # Secrets
 .env
 .env.*
 !.env.example
+.sec
 
 # Python
 __pycache__/

@@ -26,6 +26,15 @@ ENV PIP_NO_CACHE_DIR=1 \
 COPY api/requirements.txt /tmp/requirements.txt
 RUN python -m venv /opt/venv && /opt/venv/bin/pip install --require-virtualenv -r /tmp/requirements.txt
 
+# The sealed course data is optional (ADR 0008): without data/sealed/ the image gets an empty folder, and
+# the app starts with an empty catalog that admins fill in the admin page. A COPY whose only source is
+# missing fails, even through a wildcard, so alembic.ini (always there) is copied with it and removed
+# again. The build context holds only data/sealed/ of data/ (see the .dockerignore files).
+FROM python:3.13-slim-trixie AS course-data
+WORKDIR /course-data
+COPY api/alembic.ini dat[a] ./
+RUN rm alembic.ini && mkdir -p sealed
+
 FROM caddy:2 AS caddy
 
 FROM python:3.13-slim-trixie AS runtime
@@ -46,8 +55,7 @@ ENV PATH="/opt/venv/bin:$PATH" \
     NEXT_TELEMETRY_DISABLED=1 \
     ADVISOR_ENVIRONMENT=production \
     ADVISOR_API_DOCS=false \
-    ADVISOR_DATA_DIR=/app/data/programs \
-    ADVISOR_COURSES_FILE=/app/data/catalog/courses.json \
+    ADVISOR_SEALED_DATA=/app/data/sealed/curriculum.sealed \
     XDG_CONFIG_HOME=/tmp/caddy-config \
     XDG_DATA_HOME=/tmp/caddy-data
 
@@ -55,8 +63,8 @@ WORKDIR /app
 COPY api/alembic.ini api/alembic.ini
 COPY api/migrations api/migrations
 COPY api/app api/app
-COPY data/catalog data/catalog
-COPY data/programs data/programs
+# The course data ships sealed, if at all (ADR 0008); the release phase opens it with ADVISOR_DATA_KEY.
+COPY --from=course-data /course-data/sealed data/sealed
 COPY --from=web /web/.next/standalone web/
 COPY --from=web /web/.next/static web/.next/static
 COPY --from=web /web/public web/public

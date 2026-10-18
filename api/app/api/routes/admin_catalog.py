@@ -398,7 +398,7 @@ def _program_out(session: SessionDep, program_id: str) -> a.AdminProgramOut:
 @router.get("/programs", summary="Every major and minor, including hidden and unpublished ones")
 def list_programs(session: SessionDep, _admin: AdminDep) -> list[a.AdminProgramSummaryOut]:
     counted = select(RequirementGroupRow.program_id, func.count()).group_by(RequirementGroupRow.program_id)
-    groups: dict[str, int] = dict(session.execute(counted).tuples().all())
+    groups: dict[str, int] = dict(session.execute(counted).all())  # rows unpack as (id, count)
     rows = session.scalars(select(ProgramRow).order_by(ProgramRow.kind, ProgramRow.name))
     listed = [_program_summary(row, groups.get(row.id, 0)) for row in rows]
     # Versions of one program sit together, oldest first.

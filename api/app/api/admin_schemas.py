@@ -375,3 +375,25 @@ class RestoreOut(BaseModel):
     previous: BackupFileOut = Field(
         description="The data from just before the restore, encrypted with the same passphrase"
     )
+
+
+class StaffIn(StrictModel):
+    """Give an AUIB address a role (ADR 0009). Only the master token may name an admin."""
+
+    email: str = Field(min_length=3, max_length=254)
+    role: Literal["admin", "advisor"]
+
+
+class StaffOut(BaseModel):
+    email: str
+    role: Literal["admin", "advisor"]
+    added_by: str
+    added_at: datetime
+
+
+class AdminMeOut(BaseModel):
+    """Who is using the admin page, and whether they can add or remove admins."""
+
+    actor: str
+    via: Literal["master token", "email"]
+    can_manage_admins: bool

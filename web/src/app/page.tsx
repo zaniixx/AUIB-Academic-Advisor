@@ -22,7 +22,7 @@ const STEPS: { title: string; Icon: typeof RouteIcon; text: ReactNode }[] = [
   {
     title: "Pick your major",
     Icon: TargetIcon,
-    text: "Computer Science is ready now, with minors in Psychology and Teaching and Learning Design.",
+    text: "Sign in with your AUIB email, then choose your major: sixteen are ready, with minors in Psychology and Teaching and Learning Design.",
   },
   {
     title: "Paste your Course History",
@@ -141,7 +141,7 @@ export default function Home() {
             className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-text-muted"
           >
             <li className="inline-flex items-center gap-1.5">
-              <CheckIcon className="h-4 w-4 text-status-done" /> No account needed
+              <CheckIcon className="h-4 w-4 text-status-done" /> Sign in with your AUIB email
             </li>
             <li className="inline-flex items-center gap-1.5">
               <ShieldCheckIcon className="h-4 w-4 text-status-done" /> Saved only in this browser
@@ -222,9 +222,9 @@ export default function Home() {
               Your courses are saved only in this browser
             </h2>
             <p className="max-w-2xl text-ink-contrast/80">
-              There is no account and nothing to sign in to. When you plan, your courses are sent over an encrypted
-              connection, used to work out the plan and discarded. Nothing is stored on the server, and the app never
-              asks for your SIS password.
+              You sign in with a code sent to your AUIB email; there is no password. When you plan, your courses are
+              sent over an encrypted connection, used to work out the plan and discarded. They are never stored on the
+              server, and the app never asks for your SIS password.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">

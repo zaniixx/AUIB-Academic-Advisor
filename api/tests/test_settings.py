@@ -2,12 +2,22 @@
 
 import pytest
 
-from app.settings import Settings, sqlalchemy_url
+from app.settings import DEVELOPMENT_SECRET, Settings, sqlalchemy_url
 
 
 @pytest.fixture(autouse=True)
 def _clean_environment(monkeypatch: pytest.MonkeyPatch) -> None:
-    for name in ("ADVISOR_DATABASE_URL", "DATABASE_URL", "ADVISOR_ENVIRONMENT", "ADVISOR_ADMIN_TOKEN"):
+    for name in (
+        "ADVISOR_DATABASE_URL",
+        "DATABASE_URL",
+        "ADVISOR_ENVIRONMENT",
+        "ADVISOR_ADMIN_TOKEN",
+        "ADVISOR_SECRET_KEY",
+        "ADVISOR_MAIL_MODE",
+        "ADVISOR_SMTP_HOST",
+        "ADVISOR_SMTP_FROM",
+        "ADVISOR_ALLOWED_EMAIL_DOMAINS",
+    ):
         monkeypatch.delenv(name, raising=False)
 
 
@@ -32,6 +42,10 @@ def test_heroku_addresses_name_the_driver_and_require_tls() -> None:
 def test_database_url_from_heroku_postgres(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DATABASE_URL", "postgres://u:p@h:5432/d")
     monkeypatch.setenv("ADVISOR_ENVIRONMENT", "production")
+    monkeypatch.setenv("ADVISOR_SECRET_KEY", "s" * 40)
+    monkeypatch.setenv("ADVISOR_MAIL_MODE", "smtp")
+    monkeypatch.setenv("ADVISOR_SMTP_HOST", "smtp.example.com")
+    monkeypatch.setenv("ADVISOR_SMTP_FROM", "advisor@auib.edu.iq")
     assert Settings().database_url == "postgresql+psycopg://u:p@h:5432/d?sslmode=require"
 
 
@@ -46,3 +60,45 @@ def test_pool_size_is_configurable(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ADVISOR_DB_POOL_SIZE", "3")
     monkeypatch.setenv("ADVISOR_DB_MAX_OVERFLOW", "2")
     assert (Settings().db_pool_size, Settings().db_max_overflow) == (3, 2)
+
+
+def test_production_needs_a_master_token_or_secret_key_and_a_mail_server(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from pydantic import ValidationError
+
+    production = {"environment": "production", "database_url": "postgresql+psycopg://u:p@h/d"}
+    # Every problem is listed at once, so they can all be fixed in one go.
+    with pytest.raises(
+        ValidationError, match=r"(?s)ADVISOR_ADMIN_TOKEN, the master token.*emailed in production.*SMTP_HOST"
+    ):
+        Settings(**production)  # type: ignore[arg-type]
+    with pytest.raises(ValidationError, match="ADVISOR_SECRET_KEY must be at least 32"):
+        Settings(**production, secret_key="short")  # type: ignore[arg-type]
+    secret = "s" * 40
+    with pytest.raises(ValidationError, match="emailed in production"):
+        Settings(**production, secret_key=secret)  # type: ignore[arg-type]
+    with pytest.raises(ValidationError, match="ADVISOR_SMTP_HOST"):
+        Settings(**production, secret_key=secret, mail_mode="smtp")  # type: ignore[arg-type]
+    ready = Settings(  # type: ignore[arg-type]
+        **production,
+        secret_key=secret,
+        mail_mode="smtp",
+        smtp_host="smtp.example.com",
+        smtp_from="a@auib.edu.iq",
+    )
+    assert ready.secure_cookies and ready.allowed_email_domains == ["auib.edu.iq"]
+    assert ready.code_key == secret.encode()
+    # With only the master token, the key for sign-in codes is derived from it (ADR 0009).
+    master = "m" * 40
+    derived = Settings(  # type: ignore[arg-type]
+        **production,
+        admin_token=master,
+        mail_mode="smtp",
+        smtp_host="smtp.example.com",
+        smtp_from="a@auib.edu.iq",
+    ).code_key
+    assert len(derived) == 32 and master.encode() not in derived and derived != DEVELOPMENT_SECRET.encode()
+    assert Settings(admin_token=master).code_key == derived  # the same token always gives the same key
+    monkeypatch.setenv("ADVISOR_ALLOWED_EMAIL_DOMAINS", '["AUIB.edu.iq", "@staff.auib.edu.iq"]')
+    assert Settings().allowed_email_domains == ["auib.edu.iq", "staff.auib.edu.iq"]

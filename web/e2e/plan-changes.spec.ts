@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Locator, type Page } from "@playwright/test";
+import { NEEDS_COURSE_DATA } from "./global-setup";
 
 /**
  * Changing a plan: moving a course to another term (F6.1), comparing saved plans (F6.2), trying
@@ -79,6 +80,8 @@ async function drop(page: Page, target: Locator) {
   await page.mouse.move(to.x + to.width / 2 + 5, to.y + to.height / 2 + 5, { steps: 2 });
   await page.mouse.up();
 }
+
+test.skip(!process.env.E2E_COURSE_DATA, NEEDS_COURSE_DATA);
 
 test("a student moves a course from the move dialog (F6.1)", async ({ page }) => {
   await openPlan(page);

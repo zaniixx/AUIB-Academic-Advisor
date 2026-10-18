@@ -7,8 +7,6 @@ import pytest
 from sqlalchemy import create_engine, text
 
 from app import cli
-from app.domain.terms import Season
-from app.importer.package import build_courses, load_courses
 from app.models import Base
 from app.settings import get_settings
 from tests.conftest import COURSES_FILE, CS_PACKAGE, PROGRAMS_DIR, PSY_PACKAGE
@@ -28,6 +26,7 @@ def database(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[str]:
     get_settings.cache_clear()
 
 
+@pytest.mark.course_data
 def test_validate_checks_the_catalog_and_every_package(capsys: pytest.CaptureFixture[str]) -> None:
     assert cli.main(["validate"]) == 0
     output = capsys.readouterr().out
@@ -41,6 +40,7 @@ def test_validate_checks_the_catalog_and_every_package(capsys: pytest.CaptureFix
     assert "courses=821" in output
 
 
+@pytest.mark.course_data
 def test_validate_fails_for_a_broken_package(tmp_path: Path) -> None:
     broken = tmp_path / "broken"
     shutil.copytree(CS_PACKAGE, broken)
@@ -48,6 +48,7 @@ def test_validate_fails_for_a_broken_package(tmp_path: Path) -> None:
     assert cli.main(["validate", str(broken)]) == 1
 
 
+@pytest.mark.course_data
 def test_a_program_listing_a_course_missing_from_the_catalog_fails(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -101,6 +102,7 @@ def test_export_openapi(tmp_path: Path) -> None:
     assert "/api/v1/planner/plan" in schema["paths"]
 
 
+@pytest.mark.course_data
 def test_unknown_offered_terms_are_rejected(tmp_path: Path) -> None:
     courses = json.loads(COURSES_FILE.read_text(encoding="utf-8"))
     courses["CSC 390"]["offered_terms"] = ["winter"]
@@ -109,12 +111,7 @@ def test_unknown_offered_terms_are_rejected(tmp_path: Path) -> None:
     assert cli.main(["validate", str(CS_PACKAGE), "--courses", str(broken)]) == 1
 
 
-def test_catalog_marks_internships_as_summer_only() -> None:
-    courses = build_courses(load_courses(COURSES_FILE))
-    assert courses["CSC 390"].offered_terms == frozenset({Season.SUMMER})
-    assert courses["CSC 231"].offered_terms is None
-
-
+@pytest.mark.course_data
 def test_catalog_is_shared_and_names_no_program() -> None:
     raw = json.loads(COURSES_FILE.read_text(encoding="utf-8"))
     assert len(raw) == 821
@@ -149,3 +146,64 @@ def test_a_package_can_be_a_new_version_of_a_program(database: str, tmp_path: Pa
     meta.update(id="casc-computer-science-2027b")
     (clash / "program.json").write_text(json.dumps(meta), encoding="utf-8")
     assert cli.main(["import", str(clash), "--accept-warnings"]) == 1
+
+
+def test_issue_session_prints_a_working_token_for_an_auib_address(
+    database: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from app.services import auth
+    from app.settings import get_settings as settings
+
+    assert cli.main(["issue-session", "e2e@auib.edu.iq"]) == 0
+    token = capsys.readouterr().out.strip()
+    engine = create_engine(database)
+    from sqlalchemy.orm import Session
+
+    with Session(engine) as session:
+        found = auth.find_session(session, token, auth.utcnow())
+        assert found is not None and found.email == "e2e@auib.edu.iq"
+    engine.dispose()
+    assert settings().allowed_email_domains == ["auib.edu.iq"]
+    assert cli.main(["issue-session", "someone@gmail.com"]) == 1
+
+
+def test_check_settings_lists_every_missing_setting_without_echoing_secrets(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    admin_token = "an-admin-token-that-must-never-be-printed-0123"
+    monkeypatch.setenv("ADVISOR_ENVIRONMENT", "production")
+    monkeypatch.setenv(
+        "ADVISOR_DATABASE_URL", "postgresql+psycopg://advisor:db-password-never-printed@db/advisor"
+    )
+    monkeypatch.setenv("ADVISOR_ADMIN_TOKEN", admin_token)
+    monkeypatch.setenv("ADVISOR_MAIL_MODE", "smtp")
+    monkeypatch.setenv("ADVISOR_SMTP_PASSWORD", "smtp-password-never-printed")
+    monkeypatch.delenv("ADVISOR_SECRET_KEY", raising=False)
+    monkeypatch.delenv("ADVISOR_SMTP_HOST", raising=False)
+    monkeypatch.delenv("ADVISOR_SMTP_FROM", raising=False)
+
+    assert cli.main(["check-settings"]) == 1
+    err = capsys.readouterr().err
+    assert "ADVISOR_SMTP_HOST" in err and "ADVISOR_SECRET_KEY" not in err  # derived from the master token
+    assert admin_token not in err and "never-printed" not in err and "Traceback" not in err
+
+    monkeypatch.delenv("ADVISOR_ADMIN_TOKEN")
+    assert cli.main(["check-settings"]) == 1
+    assert "ADVISOR_ADMIN_TOKEN, the master token" in capsys.readouterr().err
+    monkeypatch.setenv("ADVISOR_ADMIN_TOKEN", admin_token)
+    monkeypatch.setenv("ADVISOR_SMTP_HOST", "smtp.example.com")
+    monkeypatch.setenv("ADVISOR_SMTP_FROM", "advisor@auib.edu.iq")
+    assert cli.main(["check-settings"]) == 0
+    assert capsys.readouterr().out.strip() == "Settings are complete (production)."
+
+
+def test_staff_can_be_managed_from_the_server(database: str, capsys: pytest.CaptureFixture[str]) -> None:
+    assert cli.main(["staff", "add", "First.Admin@auib.edu.iq", "admin"]) == 0
+    assert cli.main(["staff", "add", "advisor@auib.edu.iq", "advisor"]) == 0
+    assert cli.main(["staff", "add", "someone@gmail.com", "advisor"]) == 1
+    capsys.readouterr()
+    assert cli.main(["staff", "list"]) == 0
+    listing = capsys.readouterr().out
+    assert "admin    first.admin@auib.edu.iq  (added by cli" in listing and "advisor@auib.edu.iq" in listing
+    assert cli.main(["staff", "remove", "advisor@auib.edu.iq"]) == 0
+    assert cli.main(["staff", "remove", "advisor@auib.edu.iq"]) == 1

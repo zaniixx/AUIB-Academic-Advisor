@@ -9,13 +9,24 @@ the two-hour portability target. The app also runs on Heroku; see [Heroku](#hero
 1. Install Docker Engine with the Compose plugin.
 2. Copy the repository to the server (for example `git clone`).
 3. Create `.env` from `.env.example`:
-   - `POSTGRES_PASSWORD`: `openssl rand -base64 32`
-   - `ADVISOR_ADMIN_TOKEN`: `openssl rand -hex 32` (leave empty to switch the admin API off)
+   - `POSTGRES_PASSWORD`: `openssl rand -hex 32` (letters and digits only: the password is also part of
+     the API's database address, where `/`, `@` or `:` would break it). PostgreSQL stores it when the
+     database is first created; changing it later is a routine task below.
+   - `ADVISOR_ADMIN_TOKEN`, the master token: `openssl rand -hex 32`. It adds the first admins (see
+     [Admins and advisors](#admins-and-advisors)); the key for sign-in codes is derived from it.
+   - `ADVISOR_DATA_KEY` (optional): the key that opens the sealed course data, from the project's
+     maintainers ([ADR 0008](decisions/0008-sealed-course-data.md)). Without it, or without
+     `data/sealed/`, the app starts with an empty catalog; see [Starting without course data](#starting-without-course-data).
+   - The `ADVISOR_SMTP_*` settings of the mail server that sends sign-in codes (see
+     [Mail for sign-in codes](#mail-for-sign-in-codes)). Without them and the secret key, the API
+     refuses to start.
    - `SITE_ADDRESS`: the public domain name for automatic HTTPS, or `:80` for plain HTTP inside a
      trusted network. For HTTPS, ports 80 and 443 must reach the server and DNS must point to it.
 4. Start: `docker compose up -d --build`
 5. Check: `docker compose ps` shows every service as healthy, and `https://<domain>/api/ready` answers
-   `{"status": "ready", ...}`.
+   `{"status": "ready", ...}`. If the `api` container keeps restarting, `docker compose logs api` lists
+   the settings that are missing (the API checks them with `python -m app.cli check-settings` before
+   it starts).
 
 On start the API applies database migrations and, with `ADVISOR_AUTO_IMPORT=true`, imports the course
 catalog and every package in `data/programs/` that is not in the database yet (all of them on first
@@ -26,13 +37,23 @@ start, and new programs such as a minor after an update).
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `POSTGRES_PASSWORD` | (required) | Database password |
-| `ADVISOR_ADMIN_TOKEN` | empty | Admin API token, at least 32 characters; empty switches the admin API off |
+| `ADVISOR_ADMIN_TOKEN` | (required) | The master token, at least 32 characters: adds and removes admins, and opens the admin page in an emergency ([ADR 0009](decisions/0009-admins-and-advisors-by-email.md)). The key for sign-in codes is derived from it |
 | `SITE_ADDRESS` | `:80` | Domain for automatic HTTPS, or `:80` for HTTP |
 | `HTTP_PORT`, `HTTPS_PORT` | `80`, `443` | Host ports the proxy listens on |
 | `ADVISOR_AUTO_IMPORT` | `true` | On start, import program packages that are not in the database yet |
 | `ADVISOR_AUTO_IMPORT_ACCEPT_WARNINGS` | `false` | Publish auto-imported packages that have validation warnings (never errors) |
 | `ADVISOR_API_DOCS` | `false` | Serve interactive API documentation at `/api/docs` |
-| `ADVISOR_RATE_LIMIT_PER_MINUTE` | `60` | Planning requests per minute per client address |
+| `ADVISOR_RATE_LIMIT_PER_MINUTE` | `60` | Planning and sign-in requests per minute per client address |
+| `ADVISOR_SECRET_KEY` | derived | Optional separate key for hashing sign-in codes (at least 32 characters); unset, it is derived from the master token. Changing it only stops codes already sent |
+| `ADVISOR_ALLOWED_EMAIL_DOMAINS` | `["auib.edu.iq"]` | Email domains that may sign in, as a JSON list; only exact matches, not subdomains |
+| `ADVISOR_MAIL_MODE` | `smtp` | `smtp` emails the codes. `log` writes them to the API log instead, for a trial on your own computer with `ADVISOR_ENVIRONMENT=development`; refused in production |
+| `ADVISOR_SMTP_HOST`, `ADVISOR_SMTP_PORT` | (required), `587` | The mail server |
+| `ADVISOR_SMTP_SECURITY` | `starttls` | `starttls` (port 587), `ssl` (port 465) or `none` |
+| `ADVISOR_SMTP_USERNAME`, `ADVISOR_SMTP_PASSWORD` | empty | SMTP login; leave empty for a relay that does not need one |
+| `ADVISOR_SMTP_FROM` | (required) | The sender, such as `AUIB Academic Advisor <advisor@auib.edu.iq>` |
+| `ADVISOR_SESSION_DAYS` | `30` | Days a sign-in lasts |
+| `ADVISOR_DATA_KEY` | empty | Opens the sealed course data (`data/sealed/curriculum.sealed`) for the import; only the maintainers' key works. Empty: the import is skipped and the database keeps what it has |
+| `ADVISOR_LOGIN_CODE_MINUTES` | `10` | Minutes a sign-in code works |
 | `ADVISOR_MAX_ADMIN_REQUEST_BYTES` | `8000000` | Largest admin upload (a course list or term schedule); other requests stay at 512 KB |
 | `ADVISOR_BACKUP_PASSPHRASE` | empty | Only for the backup commands, so they can run unattended; otherwise they ask for it |
 | `ADVISOR_WORKERS` | `2` | API worker processes |
@@ -47,18 +68,25 @@ start, and new programs such as a minor after an update).
 | Update to a new version | `git pull && docker compose up -d --build` (migrations run on start) |
 | Import or re-import the catalog and program data | `docker compose exec api python -m app.cli import-all` |
 | Validate the catalog and packages without importing | `docker compose exec api python -m app.cli validate` |
+| Import changed course data after an update | `git pull && docker compose up -d --build api`, then `docker compose exec api python -m app.cli import-all` (opens the sealed copy with `ADVISOR_DATA_KEY`) |
+| Change the data key | See [The data key](#the-data-key) |
 | Back up the database | `sh scripts/backup-db.sh` (writes `backups/advisor-<date>.dump`) |
 | Restore a backup | `sh scripts/restore-db.sh backups/advisor-<date>.dump` |
 | Take an encrypted backup | Admin page, Backup and restore tab; or `docker compose exec api python -m app.cli backup-export /tmp/advisor.aab` |
 | Check an encrypted backup | `python -m app.cli backup-inspect FILE` (asks for the passphrase; shows the rows per table) |
 | Restore an encrypted backup | See [Encrypted backups](#encrypted-backups) |
-| Rotate the admin token | Edit `ADVISOR_ADMIN_TOKEN` in `.env`, then `docker compose up -d api` |
+| Add or remove an admin or advisor | Admin page, People tab (admins: with the master token), or `docker compose exec api python -m app.cli staff add name@auib.edu.iq admin` (`staff list`, `staff remove`) |
+| Change the master token | Edit `ADVISOR_ADMIN_TOKEN` in `.env`, then `docker compose up -d api`. Admins keep signing in by email; sign-in codes sent in the last 10 minutes stop working |
+| Change the database password | Editing `.env` alone is not enough: PostgreSQL keeps the password it was created with, and the API is then refused (`password authentication failed for user "advisor"`). First `docker compose exec db psql -U advisor -c "ALTER USER advisor WITH PASSWORD '<new password>'"`, then set the same value as `POSTGRES_PASSWORD` in `.env` and run `docker compose up -d` |
+| Sign every student out | `docker compose exec db psql -U advisor -c "delete from sessions"` |
+| Sign one student out everywhere | `docker compose exec db psql -U advisor -c "delete from sessions where email = 'name@auib.edu.iq'"` |
+| Check that codes can be sent | Sign in on the site with your own AUIB address; if mail fails, the API log says `Could not send a sign-in code` with the error type |
 | Logs | `docker compose logs -f api` (JSON lines: method, path, status, duration, request ID) |
 | Health | `/api/health` (process up), `/api/ready` (database and catalog loaded) |
 
 Schedule `scripts/backup-db.sh` daily with cron and copy the files off the server. The database holds
-only catalog data and admin records, so a lost database can also be rebuilt from `data/catalog/` and
-`data/programs/`. What only a backup brings back is the work done in the admin page: rule corrections,
+only catalog data, admin records and sign-in sessions, so a lost database can also be rebuilt from
+the sealed course data with `ADVISOR_DATA_KEY` (students then sign in again). What only a backup brings back is the work done in the admin page: rule corrections,
 courses and programs added or edited there, hidden courses and programs, term schedules, and the audit
 log.
 
@@ -101,6 +129,80 @@ version, then update. The file format is described in `api/app/services/backup.p
 3. `docker compose up -d --build`, then `sh scripts/restore-db.sh backups/<file>.dump`.
 4. Point DNS at the new server. Caddy obtains a certificate on its own.
 
+## Starting without course data
+
+The app needs no course data to start. Without `ADVISOR_DATA_KEY`, without `data/sealed/`, or when
+the start-up import fails, the API logs why and starts with what the database has, possibly nothing:
+`/api/ready` still answers "ready" with `"programs": 0`, and students see that no majors are
+published yet. Admins then fill the catalog in the admin page:
+
+1. **Courses:** "Upload many courses" takes a CSV file, cells pasted from Excel or Google Sheets, or an
+   .xlsx file (code, title, credits, and optionally description, offered seasons, hidden); it is
+   previewed first and saved all or nothing. "Add a course" adds one by hand.
+2. **Majors and minors:** build each as a tree of requirement groups listing those courses, check it,
+   and publish it. Students can plan with it at once.
+3. **Term schedules** and **prerequisite rules** follow as usual.
+
+A later import of sealed data adds programs that are not in the database yet and keeps everything
+made in the admin page ([data-pipeline.md](data-pipeline.md#6-changes-in-the-admin-page)).
+
+## Admins and advisors
+
+Admins and advisors are AUIB addresses with a role ([ADR 0009](decisions/0009-admins-and-advisors-by-email.md)).
+They sign in like students, with a code emailed to their address, so the address is verified by its
+owner. The master token (`ADVISOR_ADMIN_TOKEN`) is for people, not for daily work:
+
+1. Sign in to the site with your own AUIB address.
+2. Open `/admin`. It says your account is not an admin and offers the master token; enter it.
+3. In the People tab, add your address (and any other admin) as **Admin**. Then press "Stop using
+   the master token": from now on the admin page opens for you through your sign-in, and the audit
+   log records your address.
+4. Admins add and remove **Advisors** in the same tab. Only the master token adds or removes admins.
+
+With server access, `python -m app.cli staff add name@auib.edu.iq admin` does the same (recorded as
+"cli"). A role is checked on every request, so removing someone takes effect at once. Advisors use
+the app like students until the advisor view is built (F5.3). Keep the master token in a password
+manager; every use of it is recorded in the audit log as "master token".
+
+## The data key
+
+The course catalog and program data are only for signed-in AUIB students, so the public repository
+holds them sealed in `data/sealed/curriculum.sealed` ([ADR 0008](decisions/0008-sealed-course-data.md)).
+`ADVISOR_DATA_KEY` opens it. Keep the key in a password manager and give it only to people who
+maintain the data or run a server. It is set in these places:
+
+| Where | How |
+| --- | --- |
+| A maintainer's computer or a Compose server | `ADVISOR_DATA_KEY` in `.env` at the repository root (git-ignored). Compose passes it to the API, and the data commands (`data-unseal`, `data-seal`, `import`) read it from there |
+| Heroku | Settings, Reveal Config Vars: `ADVISOR_DATA_KEY` |
+| GitHub | Not given. CI runs without the course data, and the tests that need it run on the maintainers' computers |
+
+To change the key (for example if it leaked): on a maintainer's computer, `data-unseal` with the old
+key, `python -m app.cli data-key` for a new one, put it in `.env`, `data-seal`, and commit the
+sealed file; then set the new key on Heroku and in GitHub before the next deploy. A new key
+protects later commits only: the old key still opens the sealed files in the git history.
+
+## Mail for sign-in codes
+
+Students sign in with a code sent to their `@auib.edu.iq` address
+([ADR 0007](decisions/0007-sign-in-with-auib-email.md)), so the app needs an SMTP server that may send
+mail to AUIB mailboxes. Two ways:
+
+- **AUIB's own mail system (preferred).** Ask AUIB IT for an SMTP relay or a mailbox the app may send
+  from, such as `advisor@auib.edu.iq`. Addresses then never leave the university. With Microsoft 365
+  this is `smtp.office365.com`, port 587, `starttls`, and the mailbox's user name and password (IT
+  may need to allow SMTP sign-in for that mailbox); with Google Workspace, `smtp.gmail.com` and an app
+  password, or IT's SMTP relay.
+- **A sending service** such as Mailgun, Postmark, SendGrid or Brevo, each with a free tier that
+  covers sign-in codes. Verify the sending domain with the service and add the SPF and DKIM records it
+  gives you, or codes will land in junk mail. Use the service's SMTP host, port 587, `starttls`, and
+  the SMTP user name and password (or API key) it shows.
+
+Then set `ADVISOR_SMTP_HOST`, `ADVISOR_SMTP_PORT`, `ADVISOR_SMTP_SECURITY`, `ADVISOR_SMTP_USERNAME`,
+`ADVISOR_SMTP_PASSWORD` and `ADVISOR_SMTP_FROM`, and sign in once with your own address to check. To try
+the app on your own computer without a mail server, set `ADVISOR_ENVIRONMENT=development` and
+`ADVISOR_MAIL_MODE=log`; codes then appear in `docker compose logs api`.
+
 ## Heroku
 
 The app also runs on Heroku, as one container per app on Heroku's container stack
@@ -126,47 +228,50 @@ Heroku deploys automatically from the GitHub branch `Prod`, after CI has passed 
 `Prod` by a pull request from `main`, so they are reviewed and tested before students see them.
 
 You need a Heroku account with billing set up (a Basic dyno and Heroku Postgres Essential cost a few
-dollars a month) and the [Heroku CLI](https://devcenter.heroku.com/articles/heroku-cli) for one
-command the dashboard cannot do.
+dollars a month). Everything is done in the browser; Heroku builds and runs the containers itself.
 
-1. **Create the app.** In the Heroku dashboard: New, Create new app; pick a name and the Europe or
-   United States region.
-2. **Use the container stack** (CLI only). Without it, Heroku ignores `heroku.yml` and the build
-   fails:
-
-   ```sh
-   heroku login
-   heroku stack:set container -a <app>
-   ```
-
-3. **Add the database.** Resources tab: add Heroku Postgres, plan Essential 0. It sets `DATABASE_URL`.
-4. **Set the config vars.** Settings tab, Reveal Config Vars:
-
-   | Key | Value |
-   | --- | --- |
-   | `ADVISOR_ADMIN_TOKEN` | A random token, for example from `openssl rand -hex 32` in Git Bash. Keep it: it signs in to `/admin` |
-   | `ADVISOR_AUTO_IMPORT_ACCEPT_WARNINGS` | `true` |
-   | `ADVISOR_DB_POOL_SIZE` | `3` |
-   | `ADVISOR_DB_MAX_OVERFLOW` | `2` |
-
-5. **Connect GitHub.** Deploy tab, Deployment method GitHub: connect your GitHub account, find the
+1. **Put the Heroku files on `Prod`.** On GitHub, open a pull request from `main` into `Prod` and
+   merge it once its checks pass. Heroku reads `app.json` and `heroku.yml` from `Prod`.
+2. **Create the app from `app.json`.** Open
+   <https://www.heroku.com/deploy?template=https://github.com/zaniixx/AUIB-Academic-Advisor/tree/Prod>,
+   choose an app name and the Europe or United States region, fill in the SMTP settings of the mail
+   server (see [Mail for sign-in codes](#mail-for-sign-in-codes)) and press Deploy app. `app.json` gives
+   the app the container stack (so Heroku builds `Dockerfile.heroku` as `heroku.yml` says), Heroku
+   Postgres Essential 0 (which sets `DATABASE_URL`), a Basic web dyno and the config vars, including a
+   freshly generated master token (`ADVISOR_ADMIN_TOKEN`). It offers `ADVISOR_DATA_KEY`: paste the
+   maintainers' key to import the course data, or leave it empty to start with an empty catalog. The first build takes several minutes; then the release
+   phase migrates the database and imports the catalog and every program package.
+3. **Keep the master token and make yourself an admin.** Settings tab, Reveal Config Vars: copy
+   `ADVISOR_ADMIN_TOKEN` into a password manager. Then follow [Admins and advisors](#admins-and-advisors).
+4. **Connect GitHub.** Deploy tab, Deployment method GitHub: connect your GitHub account, find the
    repository and press Connect.
-6. **Turn on automatic deploys.** In Automatic deploys, choose the branch `Prod`, tick "Wait for CI to
+5. **Turn on automatic deploys.** In Automatic deploys, choose the branch `Prod`, tick "Wait for CI to
    pass before deploy" and press Enable Automatic Deploys. CI runs on every push to `Prod`
    (`.github/workflows/ci.yml`), and Heroku deploys only when every check has passed.
-7. **Deploy for the first time.** On GitHub, open a pull request from `main` into `Prod` and merge it
-   once its checks pass. The push to `Prod` runs CI, and Heroku then builds the image (several
-   minutes), runs the release phase (migrations, then the catalog and every program package) and
-   starts the dyno. To deploy what `Prod` holds now without a new push, use Manual deploy, branch
-   `Prod`, Deploy Branch.
-8. **Check it.** The Activity tab shows the build and the release; the release must not say "failed".
-   Open `https://<app>.herokuapp.com/api/ready`, which answers `{"status": "ready", ...}`, then the app.
-   On the Resources tab, make sure the web dyno is Basic (Eco dynos sleep when idle).
+6. **Check it.** The Activity tab shows each build and release; a release must not say "failed".
+   `https://<app>.herokuapp.com/api/ready` answers `{"status": "ready", ...}`. Open the site, sign in
+   with your AUIB address and check that the code arrives.
+
+**An app created before the data was sealed** needs `ADVISOR_DATA_KEY` added in Settings, Reveal
+Config Vars, before that change reaches `Prod`; otherwise the release phase skips the import (the
+database keeps its data, but new programs do not arrive).
+
+**An app created before sign-in existed** has no SMTP settings. Add them in Settings, Reveal Config
+Vars, before the sign-in change reaches `Prod`: `ADVISOR_MAIL_MODE=smtp` and the `ADVISOR_SMTP_*`
+settings. Without them the release phase stops and lists what is missing, and the previous release
+keeps running. An app that already has `ADVISOR_SECRET_KEY` keeps using it; deleting it makes the
+app derive the key from the master token (codes sent in the last 10 minutes then stop working).
 
 From then on, every merge into `Prod` deploys by itself. To go back to the previous release, use
 Roll back on the Activity tab (it does not undo database migrations).
 
-To deploy from the command line instead, `heroku git:remote -a <app>` and `git push heroku main`.
+With the [Heroku CLI](https://devcenter.heroku.com/articles/heroku-cli), step 2 can be done by hand
+instead: `heroku create <app> --stack container --region eu`, `heroku addons:create
+heroku-postgresql:essential-0`, and the config vars from `app.json` with `heroku config:set`
+(`ADVISOR_ADMIN_TOKEN` from `openssl rand -hex 32`, `ADVISOR_DATA_KEY`, the SMTP settings;
+`ADVISOR_DB_POOL_SIZE=3`,
+`ADVISOR_DB_MAX_OVERFLOW=2`, `ADVISOR_AUTO_IMPORT_ACCEPT_WARNINGS=true`). An app's stack can only
+be set this way or through `app.json`; the dashboard does not offer it.
 
 A custom domain such as `advisor.auib.edu.iq`:
 
@@ -194,13 +299,16 @@ which only the Compose set-up uses. Heroku-specific ones:
 | Task | Command (add `-a <app>`) |
 | --- | --- |
 | Update to a new version | Merge a pull request from `main` into `Prod`: CI, then build, release phase (migrations and new packages) and restart |
-| Import changed catalog or program data | `heroku run python -m app.cli import-all --accept-warnings` |
+| Import changed catalog or program data | `heroku run python -m app.cli import-all --accept-warnings` (opens the sealed copy with the `ADVISOR_DATA_KEY` config var) |
 | Validate the catalog and packages | `heroku run python -m app.cli validate` |
 | Back up the database | `heroku pg:backups:schedule DATABASE_URL --at "02:00 Asia/Baghdad"` once; `heroku pg:backups:capture` for one now |
 | Download a backup (a standard `pg_dump` file) | `heroku pg:backups:download` |
 | Restore a backup | `heroku pg:backups:restore <backup-id> DATABASE_URL` |
 | Take or restore an encrypted backup | Admin page, Backup and restore tab, as in [Encrypted backups](#encrypted-backups) |
-| Rotate the admin token | `heroku config:set ADVISOR_ADMIN_TOKEN=<new token>` (restarts the dyno) |
+| Add or remove an admin or advisor | Admin page, People tab (admins: with the master token), or `heroku run python -m app.cli staff add name@auib.edu.iq admin` |
+| Change the master token | Settings, Reveal Config Vars: `ADVISOR_ADMIN_TOKEN` (restarts the dyno) |
+| Change the mail settings | Settings tab, Reveal Config Vars, or `heroku config:set ADVISOR_SMTP_HOST=...` |
+| Sign every student out | `heroku pg:psql -c "delete from sessions"` |
 | Logs | `heroku logs --tail` (the API's JSON lines, Caddy's access log and Heroku's router log) |
 | Roll back a release | `heroku rollback`. It does not undo database migrations; restore a backup if one must go |
 
@@ -216,8 +324,8 @@ them. To move from Heroku to a server, download a backup and restore it with `sc
   for the rate limit, so a visitor cannot choose their own.
 - **Restarts.** Heroku restarts each dyno about once a day. Nothing is lost: students' data is in their
   browsers and everything else is in Heroku Postgres. The dyno's file system is temporary.
-- **Region.** The database holds only catalog data and admin records, never students' courses or
-  grades. Choose `--region eu` or `us` when the app is created.
+- **Region.** The database holds catalog data, admin records and the AUIB email addresses of
+  signed-in students, never students' courses or grades. Choose `--region eu` or `us` when the app is created.
 - **Size.** One Basic dyno plans a degree in tens of milliseconds. For registration week, a larger dyno
   with more `ADVISOR_WORKERS`, or more dynos, adds capacity (see [Scaling notes](#scaling-notes)).
 

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import {
   api,
+  isAdminAccessError,
   type AdminProgram,
   type AdminProgramSummary,
   type Finding,
@@ -82,7 +83,7 @@ export function ProgramAdmin({ token, onUnauthorized }: { token: string; onUnaut
   } | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const list = useAsync(`programs|${version}`, () => api.admin.programs(token), { keepPrevious: true });
-  const unauthorized = list.error?.includes("admin token") ?? false;
+  const unauthorized = isAdminAccessError(list.error);
   useEffect(() => {
     if (unauthorized) onUnauthorized();
   }, [unauthorized, onUnauthorized]);
