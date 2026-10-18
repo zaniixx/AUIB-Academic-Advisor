@@ -26,6 +26,7 @@ def database(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[str]:
     get_settings.cache_clear()
 
 
+@pytest.mark.course_data
 def test_validate_checks_the_catalog_and_every_package(capsys: pytest.CaptureFixture[str]) -> None:
     assert cli.main(["validate"]) == 0
     output = capsys.readouterr().out
@@ -39,6 +40,7 @@ def test_validate_checks_the_catalog_and_every_package(capsys: pytest.CaptureFix
     assert "courses=821" in output
 
 
+@pytest.mark.course_data
 def test_validate_fails_for_a_broken_package(tmp_path: Path) -> None:
     broken = tmp_path / "broken"
     shutil.copytree(CS_PACKAGE, broken)
@@ -46,6 +48,7 @@ def test_validate_fails_for_a_broken_package(tmp_path: Path) -> None:
     assert cli.main(["validate", str(broken)]) == 1
 
 
+@pytest.mark.course_data
 def test_a_program_listing_a_course_missing_from_the_catalog_fails(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -99,6 +102,7 @@ def test_export_openapi(tmp_path: Path) -> None:
     assert "/api/v1/planner/plan" in schema["paths"]
 
 
+@pytest.mark.course_data
 def test_unknown_offered_terms_are_rejected(tmp_path: Path) -> None:
     courses = json.loads(COURSES_FILE.read_text(encoding="utf-8"))
     courses["CSC 390"]["offered_terms"] = ["winter"]
@@ -107,6 +111,7 @@ def test_unknown_offered_terms_are_rejected(tmp_path: Path) -> None:
     assert cli.main(["validate", str(CS_PACKAGE), "--courses", str(broken)]) == 1
 
 
+@pytest.mark.course_data
 def test_catalog_is_shared_and_names_no_program() -> None:
     raw = json.loads(COURSES_FILE.read_text(encoding="utf-8"))
     assert len(raw) == 821

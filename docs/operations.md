@@ -175,7 +175,7 @@ maintain the data or run a server. It is set in these places:
 | --- | --- |
 | A maintainer's computer or a Compose server | `ADVISOR_DATA_KEY` in `.env` at the repository root (git-ignored). Compose passes it to the API, and the data commands (`data-unseal`, `data-seal`, `import`) read it from there |
 | Heroku | Settings, Reveal Config Vars: `ADVISOR_DATA_KEY` |
-| GitHub | Repository Settings, Secrets and variables: under **Actions**, and the same under **Dependabot** (Dependabot's runs cannot read Actions secrets) |
+| GitHub | Not given. CI runs without the course data, and the tests that need it run on the maintainers' computers |
 
 To change the key (for example if it leaked): on a maintainer's computer, `data-unseal` with the old
 key, `python -m app.cli data-key` for a new one, put it in `.env`, `data-seal`, and commit the
@@ -254,8 +254,7 @@ dollars a month). Everything is done in the browser; Heroku builds and runs the 
 
 **An app created before the data was sealed** needs `ADVISOR_DATA_KEY` added in Settings, Reveal
 Config Vars, before that change reaches `Prod`; otherwise the release phase skips the import (the
-database keeps its data, but new programs do not arrive). Add `ADVISOR_DATA_KEY` to the GitHub
-Actions and Dependabot secrets too, or CI fails.
+database keeps its data, but new programs do not arrive).
 
 **An app created before sign-in existed** has no SMTP settings. Add them in Settings, Reveal Config
 Vars, before the sign-in change reaches `Prod`: `ADVISOR_MAIL_MODE=smtp` and the `ADVISOR_SMTP_*`

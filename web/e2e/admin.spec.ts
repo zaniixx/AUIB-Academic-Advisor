@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import { NEEDS_COURSE_DATA } from "./global-setup";
 
 // The admin tests need the server's master token (ADVISOR_ADMIN_TOKEN): E2E_ADMIN_TOKEN=... npx playwright test.
 // They leave the catalog as it was: uploads are previewed (dry runs), the program is only
@@ -13,6 +14,8 @@ async function expectAccessible(page: Page) {
 }
 
 test.skip(!TOKEN, "Set E2E_ADMIN_TOKEN to run the admin tests");
+
+test.skip(!process.env.E2E_COURSE_DATA, NEEDS_COURSE_DATA);
 
 test("an admin previews uploads, checks a minor, and backs up and restores the data", async ({ page }, testInfo) => {
   // Once, on desktop: admins work there, and two copies of this test would back up and restore the

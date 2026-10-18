@@ -24,6 +24,7 @@ def _plain_tree(root: Path) -> None:
     (root / "scripts" / "curricula" / "build.py").write_text("PROGRAMS = []\n", encoding="utf-8")
 
 
+@pytest.mark.course_data
 def test_sealed_data_round_trips_and_resealing_unchanged_files_changes_nothing(tmp_path: Path) -> None:
     _plain_tree(tmp_path / "plain")
     sealed = tmp_path / "curriculum.sealed"
@@ -55,6 +56,7 @@ def test_unsafe_paths_in_a_sealed_file_are_refused() -> None:
             sealed_data.open_sealed(sealed_data.seal({name: "x"}, KEY), KEY)
 
 
+@pytest.mark.course_data
 def test_unsealing_never_overwrites_unsaved_edits_without_force(tmp_path: Path) -> None:
     _plain_tree(tmp_path)
     sealed = tmp_path / "curriculum.sealed"
@@ -68,6 +70,7 @@ def test_unsealing_never_overwrites_unsaved_edits_without_force(tmp_path: Path) 
     assert edited.read_text(encoding="utf-8") == "PROGRAMS = []\n"
 
 
+@pytest.mark.course_data
 def test_the_data_commands_open_the_sealed_copy_when_the_plain_files_are_absent(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -94,6 +97,7 @@ def test_the_data_commands_open_the_sealed_copy_when_the_plain_files_are_absent(
         get_settings.cache_clear()
 
 
+@pytest.mark.course_data
 def test_the_committed_sealed_copy_matches_the_plain_files() -> None:
     """Catches plain-file changes that were not sealed (run where the key is available)."""
     settings = get_settings()

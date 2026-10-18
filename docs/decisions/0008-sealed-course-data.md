@@ -21,12 +21,15 @@ The data is needed in four places: on a maintainer's computer (to edit it and ru
   cannot write outside those folders. The plain folders are git-ignored.
 - **One key, `ADVISOR_DATA_KEY`.** 32 random bytes in base64 (`python -m app.cli data-key`). It is kept
   by the maintainers (in a password manager, and in the git-ignored `.env` on their computers, the same
-  file Docker Compose reads), in Heroku's config vars, in the `.env` of a Compose server, and as a GitHub Actions secret (and a
-  Dependabot secret, because Dependabot's runs cannot read Actions secrets).
+  file Docker Compose reads), in Heroku's config vars and in the `.env` of a Compose server. GitHub is
+  not given it: CI runs without the course data.
 - **Opened only where needed, and only for as long as needed.** `data-unseal` writes the plain files on
   a maintainer's computer and `data-seal` seals them again; unsealing never overwrites unsealed edits.
   The images carry only the sealed file. The import commands open it into a temporary folder that is
   deleted when they finish, so the plain data never sits in an image or on a dyno's disk.
+- **CI without the data.** On GitHub the tests that need the course data skip themselves (detected
+  from the fixtures they use, or marked `course_data`), and so do the browser tests that plan; the
+  rest run. The maintainers run the full suite on their computers, where missing data stops the run.
 - **Guards.** CI fails if a plain data file is committed. A test fails while the plain files differ from
   the sealed copy, so changes are not left unsealed. CI no longer uploads the Playwright report, because
   artifacts of a public repository can be downloaded by anyone and its screenshots show course data.
@@ -55,8 +58,10 @@ The data is needed in four places: on a maintainer's computer (to edit it and ru
   people as possible.
 - **The data is optional.** Without the key or the sealed file, the app starts with an empty catalog,
   and admins add courses and programs in the admin page (operations.md, Starting without course data).
-- **Without the key** the plain data cannot be read: fork pull requests cannot run the API tests, and a
-  server without the key skips the import and keeps the data its database already has.
+- **Without the key** the plain data cannot be read: CI on GitHub skips the tests that need it (213 of
+  the API's 334 tests, and the browser tests that plan), so a change to the planner or the data must be
+  tested on a maintainer's computer before it is pushed; a server without the key skips the import and
+  keeps the data its database already has.
 - **Some course codes stay public.** Tests, examples and the home page name individual courses (for
   example as fixtures for prerequisite rules). They are fragments, not the catalog or a program's
   requirements; moving the test fixtures into the sealed file is possible if that is not acceptable.

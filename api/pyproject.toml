@@ -60,4 +60,5 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q --strict-markers"
+markers = ["course_data: reads the course data files directly (skipped where they are absent, as on GitHub)"]
 filterwarnings = ["error::DeprecationWarning:app.*"]

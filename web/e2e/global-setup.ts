@@ -12,6 +12,8 @@ import type { FullConfig } from "@playwright/test";
 export const STUDENT_STATE = "e2e/.auth/student.json";
 export const SIGN_OUT_STATE = "e2e/.auth/sign-out.json";
 export const E2E_EMAIL = "e2e@auib.edu.iq";
+/** Why a test that plans is skipped on a server without course data, as on GitHub's CI (ADR 0008). */
+export const NEEDS_COURSE_DATA = "needs the course data, which this server does not have (CI on GitHub runs without it)";
 
 function issueLocally(): string {
   const api = path.resolve(process.cwd(), "..", "api");
@@ -32,8 +34,19 @@ function writeState(file: string, baseURL: string, token: string) {
   );
 }
 
-export default function globalSetup(config: FullConfig) {
+async function serverHasCourseData(baseURL: string): Promise<boolean> {
+  try {
+    const ready = (await (await fetch(new URL("/api/ready", baseURL))).json()) as { programs?: number };
+    return (ready.programs ?? 0) > 0;
+  } catch {
+    return true; // an unreachable server is reported by the tests themselves
+  }
+}
+
+export default async function globalSetup(config: FullConfig) {
   const baseURL = config.projects[0].use.baseURL ?? "http://localhost:3000";
   writeState(STUDENT_STATE, baseURL, process.env.E2E_SESSION_TOKEN || issueLocally());
   writeState(SIGN_OUT_STATE, baseURL, process.env.E2E_SIGN_OUT_TOKEN || issueLocally());
+  // Read by the tests that plan (test.skip): the workers inherit this environment.
+  process.env.E2E_COURSE_DATA = (await serverHasCourseData(baseURL)) ? "1" : "";
 }

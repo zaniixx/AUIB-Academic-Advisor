@@ -340,7 +340,7 @@ The diagram shows each trust boundary, what data crosses it and how that data is
   emergency.
 - The raw SIS scrape never leaves the data maintainer's computer.
 - The course data is in the public repository only sealed (AES-256-GCM); the key is kept by the
-  maintainers, the servers and CI, and CI publishes no screenshots.
+  maintainers and the servers, never by GitHub, and CI publishes no screenshots.
 - The server logs method, path, status, time and a request ID, never bodies or query strings.
 - Caddy's access log records client IP addresses; how long logs are kept is to be agreed with AUIB IT.
 - Backups taken from the admin page are encrypted (AES-256-GCM, key from the passphrase); the nightly

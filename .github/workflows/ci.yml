@@ -52,22 +52,13 @@ jobs:
         env:
           ADVISOR_DATABASE_URL: ${{ env.POSTGRES_URL }}
       # The repository is public, but course and program data are for signed-in AUIB students only:
-      # they are committed sealed, and the key is the ADVISOR_DATA_KEY secret (ADR 0008). This log and
-      # everything CI keeps are public, so nothing here prints the data.
+      # they are committed sealed (ADR 0008), and CI on GitHub never opens them: the data key is not given
+      # to GitHub. Tests that need the data skip themselves here and run on a maintainer's computer.
       - name: No plain course data is committed
         working-directory: .
         run: test -z "$(git ls-files data/catalog data/programs scripts/curricula)"
-      - name: Open the sealed course data
-        run: |
-          if [ -z "$ADVISOR_DATA_KEY" ]; then
-            echo "::error title=ADVISOR_DATA_KEY is not set::The tests need the course data. Add the key under Settings, Secrets and variables, both Actions and Dependabot (docs/operations.md, The data key). Pull requests from forks cannot read it."
-            exit 1
-          fi
-          python -m app.cli data-unseal
-        env:
-          ADVISOR_DATA_KEY: ${{ secrets.ADVISOR_DATA_KEY }}
       # Every test once: the API tests on PostgreSQL, as in production (developers run them on SQLite).
-      - name: Tests, with coverage
+      - name: Tests, with coverage (those needing the course data are skipped)
         run: pytest --cov=app --cov-report=term-missing
         env:
           ADVISOR_TEST_DATABASE_URL: ${{ env.POSTGRES_URL }}
@@ -117,8 +108,8 @@ jobs:
       ADVISOR_MAIL_MODE: log
       # The tests plan many times in a row from one address.
       ADVISOR_RATE_LIMIT_PER_MINUTE: "600"
-      # Opens the sealed course data for the API's import at start-up (ADR 0008).
-      ADVISOR_DATA_KEY: ${{ secrets.ADVISOR_DATA_KEY }}
+      # No data key: the stack starts with an empty catalog, and the browser tests that plan skip
+      # themselves (ADR 0008).
     steps:
       - uses: actions/checkout@v4
       - name: Build and start the whole stack
@@ -176,8 +167,7 @@ jobs:
       # No mail server in CI; the smoke test signs in with an issued session.
       ADVISOR_ENVIRONMENT: test
       ADVISOR_MAIL_MODE: log
-      # Opens the sealed course data in the release phase, as the config var does on Heroku (ADR 0008).
-      ADVISOR_DATA_KEY: ${{ secrets.ADVISOR_DATA_KEY }}
+      # No data key: the release phase skips the import, as on a server without the key (ADR 0008).
     steps:
       - uses: actions/checkout@v4
       - name: Build Dockerfile.heroku
@@ -187,7 +177,7 @@ jobs:
         run: >-
           docker run --rm --network host --user 4242:4242
           -e DATABASE_URL -e ADVISOR_ADMIN_TOKEN -e ADVISOR_AUTO_IMPORT_ACCEPT_WARNINGS
-          -e ADVISOR_ENVIRONMENT -e ADVISOR_MAIL_MODE -e ADVISOR_DATA_KEY
+          -e ADVISOR_ENVIRONMENT -e ADVISOR_MAIL_MODE
           advisor-heroku /app/deploy/heroku/release.sh
       - name: Start the web dyno
         run: >-
@@ -201,9 +191,12 @@ jobs:
           test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/api/v1/programs)" = 401
           token="$(docker run --rm --network host --user 4242:4242 -e DATABASE_URL -e ADVISOR_ENVIRONMENT \
             -e ADVISOR_MAIL_MODE advisor-heroku python -m app.cli issue-session ci@auib.edu.iq)"
-          curl -fsS -o /dev/null -X POST http://localhost:8080/api/v1/planner/plan \
+          # With a session the request gets through; the catalog is empty here, so the program is unknown.
+          test "$(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:8080/api/v1/planner/plan \
             -H "Cookie: advisor_session=$token" \
-            -H "Content-Type: application/json" -d '{"program_id": "casc-computer-science"}'
+            -H "Content-Type: application/json" -d '{"program_id": "casc-computer-science"}')" = 404
+          test "$(curl -s -o /dev/null -w '%{http_code}' -H "Cookie: advisor_session=$token" \
+            http://localhost:8080/api/v1/programs)" = 200
           test "$(curl -s -o /dev/null -w '%{http_code}' -H 'X-Forwarded-Proto: http' http://localhost:8080/)" = 308
       - name: Dyno logs
         if: always()

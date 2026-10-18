@@ -15,7 +15,12 @@ from app.importer.validate import validate_package
 
 from ..conftest import PROGRAMS_DIR
 
-PACKAGES = sorted(path for path in PROGRAMS_DIR.iterdir() if (path / "program.json").is_file())
+pytestmark = pytest.mark.course_data
+PACKAGES = sorted(
+    path
+    for path in (PROGRAMS_DIR.iterdir() if PROGRAMS_DIR.is_dir() else [])
+    if (path / "program.json").is_file()
+)
 # Students plan with published majors; minors are planned with a major, and drafts are not offered.
 PUBLISHED_MAJORS = [
     path for path in PACKAGES if (meta := load_package(path).meta).kind == "major" and meta.published
