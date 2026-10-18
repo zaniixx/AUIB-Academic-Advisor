@@ -91,7 +91,8 @@ docker compose up -d --build
 
 The course and program data are only for signed-in AUIB students, so this public repository holds them
 sealed (`data/sealed/curriculum.sealed`, [ADR 0008](docs/decisions/0008-sealed-course-data.md)).
-`ADVISOR_DATA_KEY`, from the project's maintainers, opens them for the import.
+`ADVISOR_DATA_KEY`, from the project's maintainers, opens them for the import. The key is optional: without
+it the app starts with an empty catalog, and admins add courses and programs in the admin page.
 
 Sign-in codes are emailed, so the API needs an SMTP server that can reach `@auib.edu.iq` mailboxes
 (see [docs/operations.md, Mail for sign-in codes](docs/operations.md#mail-for-sign-in-codes)). To try
@@ -175,7 +176,7 @@ python -m app.cli data-unseal                        # write data/ and scripts/c
 alembic upgrade head                                  # SQLite file by default
 python -m app.cli import-all --accept-warnings        # load data/catalog and data/programs
 uvicorn app.main:create_app --factory --reload        # http://localhost:8000/api/docs
-pytest                                                # 334 tests
+pytest                                                # 336 tests
 ruff check app tests && mypy app
 ```
 =======

@@ -68,7 +68,7 @@ api/app/
 ```
 
 The `domain` package has no dependencies on the web or database layers, so every rule can be tested
-with plain data. 218 of the API's 334 tests exercise it directly against the real course catalog and programs.
+with plain data. 218 of the API's 336 tests exercise it directly against the real course catalog and programs.
 
 ### Signing in
 

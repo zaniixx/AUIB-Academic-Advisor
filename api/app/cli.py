@@ -80,9 +80,14 @@ def _course_data(args: argparse.Namespace) -> Iterator[None]:
 
     settings = get_settings()
     args.default_courses, args.default_data_dir = settings.courses_file, settings.data_dir
-    if settings.courses_file.exists() or not settings.sealed_data.is_file():
+    if settings.courses_file.exists() or getattr(args, "courses", None):
         yield
         return
+    if not settings.sealed_data.is_file():
+        raise sealed_data.SealError(
+            "There is no course data here (no data/catalog/courses.json and no sealed copy). That is fine: "
+            "admins add courses and programs in the admin page, by hand or from a spreadsheet."
+        )
     configured = settings.data_key.get_secret_value() if settings.data_key else None
     key = sealed_data.find_key(configured, REPO_ROOT)
     with tempfile.TemporaryDirectory(prefix="advisor-data-") as folder:

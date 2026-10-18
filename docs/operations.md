@@ -14,9 +14,9 @@ the two-hour portability target. The app also runs on Heroku; see [Heroku](#hero
      database is first created; changing it later is a routine task below.
    - `ADVISOR_ADMIN_TOKEN`, the master token: `openssl rand -hex 32`. It adds the first admins (see
      [Admins and advisors](#admins-and-advisors)); the key for sign-in codes is derived from it.
-   - `ADVISOR_DATA_KEY`: the key that opens the sealed course data, from the project's maintainers
-     ([ADR 0008](decisions/0008-sealed-course-data.md)). Without it the API starts, but imports no
-     course data.
+   - `ADVISOR_DATA_KEY` (optional): the key that opens the sealed course data, from the project's
+     maintainers ([ADR 0008](decisions/0008-sealed-course-data.md)). Without it, or without
+     `data/sealed/`, the app starts with an empty catalog; see [Starting without course data](#starting-without-course-data).
    - The `ADVISOR_SMTP_*` settings of the mail server that sends sign-in codes (see
      [Mail for sign-in codes](#mail-for-sign-in-codes)). Without them and the secret key, the API
      refuses to start.
@@ -129,6 +129,23 @@ version, then update. The file format is described in `api/app/services/backup.p
 3. `docker compose up -d --build`, then `sh scripts/restore-db.sh backups/<file>.dump`.
 4. Point DNS at the new server. Caddy obtains a certificate on its own.
 
+## Starting without course data
+
+The app needs no course data to start. Without `ADVISOR_DATA_KEY`, without `data/sealed/`, or when
+the start-up import fails, the API logs why and starts with what the database has, possibly nothing:
+`/api/ready` still answers "ready" with `"programs": 0`, and students see that no majors are
+published yet. Admins then fill the catalog in the admin page:
+
+1. **Courses:** "Upload many courses" takes a CSV file, cells pasted from Excel or Google Sheets, or an
+   .xlsx file (code, title, credits, and optionally description, offered seasons, hidden); it is
+   previewed first and saved all or nothing. "Add a course" adds one by hand.
+2. **Majors and minors:** build each as a tree of requirement groups listing those courses, check it,
+   and publish it. Students can plan with it at once.
+3. **Term schedules** and **prerequisite rules** follow as usual.
+
+A later import of sealed data adds programs that are not in the database yet and keeps everything
+made in the admin page ([data-pipeline.md](data-pipeline.md#6-changes-in-the-admin-page)).
+
 ## Admins and advisors
 
 Admins and advisors are AUIB addresses with a role ([ADR 0009](decisions/0009-admins-and-advisors-by-email.md)).
@@ -221,8 +238,8 @@ dollars a month). Everything is done in the browser; Heroku builds and runs the 
    server (see [Mail for sign-in codes](#mail-for-sign-in-codes)) and press Deploy app. `app.json` gives
    the app the container stack (so Heroku builds `Dockerfile.heroku` as `heroku.yml` says), Heroku
    Postgres Essential 0 (which sets `DATABASE_URL`), a Basic web dyno and the config vars, including a
-   freshly generated master token (`ADVISOR_ADMIN_TOKEN`). It asks for `ADVISOR_DATA_KEY`:
-   paste the maintainers' key, or the release phase imports no course data. The first build takes several minutes; then the release
+   freshly generated master token (`ADVISOR_ADMIN_TOKEN`). It offers `ADVISOR_DATA_KEY`: paste the
+   maintainers' key to import the course data, or leave it empty to start with an empty catalog. The first build takes several minutes; then the release
    phase migrates the database and imports the catalog and every program package.
 3. **Keep the master token and make yourself an admin.** Settings tab, Reveal Config Vars: copy
    `ADVISOR_ADMIN_TOKEN` into a password manager. Then follow [Admins and advisors](#admins-and-advisors).

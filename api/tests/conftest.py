@@ -21,6 +21,18 @@ TLD_ID = "minor-teaching-and-learning-design"
 TODAY = date(2026, 10, 8)  # a fixed "today" keeps plans reproducible
 
 
+def pytest_sessionstart(session: pytest.Session) -> None:
+    """The tests run against the real course data, which the repository holds sealed (ADR 0008). The app
+    itself starts without it; only the tests need it."""
+    if not COURSES_FILE.is_file():
+        pytest.exit(
+            "The tests use the real course data, and data/catalog/ is not on this computer. In api/, run "
+            "`python -m app.cli data-unseal` (the key is ADVISOR_DATA_KEY in .env). If data/sealed/ was "
+            "deleted too, `git checkout -- ../data/sealed` brings the sealed copy back first.",
+            returncode=4,
+        )
+
+
 @pytest.fixture(scope="session")
 def course_list() -> CourseList:
     return load_courses(COURSES_FILE)

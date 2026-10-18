@@ -1,6 +1,6 @@
 #!/bin/sh
 # Start-up for the API container: migrate the database, import the course catalog and
-# every program not imported yet (all of them on first start), then serve. Runs as the
+# every program not imported yet (all of them on first start; optional), then serve. Runs as the
 # unprivileged "app" user. Changed data for programs already imported is imported by hand:
 #   docker compose exec api python -m app.cli import-all
 set -eu
@@ -20,15 +20,18 @@ until alembic upgrade head; do
   sleep 3
 done
 
-# The image holds the course data sealed (ADR 0008): the import opens it with ADVISOR_DATA_KEY into a
-# temporary folder. Without the key the database keeps what it already has.
-if [ "${ADVISOR_AUTO_IMPORT:-false}" = "true" ] && [ -z "${ADVISOR_DATA_KEY:-}" ]; then
-  echo "ADVISOR_DATA_KEY is not set, so the course data was not imported (see docs/operations.md)." >&2
-elif [ "${ADVISOR_AUTO_IMPORT:-false}" = "true" ]; then
-  if [ "${ADVISOR_AUTO_IMPORT_ACCEPT_WARNINGS:-false}" = "true" ]; then
-    python -m app.cli import-all --only-new --accept-warnings --actor auto-import
+# Course data is optional: admins can add courses and programs in the admin page, by hand or from a
+# spreadsheet. This import adds what the image holds (sealed, ADR 0008, opened with ADVISOR_DATA_KEY)
+# and never stops the start: without the key, or if the import fails, the database keeps what it has.
+if [ "${ADVISOR_AUTO_IMPORT:-false}" = "true" ]; then
+  if [ -z "${ADVISOR_DATA_KEY:-}" ]; then
+    echo "ADVISOR_DATA_KEY is not set: no course data was imported. Admins can add it in the admin page." >&2
   else
-    python -m app.cli import-all --only-new --actor auto-import
+    accept=""
+    if [ "${ADVISOR_AUTO_IMPORT_ACCEPT_WARNINGS:-false}" = "true" ]; then accept="--accept-warnings"; fi
+    # shellcheck disable=SC2086  # $accept is one flag or nothing
+    python -m app.cli import-all --only-new $accept --actor auto-import \
+      || echo "The course data import did not finish (see above); starting with the data the database has." >&2
   fi
 fi
 

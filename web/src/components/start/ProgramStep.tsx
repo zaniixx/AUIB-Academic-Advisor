@@ -59,8 +59,7 @@ export function ProgramStep({
           ))}
         </Select>
         <p id="major-help" className="text-sm text-text-muted">
-          Only programs whose requirements have been loaded are listed. Computer Science is first; more programs
-          follow as their data is imported.
+          Only programs that have been published are listed. More appear as the university adds them.
         </p>
       </div>
 
@@ -118,7 +117,7 @@ export function ProgramStep({
 
       {majors.length === 0 && (
         <Alert tone="warning" title="No programs available">
-          The program data has not been imported on this server yet.
+          No majors have been published on this server yet. An admin adds them in the admin page.
         </Alert>
       )}
     </StepCard>

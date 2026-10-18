@@ -26,8 +26,8 @@
       "generator": "secret"
     },
     "ADVISOR_DATA_KEY": {
-      "description": "Opens the sealed course data for the import (ADR 0008). Use the key the project's maintainers keep; a new one cannot open the data.",
-      "required": true
+      "description": "Optional: opens the sealed course data for the import (ADR 0008); only the maintainers' key works. Leave it empty to start with an empty catalog that admins fill in the admin page.",
+      "required": false
     },
     "ADVISOR_MAIL_MODE": {
       "description": "Sign-in codes are emailed through SMTP.",

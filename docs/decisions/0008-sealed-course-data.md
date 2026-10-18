@@ -53,6 +53,8 @@ The data is needed in four places: on a maintainer's computer (to edit it and ru
 - **A leaked key opens every sealed version.** A new key (`data-key`, then `data-unseal` with the old key
   and `data-seal` with the new one) protects later commits only, so the key is shared with as few
   people as possible.
+- **The data is optional.** Without the key or the sealed file, the app starts with an empty catalog,
+  and admins add courses and programs in the admin page (operations.md, Starting without course data).
 - **Without the key** the plain data cannot be read: fork pull requests cannot run the API tests, and a
   server without the key skips the import and keeps the data its database already has.
 - **Some course codes stay public.** Tests, examples and the home page name individual courses (for
