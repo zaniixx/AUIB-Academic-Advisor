@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "API and planning engine for the AUIB Academic Advisor"
 requires-python = ">=3.13"
 dependencies = [
-  "fastapi>=0.142,<0.143",
+  "fastapi>=0.142,<0.148",
   "uvicorn[standard]>=0.37",
   "sqlalchemy>=2.0.40,<2.2",
   "alembic>=1.16",
