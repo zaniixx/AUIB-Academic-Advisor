@@ -2,7 +2,7 @@
 # API image. Build from the repository root so the sealed course data, if any, is included:
 #   docker build -f api/Dockerfile -t auib-advisor-api .
 
-FROM python:3.13-slim AS base
+FROM python:3.15-slim AS base
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
